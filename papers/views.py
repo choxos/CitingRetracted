@@ -170,7 +170,13 @@ class SearchView(ListView):
             queryset = queryset.filter(reason__icontains=reason)
         
         if country:
-            queryset = queryset.filter(country__icontains=country)
+            # Handle semicolon-separated countries
+            queryset = queryset.filter(
+                Q(country__icontains=f';{country};') |  # Middle of list
+                Q(country__startswith=f'{country};') |  # Start of list
+                Q(country__endswith=f';{country}') |    # End of list  
+                Q(country__exact=country)               # Single country
+            )
         
         if institution:
             queryset = queryset.filter(institution__icontains=institution)
@@ -225,17 +231,26 @@ class SearchView(ListView):
             Q(reason__isnull=True) | Q(reason__exact='')
         ).order_by('reason')[:100]
         
-        context['countries'] = RetractedPaper.objects.values_list(
+        # Get individual countries from semicolon-separated strings
+        country_strings = RetractedPaper.objects.values_list(
             'country', flat=True
         ).distinct().exclude(
             Q(country__isnull=True) | Q(country__exact='')
-        ).order_by('country')[:100]
+        )
         
-        context['institutions'] = RetractedPaper.objects.values_list(
-            'institution', flat=True
-        ).distinct().exclude(
-            Q(institution__isnull=True) | Q(institution__exact='') | Q(institution='NA')
-        ).order_by('institution')[:100]
+        # Extract individual countries
+        all_countries = set()
+        for country_string in country_strings:
+            if country_string:
+                countries = [country.strip() for country in country_string.split(';')]
+                all_countries.update(countries)
+        
+        # Remove invalid entries and sort
+        invalid_entries = {'', 'Unknown', 'unknown', 'N/A', 'n/a', 'None', 'null'}
+        clean_countries = sorted(list(all_countries - invalid_entries))
+        context['countries'] = clean_countries[:100]
+        
+        # Institution is now a text input, so no need for dropdown options
         
         context['publishers'] = RetractedPaper.objects.values_list(
             'publisher', flat=True

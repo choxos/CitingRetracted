@@ -71,14 +71,12 @@
                 </div>
                 <div class="col-lg-3 mb-3">
                     <label for="institution" class="form-label">Institution</label>
-                    <select id="institution" name="institution" class="form-select">
-                        <option value="">All Institutions</option>
-                        {% for institution in institutions %}
-                            <option value="{{ institution }}" {% if institution == institution_filter %}selected{% endif %}>
-                                {{ institution|truncatechars:50 }}
-                            </option>
-                        {% endfor %}
-                    </select>
+                    <input type="text" 
+                           id="institution"
+                           name="institution" 
+                           class="form-control" 
+                           value="{{ institution_filter }}"
+                           placeholder="University, Institute, etc.">
                 </div>
                 <div class="col-lg-3 mb-3">
                     <label for="author" class="form-label">Author</label>
