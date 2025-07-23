@@ -208,7 +208,7 @@ class SearchView(ListView):
         context = super().get_context_data(**kwargs)
         
         # Current filter values for preserving form state
-        context['search_query'] = self.request.GET.get('q', '')
+        search_query = self.request.GET.get('q', '')
         context['journal_filter'] = self.request.GET.get('journal', '')
         context['year_from'] = self.request.GET.get('year_from', '')
         context['year_to'] = self.request.GET.get('year_to', '')
@@ -218,6 +218,20 @@ class SearchView(ListView):
         context['institution_filter'] = self.request.GET.get('institution', '')
         context['author_filter'] = self.request.GET.get('author', '')
         context['publisher_filter'] = self.request.GET.get('publisher', '')
+        
+        # If no main search query but other filters exist, populate search box
+        if not search_query:
+            # Priority order: author, journal, institution, publisher
+            if context['author_filter']:
+                search_query = context['author_filter']
+            elif context['journal_filter']:
+                search_query = context['journal_filter']
+            elif context['institution_filter']:
+                search_query = context['institution_filter']
+            elif context['publisher_filter']:
+                search_query = context['publisher_filter']
+        
+        context['search_query'] = search_query
         
         # Get dropdown options for select fields
         context['subjects'] = RetractedPaper.objects.values_list(
