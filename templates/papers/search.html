@@ -35,60 +35,109 @@
                 </div>
                 <div class="col-lg-3 mb-3">
                     <label for="subject" class="form-label">Subject</label>
-                    <input type="text" 
-                           id="subject"
-                           name="subject" 
-                           class="form-control" 
-                           value="{{ subject_filter }}"
-                           placeholder="Research area">
+                    <select id="subject" name="subject" class="form-select">
+                        <option value="">All Subjects</option>
+                        {% for subject in subjects %}
+                            <option value="{{ subject }}" {% if subject == subject_filter %}selected{% endif %}>
+                                {{ subject|truncatechars:50 }}
+                            </option>
+                        {% endfor %}
+                    </select>
                 </div>
             </div>
             
             <div class="row">
-                <div class="col-lg-6 mb-3">
+                <div class="col-lg-3 mb-3">
                     <label for="reason" class="form-label">Retraction Reason</label>
-                    <input type="text" 
-                           id="reason"
-                           name="reason" 
-                           class="form-control" 
-                           value="{{ reason_filter }}"
-                           placeholder="Data fabrication, plagiarism, etc.">
+                    <select id="reason" name="reason" class="form-select">
+                        <option value="">All Reasons</option>
+                        {% for reason in reasons %}
+                            <option value="{{ reason }}" {% if reason == reason_filter %}selected{% endif %}>
+                                {{ reason|truncatechars:50 }}
+                            </option>
+                        {% endfor %}
+                    </select>
                 </div>
-                <div class="col-lg-6 mb-3">
-                    <div class="row">
-                        <div class="col-6">
-                            <label for="year_from" class="form-label">Retracted From</label>
-                            <input type="number" 
-                                   id="year_from"
-                                   name="year_from" 
-                                   class="form-control" 
-                                   value="{{ year_from }}"
-                                   placeholder="2000"
-                                   min="1900"
-                                   max="2030">
-                        </div>
-                        <div class="col-6">
-                            <label for="year_to" class="form-label">Retracted To</label>
-                            <input type="number" 
-                                   id="year_to"
-                                   name="year_to" 
-                                   class="form-control" 
-                                   value="{{ year_to }}"
-                                   placeholder="2024"
-                                   min="1900"
-                                   max="2030">
-                        </div>
+                <div class="col-lg-3 mb-3">
+                    <label for="country" class="form-label">Country</label>
+                    <select id="country" name="country" class="form-select">
+                        <option value="">All Countries</option>
+                        {% for country in countries %}
+                            <option value="{{ country }}" {% if country == country_filter %}selected{% endif %}>
+                                {{ country }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-lg-3 mb-3">
+                    <label for="institution" class="form-label">Institution</label>
+                    <select id="institution" name="institution" class="form-select">
+                        <option value="">All Institutions</option>
+                        {% for institution in institutions %}
+                            <option value="{{ institution }}" {% if institution == institution_filter %}selected{% endif %}>
+                                {{ institution|truncatechars:50 }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-lg-3 mb-3">
+                    <label for="author" class="form-label">Author</label>
+                    <input type="text" 
+                           id="author"
+                           name="author" 
+                           class="form-control" 
+                           value="{{ author_filter }}"
+                           placeholder="Author name">
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-lg-3 mb-3">
+                    <label for="publisher" class="form-label">Publisher</label>
+                    <select id="publisher" name="publisher" class="form-select">
+                        <option value="">All Publishers</option>
+                        {% for publisher in publishers %}
+                            <option value="{{ publisher }}" {% if publisher == publisher_filter %}selected{% endif %}>
+                                {{ publisher|truncatechars:40 }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-lg-3 mb-3">
+                    <label for="year_from" class="form-label">Retracted From</label>
+                    <input type="number" 
+                           id="year_from"
+                           name="year_from" 
+                           class="form-control" 
+                           value="{{ year_from }}"
+                           placeholder="2000"
+                           min="1900"
+                           max="2030">
+                </div>
+                <div class="col-lg-3 mb-3">
+                    <label for="year_to" class="form-label">Retracted To</label>
+                    <input type="number" 
+                           id="year_to"
+                           name="year_to" 
+                           class="form-control" 
+                           value="{{ year_to }}"
+                           placeholder="2024"
+                           min="1900"
+                           max="2030">
+                </div>
+                <div class="col-lg-3 mb-3 d-flex align-items-end">
+                    <div class="w-100">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-search"></i> Search
+                        </button>
                     </div>
                 </div>
             </div>
             
             <div class="row">
-                <div class="col-lg-12 mb-3 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary me-2">
-                        <i class="fas fa-search"></i> Search
-                    </button>
+                <div class="col-lg-12 mb-3 text-end">
                     <a href="{% url 'papers:search' %}" class="btn btn-outline-secondary">
-                        <i class="fas fa-times"></i> Clear
+                        <i class="fas fa-times"></i> Clear All Filters
                     </a>
                 </div>
             </div>

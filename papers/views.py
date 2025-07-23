@@ -132,6 +132,10 @@ class SearchView(ListView):
         year_to = self.request.GET.get('year_to', '').strip()
         subject = self.request.GET.get('subject', '').strip()
         reason = self.request.GET.get('reason', '').strip()
+        country = self.request.GET.get('country', '').strip()
+        institution = self.request.GET.get('institution', '').strip()
+        author = self.request.GET.get('author', '').strip()
+        publisher = self.request.GET.get('publisher', '').strip()
         
         queryset = RetractedPaper.objects.all()
         
@@ -165,6 +169,18 @@ class SearchView(ListView):
         if reason:
             queryset = queryset.filter(reason__icontains=reason)
         
+        if country:
+            queryset = queryset.filter(country__icontains=country)
+        
+        if institution:
+            queryset = queryset.filter(institution__icontains=institution)
+        
+        if author:
+            queryset = queryset.filter(author__icontains=author)
+        
+        if publisher:
+            queryset = queryset.filter(publisher__icontains=publisher)
+        
         if year_from:
             try:
                 year_from = int(year_from)
@@ -183,16 +199,49 @@ class SearchView(ListView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        
+        # Current filter values for preserving form state
         context['search_query'] = self.request.GET.get('q', '')
         context['journal_filter'] = self.request.GET.get('journal', '')
         context['year_from'] = self.request.GET.get('year_from', '')
         context['year_to'] = self.request.GET.get('year_to', '')
         context['subject_filter'] = self.request.GET.get('subject', '')
         context['reason_filter'] = self.request.GET.get('reason', '')
+        context['country_filter'] = self.request.GET.get('country', '')
+        context['institution_filter'] = self.request.GET.get('institution', '')
+        context['author_filter'] = self.request.GET.get('author', '')
+        context['publisher_filter'] = self.request.GET.get('publisher', '')
         
-        # Get filter options
-        context['journals'] = RetractedPaper.objects.values_list('journal', flat=True).distinct().exclude(journal__isnull=True).order_by('journal')[:100]
-        context['subjects'] = RetractedPaper.objects.values_list('subject', flat=True).distinct().exclude(subject__isnull=True).order_by('subject')[:50]
+        # Get dropdown options for select fields
+        context['subjects'] = RetractedPaper.objects.values_list(
+            'subject', flat=True
+        ).distinct().exclude(
+            Q(subject__isnull=True) | Q(subject__exact='')
+        ).order_by('subject')[:100]
+        
+        context['reasons'] = RetractedPaper.objects.values_list(
+            'reason', flat=True
+        ).distinct().exclude(
+            Q(reason__isnull=True) | Q(reason__exact='')
+        ).order_by('reason')[:100]
+        
+        context['countries'] = RetractedPaper.objects.values_list(
+            'country', flat=True
+        ).distinct().exclude(
+            Q(country__isnull=True) | Q(country__exact='')
+        ).order_by('country')[:100]
+        
+        context['institutions'] = RetractedPaper.objects.values_list(
+            'institution', flat=True
+        ).distinct().exclude(
+            Q(institution__isnull=True) | Q(institution__exact='') | Q(institution='NA')
+        ).order_by('institution')[:100]
+        
+        context['publishers'] = RetractedPaper.objects.values_list(
+            'publisher', flat=True
+        ).distinct().exclude(
+            Q(publisher__isnull=True) | Q(publisher__exact='')
+        ).order_by('publisher')[:100]
         
         return context
 
