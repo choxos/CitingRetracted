@@ -187,10 +187,16 @@
                                 </div>
                                 
                                 {% if paper.formatted_reasons %}
-                                <p class="card-text">
-                                    <strong>Retraction Reason:</strong>
-                                    <span class="text-danger">{{ paper.formatted_reasons|truncatechars:300 }}</span>
-                                </p>
+                                <div class="card-text">
+                                    <strong>Retraction Reasons:</strong>
+                                    <div class="reason-badges mt-2">
+                                        {% for reason in paper.individual_reasons %}
+                                            <a href="{% url 'papers:search' %}?reason={{ reason|urlencode }}" class="reason-badge">
+                                                {{ reason|truncatechars:30 }}
+                                            </a>
+                                        {% endfor %}
+                                    </div>
+                                </div>
                                 {% endif %}
                                 
                                 {% if paper.formatted_subjects %}
@@ -225,10 +231,6 @@
                                     <small>
                                         <i class="fas fa-calendar"></i>
                                         {{ paper.retraction_nature_display }}: {{ paper.retraction_date|date:"M d, Y"|default:"Unknown" }}
-                                        {% if paper.formatted_reasons %}
-                                            <br><i class="fas fa-exclamation-circle"></i>
-                                            <strong>{{ paper.formatted_reasons }}</strong>
-                                        {% endif %}
                                     </small>
                                 </div>
                                 

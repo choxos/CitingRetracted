@@ -196,6 +196,11 @@ class RetractedPaper(models.Model):
             return f"{', '.join(reasons[:-1])}, and {reasons[-1]}"
     
     @property
+    def individual_reasons(self):
+        """Get list of individual retraction reasons for badge display"""
+        return self.reason_list
+    
+    @property
     def subject_list(self):
         """Parse multiple subjects separated by semicolons"""
         if not self.subject:
