@@ -148,29 +148,33 @@
                     </div>
                     {% endif %}
                     
-                    {% if paper.original_paper_pubmed_id %}
                     <div class="row mb-3">
                         <div class="col-md-3"><strong>PubMed ID:</strong></div>
                         <div class="col-md-9">
-                            <a href="{{ paper.pubmed_url }}" target="_blank" class="text-decoration-none">
-                                {{ paper.original_paper_pubmed_id }}
-                                <i class="fas fa-external-link-alt ms-1"></i>
-                            </a>
+                            {% if paper.original_paper_pubmed_id and paper.original_paper_pubmed_id != '0' %}
+                                <a href="{{ paper.original_paper_pubmed_url }}" target="_blank" class="text-decoration-none">
+                                    {{ paper.original_paper_pubmed_id }}
+                                    <i class="fas fa-external-link-alt ms-1"></i>
+                                </a>
+                            {% else %}
+                                <span class="text-muted">Not indexed in PubMed</span>
+                            {% endif %}
                         </div>
                     </div>
-                    {% endif %}
                     
-                    {% if paper.retraction_pubmed_id %}
                     <div class="row mb-3">
                         <div class="col-md-3"><strong>Retraction PubMed ID:</strong></div>
                         <div class="col-md-9">
-                            <a href="{{ paper.retraction_pubmed_url }}" target="_blank" class="text-decoration-none">
-                                {{ paper.retraction_pubmed_id }}
-                                <i class="fas fa-external-link-alt ms-1"></i>
-                            </a>
+                            {% if paper.retraction_pubmed_id and paper.retraction_pubmed_id != '0' %}
+                                <a href="{{ paper.retraction_pubmed_url }}" target="_blank" class="text-decoration-none">
+                                    {{ paper.retraction_pubmed_id }}
+                                    <i class="fas fa-external-link-alt ms-1"></i>
+                                </a>
+                            {% else %}
+                                <span class="text-muted">Not indexed in PubMed</span>
+                            {% endif %}
                         </div>
                     </div>
-                    {% endif %}
                     
 
                 </div>
