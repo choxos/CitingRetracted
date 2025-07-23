@@ -451,9 +451,10 @@ class Citation(models.Model):
     def save(self, *args, **kwargs):
         # Calculate days after retraction if both dates are available
         if (self.retracted_paper.retraction_date and 
-            self.citing_paper.publication_date and 
-            self.retracted_paper.retraction_date <= self.citing_paper.publication_date):
+            self.citing_paper and
+            self.citing_paper.publication_date):
             
+            # Calculate days (can be negative for pre-retraction citations)
             self.days_after_retraction = (
                 self.citing_paper.publication_date - self.retracted_paper.retraction_date
             ).days
