@@ -29,7 +29,8 @@ class HomeView(ListView):
         context = super().get_context_data(**kwargs)
         
         # Get summary statistics
-        context['total_retracted'] = RetractedPaper.objects.count()
+        total_retracted = RetractedPaper.objects.count()
+        context['total_retracted'] = total_retracted
         context['total_citations'] = Citation.objects.count()
         context['recent_retractions'] = RetractedPaper.objects.filter(
             retraction_date__gte=timezone.now().date() - timedelta(days=365)
@@ -39,6 +40,11 @@ class HomeView(ListView):
         context['post_retraction_citations'] = Citation.objects.filter(
             days_after_retraction__gt=0
         ).count()
+        
+        # Open Access statistics
+        open_access_count = RetractedPaper.objects.filter(is_open_access=True).count()
+        context['open_access_count'] = open_access_count
+        context['open_access_percentage'] = round((open_access_count / max(total_retracted, 1)) * 100, 1)
         
         # Get top journals with retractions  
         context['top_journals'] = RetractedPaper.objects.values('journal').annotate(

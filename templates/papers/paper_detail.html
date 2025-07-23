@@ -172,16 +172,7 @@
                     </div>
                     {% endif %}
                     
-                    {% if paper.is_open_access %}
-                    <div class="row mb-3">
-                        <div class="col-md-3"><strong>Open Access:</strong></div>
-                        <div class="col-md-9">
-                            <span class="badge bg-success">
-                                <i class="fas fa-unlock"></i> Yes
-                            </span>
-                        </div>
-                    </div>
-                    {% endif %}
+
                 </div>
             </div>
             
@@ -451,7 +442,7 @@
                     </div>
                     <div class="d-flex justify-content-between mb-2">
                         <span>Open Access:</span>
-                        <strong>{{ paper.paywalled|yesno:"No,Yes,Unknown" }}</strong>
+                        <strong>{{ paper.is_open_access|yesno:"Yes,No,Unknown" }}</strong>
                     </div>
                     <div class="d-flex justify-content-between">
                         <span>Last Checked:</span>

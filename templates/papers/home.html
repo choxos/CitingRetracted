@@ -84,6 +84,21 @@
                 </a>
             </div>
         </div>
+        
+        <!-- Second row for Open Access stats -->
+        <div class="row justify-content-center">
+            <div class="col-md-4 mb-4">
+                <a href="{% url 'papers:analytics' %}#patterns" class="text-decoration-none">
+                    <div class="card stat-card h-100 text-center clickable-card">
+                        <div class="card-body">
+                            <i class="fas fa-unlock fa-3x text-success mb-3"></i>
+                            <h3 class="card-title">{{ open_access_count|default:0 }}</h3>
+                            <p class="card-text">Open Access Papers<br><small>({{ open_access_percentage|default:0 }}% of total)</small></p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
     </div>
 </section>
 
