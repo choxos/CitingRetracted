@@ -715,8 +715,9 @@ class AnalyticsView(ListView):
             total_citation_count=Count('citations')
         ).filter(
             post_retraction_count__gt=0,
-            total_citation_count__gt=0
-        ).order_by('-post_retraction_count')[:20]
+            total_citation_count__gt=0,
+            record_id__isnull=False
+        ).exclude(record_id__exact='').order_by('-post_retraction_count')[:20]
         
         advanced_data['problematic_papers_detailed'] = []
         for paper in top_problematic_papers:
@@ -729,10 +730,10 @@ class AnalyticsView(ListView):
                 days_since_retraction = (timezone.now().date() - paper.retraction_date).days
             
             advanced_data['problematic_papers_detailed'].append({
-                'id': paper.record_id,
+                'record_id': paper.record_id,
                 'title': paper.title[:60] + '...' if len(paper.title) > 60 else paper.title,
                 'journal': paper.journal,
-                'country': paper.primary_country,
+                'country': paper.country,
                 'institution': paper.institution[:50] + '...' if paper.institution and len(paper.institution) > 50 else paper.institution,
                 'retraction_date': paper.retraction_date.strftime('%Y-%m-%d') if paper.retraction_date else None,
                 'post_retraction_citations': paper.post_retraction_count,
@@ -742,7 +743,7 @@ class AnalyticsView(ListView):
                 'access_status': paper.access_status,
                 'reason': paper.reason[:100] + '...' if paper.reason and len(paper.reason) > 100 else paper.reason,
                 'original_paper_url': paper.original_paper_url,
-                'pubmed_url': paper.pubmed_url
+                'pubmed_url': paper.original_paper_pubmed_url
             })
         
         # 12. Network analysis data (simplified - journals and subject connections)
