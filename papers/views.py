@@ -43,12 +43,33 @@ class HomeView(ListView):
         ).count()
         
         # Sidebar statistics
-        # Top reasons  
-        context['top_reasons'] = RetractedPaper.objects.exclude(
+        # Top reasons with formatting
+        raw_reasons = RetractedPaper.objects.exclude(
             Q(reason__isnull=True) | Q(reason__exact='')
         ).values('reason').annotate(
             count=Count('id')
-        ).order_by('-count')[:5]
+        ).order_by('-count')[:10]  # Get more to account for duplicates after formatting
+        
+        # Format reasons and count individual ones
+        reason_counts = {}
+        for item in raw_reasons:
+            raw_reason = item['reason']
+            count = item['count']
+            
+            # Parse individual reasons from the raw reason string
+            if raw_reason:
+                reasons = raw_reason.replace('+', '').split(';')
+                for reason in reasons:
+                    reason = reason.strip()
+                    if reason:
+                        reason_counts[reason] = reason_counts.get(reason, 0) + count
+        
+        # Sort by count and take top 5
+        top_formatted_reasons = sorted(reason_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+        context['top_reasons'] = [
+            {'reason': reason, 'count': count} 
+            for reason, count in top_formatted_reasons
+        ]
         
         # Top publishers
         context['top_publishers'] = RetractedPaper.objects.exclude(
