@@ -205,8 +205,8 @@
                             
                             <div class="col-lg-4 text-end">
                                 <div class="mb-2">
-                                    <span class="retraction-badge">
-                                        Retracted
+                                    <span class="{{ paper.retraction_badge_class }}">
+                                        {{ paper.retraction_nature_display }}
                                     </span>
                                 </div>
                                 
@@ -224,7 +224,7 @@
                                 <div class="text-muted">
                                     <small>
                                         <i class="fas fa-calendar"></i>
-                                        Retracted: {{ paper.retraction_date|date:"M d, Y"|default:"Unknown" }}
+                                        {{ paper.retraction_nature_display }}: {{ paper.retraction_date|date:"M d, Y"|default:"Unknown" }}
                                         {% if paper.formatted_reasons %}
                                             <br><i class="fas fa-exclamation-circle"></i>
                                             <strong>{{ paper.formatted_reasons }}</strong>

@@ -113,6 +113,26 @@ class RetractedPaper(models.Model):
             return "Unknown"
     
     @property
+    def retraction_nature_display(self):
+        """Return cleaned retraction nature for display"""
+        if self.retraction_nature:
+            return self.retraction_nature.strip()
+        return "Retracted"
+    
+    @property
+    def retraction_badge_class(self):
+        """Return appropriate CSS class based on retraction nature"""
+        nature = self.retraction_nature_display.lower()
+        if 'expression of concern' in nature:
+            return 'retraction-badge-warning'
+        elif 'correction' in nature:
+            return 'retraction-badge-info'
+        elif 'reinstatement' in nature:
+            return 'retraction-badge-success'
+        else:  # Retraction or default
+            return 'retraction-badge'
+    
+    @property
     def years_since_retraction(self):
         """Calculate years since retraction with user-friendly display"""
         if self.retraction_date:
