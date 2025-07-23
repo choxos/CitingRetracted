@@ -7259,3 +7259,493 @@ INFO 2025-07-23 06:55:31,981 api_clients 6600 8715624192 Searching OpenAlex for 
 INFO 2025-07-23 06:55:38,412 api_clients 6600 8715624192 Retrieved 23 citing papers (page 1)
 INFO 2025-07-23 06:55:39,106 api_clients 6600 8715624192 Found 23 citations in OpenAlex
 INFO 2025-07-23 06:55:39,434 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1089/vbz.2009.0219
+INFO 2025-07-23 06:55:40,134 api_clients 6600 8715624192 Retrieved 9 citing papers (page 1)
+INFO 2025-07-23 06:55:40,652 api_clients 6600 8715624192 Found 9 citations in OpenAlex
+INFO 2025-07-23 06:55:40,653 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:55:42,036 api_clients 6600 8715624192 Found 10 additional citations in Semantic Scholar
+INFO 2025-07-23 06:55:42,092 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1007/s00128-012-0718-4
+INFO 2025-07-23 06:55:42,558 api_clients 6600 8715624192 Found 0 citations in OpenAlex
+INFO 2025-07-23 06:55:42,558 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:55:43,945 api_clients 6600 8715624192 Found 0 additional citations in Semantic Scholar
+INFO 2025-07-23 06:55:43,947 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1007/s10517-007-0018-x
+INFO 2025-07-23 06:55:44,498 api_clients 6600 8715624192 Retrieved 3 citing papers (page 1)
+INFO 2025-07-23 06:55:44,752 api_clients 6600 8715624192 Found 3 citations in OpenAlex
+INFO 2025-07-23 06:55:44,774 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:55:46,056 api_clients 6600 8715624192 Found 2 additional citations in Semantic Scholar
+INFO 2025-07-23 06:55:46,077 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1007/s10517-007-0058-2
+INFO 2025-07-23 06:55:46,498 api_clients 6600 8715624192 Found 0 citations in OpenAlex
+INFO 2025-07-23 06:55:46,498 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:55:48,079 api_clients 6600 8715624192 Found 0 additional citations in Semantic Scholar
+INFO 2025-07-23 06:55:48,085 api_clients 6600 8715624192 Searching OpenAlex for citations of unavailable
+INFO 2025-07-23 06:55:48,248 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:55:49,051 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1016/j.cvsm.2009.09.003
+INFO 2025-07-23 06:55:49,787 api_clients 6600 8715624192 Retrieved 19 citing papers (page 1)
+INFO 2025-07-23 06:55:50,033 api_clients 6600 8715624192 Found 19 citations in OpenAlex
+INFO 2025-07-23 06:55:50,106 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1016/j.tvjl.2014.04.003
+INFO 2025-07-23 06:55:50,821 api_clients 6600 8715624192 Retrieved 17 citing papers (page 1)
+INFO 2025-07-23 06:55:51,209 api_clients 6600 8715624192 Found 17 citations in OpenAlex
+INFO 2025-07-23 06:55:51,723 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1016/j.vetmic.2010.06.026
+INFO 2025-07-23 06:55:52,185 api_clients 6600 8715624192 Retrieved 3 citing papers (page 1)
+INFO 2025-07-23 06:55:52,460 api_clients 6600 8715624192 Found 3 citations in OpenAlex
+INFO 2025-07-23 06:55:52,460 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:55:53,834 api_clients 6600 8715624192 Found 5 additional citations in Semantic Scholar
+INFO 2025-07-23 06:55:53,864 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1177/0300985813498782
+INFO 2025-07-23 06:55:54,281 api_clients 6600 8715624192 Found 0 citations in OpenAlex
+INFO 2025-07-23 06:55:54,282 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:55:55,623 api_clients 6600 8715624192 Found 16 additional citations in Semantic Scholar
+INFO 2025-07-23 06:55:55,651 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1089/vio.2016.0003
+INFO 2025-07-23 06:55:56,068 api_clients 6600 8715624192 Retrieved 2 citing papers (page 1)
+INFO 2025-07-23 06:55:56,409 api_clients 6600 8715624192 Found 2 citations in OpenAlex
+INFO 2025-07-23 06:55:56,409 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:55:57,765 api_clients 6600 8715624192 Found 2 additional citations in Semantic Scholar
+INFO 2025-07-23 06:55:57,784 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1089/vim.2008.0013
+INFO 2025-07-23 06:55:58,280 api_clients 6600 8715624192 Retrieved 2 citing papers (page 1)
+INFO 2025-07-23 06:55:58,536 api_clients 6600 8715624192 Found 2 citations in OpenAlex
+INFO 2025-07-23 06:55:58,536 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:55:59,811 api_clients 6600 8715624192 Found 0 additional citations in Semantic Scholar
+INFO 2025-07-23 06:55:59,826 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1089/088282402317340341
+INFO 2025-07-23 06:56:00,586 api_clients 6600 8715624192 Retrieved 16 citing papers (page 1)
+INFO 2025-07-23 06:56:00,850 api_clients 6600 8715624192 Found 16 citations in OpenAlex
+INFO 2025-07-23 06:56:00,913 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1089/vim.2009.0006
+INFO 2025-07-23 06:56:01,254 api_clients 6600 8715624192 Retrieved 1 citing papers (page 1)
+INFO 2025-07-23 06:56:01,599 api_clients 6600 8715624192 Found 1 citations in OpenAlex
+INFO 2025-07-23 06:56:01,599 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:56:02,948 api_clients 6600 8715624192 Found 1 additional citations in Semantic Scholar
+INFO 2025-07-23 06:56:02,961 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1186/1743-422X-4-92
+INFO 2025-07-23 06:56:03,508 api_clients 6600 8715624192 Retrieved 23 citing papers (page 1)
+INFO 2025-07-23 06:56:03,766 api_clients 6600 8715624192 Found 23 citations in OpenAlex
+INFO 2025-07-23 06:56:03,873 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1016/j.burns.2015.10.008
+INFO 2025-07-23 06:56:04,205 api_clients 6600 8715624192 Retrieved 6 citing papers (page 1)
+INFO 2025-07-23 06:56:04,482 api_clients 6600 8715624192 Found 6 citations in OpenAlex
+INFO 2025-07-23 06:56:04,482 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:56:05,774 api_clients 6600 8715624192 Found 4 additional citations in Semantic Scholar
+INFO 2025-07-23 06:56:05,811 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1590/S0102-311X2012000500015
+INFO 2025-07-23 06:56:06,438 api_clients 6600 8715624192 Retrieved 3 citing papers (page 1)
+INFO 2025-07-23 06:56:06,825 api_clients 6600 8715624192 Found 3 citations in OpenAlex
+INFO 2025-07-23 06:56:06,825 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:56:08,111 api_clients 6600 8715624192 Found 0 additional citations in Semantic Scholar
+INFO 2025-07-23 06:56:08,125 api_clients 6600 8715624192 Searching OpenAlex for citations of unavailable
+INFO 2025-07-23 06:56:08,196 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:56:09,085 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1016/j.brs.2016.11.010
+INFO 2025-07-23 06:56:09,474 api_clients 6600 8715624192 Found 0 citations in OpenAlex
+INFO 2025-07-23 06:56:09,474 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:56:11,122 api_clients 6600 8715624192 Found 0 additional citations in Semantic Scholar
+INFO 2025-07-23 06:56:11,124 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.2147/BCTT.S17094
+INFO 2025-07-23 06:56:11,645 api_clients 6600 8715624192 Retrieved 32 citing papers (page 1)
+INFO 2025-07-23 06:56:12,025 api_clients 6600 8715624192 Found 32 citations in OpenAlex
+INFO 2025-07-23 06:56:12,132 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.2147/BCTT.S17108
+INFO 2025-07-23 06:56:12,618 api_clients 6600 8715624192 Retrieved 4 citing papers (page 1)
+INFO 2025-07-23 06:56:12,860 api_clients 6600 8715624192 Found 4 citations in OpenAlex
+INFO 2025-07-23 06:56:12,860 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:56:14,147 api_clients 6600 8715624192 Found 7 additional citations in Semantic Scholar
+INFO 2025-07-23 06:56:14,176 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.2147/BCTT.S20695
+INFO 2025-07-23 06:56:14,786 api_clients 6600 8715624192 Retrieved 3 citing papers (page 1)
+INFO 2025-07-23 06:56:15,037 api_clients 6600 8715624192 Found 3 citations in OpenAlex
+INFO 2025-07-23 06:56:15,038 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:56:16,316 api_clients 6600 8715624192 Found 2 additional citations in Semantic Scholar
+INFO 2025-07-23 06:56:16,335 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.2147/BCTT.S17892
+INFO 2025-07-23 06:56:16,891 api_clients 6600 8715624192 Found 0 citations in OpenAlex
+INFO 2025-07-23 06:56:16,891 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:56:18,332 api_clients 6600 8715624192 Found 3 additional citations in Semantic Scholar
+INFO 2025-07-23 06:56:18,339 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1186/1743-422X-7-169
+INFO 2025-07-23 06:56:19,059 api_clients 6600 8715624192 Retrieved 15 citing papers (page 1)
+INFO 2025-07-23 06:56:19,362 api_clients 6600 8715624192 Found 15 citations in OpenAlex
+INFO 2025-07-23 06:56:19,420 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1007/s12250-011-3208-7
+INFO 2025-07-23 06:56:20,298 api_clients 6600 8715624192 Retrieved 3 citing papers (page 1)
+INFO 2025-07-23 06:56:20,870 api_clients 6600 8715624192 Found 3 citations in OpenAlex
+INFO 2025-07-23 06:56:20,871 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:56:22,156 api_clients 6600 8715624192 Found 2 additional citations in Semantic Scholar
+INFO 2025-07-23 06:56:22,183 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1016/j.virol.2005.11.020
+INFO 2025-07-23 06:56:22,741 api_clients 6600 8715624192 Retrieved 14 citing papers (page 1)
+INFO 2025-07-23 06:56:23,255 api_clients 6600 8715624192 Found 14 citations in OpenAlex
+INFO 2025-07-23 06:56:23,313 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1016/j.virol.2009.10.041
+INFO 2025-07-23 06:56:24,558 api_clients 6600 8715624192 Retrieved 19 citing papers (page 1)
+INFO 2025-07-23 06:56:24,866 api_clients 6600 8715624192 Found 19 citations in OpenAlex
+INFO 2025-07-23 06:56:24,947 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1007/s11262-014-1115-3
+INFO 2025-07-23 06:56:25,607 api_clients 6600 8715624192 Found 0 citations in OpenAlex
+INFO 2025-07-23 06:56:25,607 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:56:26,909 api_clients 6600 8715624192 Found 0 additional citations in Semantic Scholar
+INFO 2025-07-23 06:56:26,914 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1016/S0168-1702(99)00088-X
+INFO 2025-07-23 06:56:27,354 api_clients 6600 8715624192 Retrieved 14 citing papers (page 1)
+INFO 2025-07-23 06:56:27,812 api_clients 6600 8715624192 Found 14 citations in OpenAlex
+INFO 2025-07-23 06:56:27,868 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1016/j.virusres.2004.03.003
+INFO 2025-07-23 06:56:28,339 api_clients 6600 8715624192 Retrieved 2 citing papers (page 1)
+INFO 2025-07-23 06:56:28,689 api_clients 6600 8715624192 Found 2 citations in OpenAlex
+INFO 2025-07-23 06:56:28,689 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:56:29,264 autoreload 70433 8715624192 /Users/choxos/Documents/GitHub/CitingRetracted/papers/models.py changed, reloading.
+INFO 2025-07-23 06:56:29,816 autoreload 75532 8715624192 Watching for file changes with StatReloader
+INFO 2025-07-23 06:56:29,981 api_clients 6600 8715624192 Found 2 additional citations in Semantic Scholar
+INFO 2025-07-23 06:56:29,996 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1016/j.virusres.2004.02.022
+INFO 2025-07-23 06:56:32,011 api_clients 6600 8715624192 Retrieved 139 citing papers (page 1)
+INFO 2025-07-23 06:56:32,262 api_clients 6600 8715624192 Found 139 citations in OpenAlex
+INFO 2025-07-23 06:56:32,670 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1007/BF02552680
+INFO 2025-07-23 06:56:33,066 api_clients 6600 8715624192 Found 0 citations in OpenAlex
+INFO 2025-07-23 06:56:33,066 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:56:34,358 api_clients 6600 8715624192 Found 0 additional citations in Semantic Scholar
+INFO 2025-07-23 06:56:34,364 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1007/BF02552786
+INFO 2025-07-23 06:56:34,958 api_clients 6600 8715624192 Retrieved 1 citing papers (page 1)
+INFO 2025-07-23 06:56:35,209 api_clients 6600 8715624192 Found 1 citations in OpenAlex
+INFO 2025-07-23 06:56:35,209 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:56:36,482 api_clients 6600 8715624192 Found 3 additional citations in Semantic Scholar
+INFO 2025-07-23 06:56:36,495 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1007/BF02552768
+INFO 2025-07-23 06:56:37,143 api_clients 6600 8715624192 Retrieved 2 citing papers (page 1)
+INFO 2025-07-23 06:56:37,444 api_clients 6600 8715624192 Found 2 citations in OpenAlex
+INFO 2025-07-23 06:56:37,444 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:56:38,582 api_clients 6600 8715624192 Found 0 additional citations in Semantic Scholar
+INFO 2025-07-23 06:56:38,595 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.7754/Clin.Lab.2012.121244
+INFO 2025-07-23 06:56:39,044 api_clients 6600 8715624192 Retrieved 1 citing papers (page 1)
+INFO 2025-07-23 06:56:39,298 api_clients 6600 8715624192 Found 1 citations in OpenAlex
+INFO 2025-07-23 06:56:39,298 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:56:40,768 api_clients 6600 8715624192 Found 1 additional citations in Semantic Scholar
+INFO 2025-07-23 06:56:40,783 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1007/s00392-003-0926-3
+INFO 2025-07-23 06:56:41,594 api_clients 6600 8715624192 Retrieved 2 citing papers (page 1)
+INFO 2025-07-23 06:56:42,050 api_clients 6600 8715624192 Found 2 citations in OpenAlex
+INFO 2025-07-23 06:56:42,050 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:56:43,330 api_clients 6600 8715624192 Found 1 additional citations in Semantic Scholar
+INFO 2025-07-23 06:56:43,350 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1007/s00392-004-0115-z
+INFO 2025-07-23 06:56:43,818 api_clients 6600 8715624192 Retrieved 2 citing papers (page 1)
+INFO 2025-07-23 06:56:44,148 api_clients 6600 8715624192 Found 2 citations in OpenAlex
+INFO 2025-07-23 06:56:44,148 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:56:45,436 api_clients 6600 8715624192 Found 2 additional citations in Semantic Scholar
+INFO 2025-07-23 06:56:45,462 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1007/s00270-007-9192-5
+INFO 2025-07-23 06:56:46,161 api_clients 6600 8715624192 Retrieved 10 citing papers (page 1)
+INFO 2025-07-23 06:56:46,420 api_clients 6600 8715624192 Found 10 citations in OpenAlex
+INFO 2025-07-23 06:56:46,462 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1007/s00392-004-1033-9
+INFO 2025-07-23 06:56:46,848 api_clients 6600 8715624192 Retrieved 5 citing papers (page 1)
+INFO 2025-07-23 06:56:47,106 api_clients 6600 8715624192 Found 5 citations in OpenAlex
+INFO 2025-07-23 06:56:47,106 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:56:48,392 api_clients 6600 8715624192 Found 8 additional citations in Semantic Scholar
+INFO 2025-07-23 06:56:48,423 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1007/s00270-008-9326-4
+INFO 2025-07-23 06:56:49,097 api_clients 6600 8715624192 Retrieved 10 citing papers (page 1)
+INFO 2025-07-23 06:56:49,466 api_clients 6600 8715624192 Found 10 citations in OpenAlex
+INFO 2025-07-23 06:56:49,510 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1016/j.gcb.2009.02.045
+INFO 2025-07-23 06:56:50,268 api_clients 6600 8715624192 Retrieved 4 citing papers (page 1)
+INFO 2025-07-23 06:56:50,524 api_clients 6600 8715624192 Found 4 citations in OpenAlex
+INFO 2025-07-23 06:56:50,524 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:56:51,897 api_clients 6600 8715624192 Found 5 additional citations in Semantic Scholar
+INFO 2025-07-23 06:56:51,937 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1093/cvr/cvn069
+INFO 2025-07-23 06:56:52,501 api_clients 6600 8715624192 Retrieved 4 citing papers (page 1)
+INFO 2025-07-23 06:56:52,784 api_clients 6600 8715624192 Found 4 citations in OpenAlex
+INFO 2025-07-23 06:56:52,784 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:56:54,060 api_clients 6600 8715624192 Found 0 additional citations in Semantic Scholar
+INFO 2025-07-23 06:56:54,078 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1016/j.carrev.2009.09.005
+INFO 2025-07-23 06:56:54,538 api_clients 6600 8715624192 Retrieved 5 citing papers (page 1)
+INFO 2025-07-23 06:56:54,781 api_clients 6600 8715624192 Found 5 citations in OpenAlex
+INFO 2025-07-23 06:56:54,781 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:56:56,094 api_clients 6600 8715624192 Found 4 additional citations in Semantic Scholar
+INFO 2025-07-23 06:56:56,128 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1186/1476-7120-4-37
+INFO 2025-07-23 06:56:56,740 api_clients 6600 8715624192 Retrieved 12 citing papers (page 1)
+INFO 2025-07-23 06:56:57,011 api_clients 6600 8715624192 Found 12 citations in OpenAlex
+INFO 2025-07-23 06:56:57,071 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1155/2015/630430
+INFO 2025-07-23 06:56:57,628 api_clients 6600 8715624192 Retrieved 5 citing papers (page 1)
+INFO 2025-07-23 06:56:57,885 api_clients 6600 8715624192 Found 5 citations in OpenAlex
+INFO 2025-07-23 06:56:57,885 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:56:59,180 api_clients 6600 8715624192 Found 11 additional citations in Semantic Scholar
+INFO 2025-07-23 06:56:59,218 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1155/2014/463109
+INFO 2025-07-23 06:56:59,532 api_clients 6600 8715624192 Retrieved 2 citing papers (page 1)
+INFO 2025-07-23 06:56:59,974 api_clients 6600 8715624192 Found 2 citations in OpenAlex
+INFO 2025-07-23 06:56:59,974 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:57:01,132 api_clients 6600 8715624192 Found 9 additional citations in Semantic Scholar
+INFO 2025-07-23 06:57:01,160 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1155/2012/735026
+INFO 2025-07-23 06:57:01,552 api_clients 6600 8715624192 Retrieved 2 citing papers (page 1)
+INFO 2025-07-23 06:57:01,830 api_clients 6600 8715624192 Found 2 citations in OpenAlex
+INFO 2025-07-23 06:57:01,831 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:57:03,271 api_clients 6600 8715624192 Found 2 additional citations in Semantic Scholar
+INFO 2025-07-23 06:57:03,288 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1164/rccm.200803-380OC
+INFO 2025-07-23 06:57:03,777 api_clients 6600 8715624192 Retrieved 200 citing papers (page 1)
+INFO 2025-07-23 06:57:04,109 api_clients 6600 8715624192 Retrieved 150 citing papers (page 2)
+INFO 2025-07-23 06:57:04,280 api_clients 6600 8715624192 Found 350 citations in OpenAlex
+ERROR 2025-07-23 06:57:05,437 fetch_citations 6600 8715624192 Error processing citation for paper 1900: NOT NULL constraint failed: citing_papers.title
+INFO 2025-07-23 06:57:05,446 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1155/2012/347939
+INFO 2025-07-23 06:57:06,062 api_clients 6600 8715624192 Retrieved 20 citing papers (page 1)
+INFO 2025-07-23 06:57:06,321 api_clients 6600 8715624192 Found 20 citations in OpenAlex
+INFO 2025-07-23 06:57:06,386 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1164/rccm.200903-0324OC
+INFO 2025-07-23 06:57:06,780 api_clients 6600 8715624192 Retrieved 141 citing papers (page 1)
+INFO 2025-07-23 06:57:06,958 api_clients 6600 8715624192 Found 141 citations in OpenAlex
+INFO 2025-07-23 06:57:07,331 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1155/2014/243746
+INFO 2025-07-23 06:57:08,091 api_clients 6600 8715624192 Retrieved 5 citing papers (page 1)
+INFO 2025-07-23 06:57:08,328 api_clients 6600 8715624192 Found 5 citations in OpenAlex
+INFO 2025-07-23 06:57:08,328 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:57:09,615 api_clients 6600 8715624192 Found 5 additional citations in Semantic Scholar
+INFO 2025-07-23 06:57:09,640 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1155/2013/602407
+INFO 2025-07-23 06:57:10,126 api_clients 6600 8715624192 Retrieved 13 citing papers (page 1)
+INFO 2025-07-23 06:57:10,389 api_clients 6600 8715624192 Found 13 citations in OpenAlex
+INFO 2025-07-23 06:57:10,434 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1155/2015/980749
+INFO 2025-07-23 06:57:10,952 api_clients 6600 8715624192 Retrieved 3 citing papers (page 1)
+INFO 2025-07-23 06:57:11,277 api_clients 6600 8715624192 Found 3 citations in OpenAlex
+INFO 2025-07-23 06:57:11,277 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:57:12,566 api_clients 6600 8715624192 Found 4 additional citations in Semantic Scholar
+INFO 2025-07-23 06:57:12,590 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1155/2012/368039
+INFO 2025-07-23 06:57:13,024 api_clients 6600 8715624192 Retrieved 3 citing papers (page 1)
+INFO 2025-07-23 06:57:13,332 api_clients 6600 8715624192 Found 3 citations in OpenAlex
+INFO 2025-07-23 06:57:13,332 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:57:14,730 api_clients 6600 8715624192 Found 3 additional citations in Semantic Scholar
+INFO 2025-07-23 06:57:14,751 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1155/2012/642062
+INFO 2025-07-23 06:57:15,451 api_clients 6600 8715624192 Retrieved 2 citing papers (page 1)
+INFO 2025-07-23 06:57:15,857 api_clients 6600 8715624192 Found 2 citations in OpenAlex
+INFO 2025-07-23 06:57:15,857 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:57:17,187 api_clients 6600 8715624192 Found 4 additional citations in Semantic Scholar
+INFO 2025-07-23 06:57:17,201 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1155/2011/210795
+INFO 2025-07-23 06:57:17,558 api_clients 6600 8715624192 Retrieved 6 citing papers (page 1)
+INFO 2025-07-23 06:57:17,855 api_clients 6600 8715624192 Found 6 citations in OpenAlex
+INFO 2025-07-23 06:57:17,855 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:57:19,166 api_clients 6600 8715624192 Found 8 additional citations in Semantic Scholar
+INFO 2025-07-23 06:57:19,210 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1155/2012/457272
+INFO 2025-07-23 06:57:19,615 api_clients 6600 8715624192 Retrieved 9 citing papers (page 1)
+INFO 2025-07-23 06:57:19,862 api_clients 6600 8715624192 Found 9 citations in OpenAlex
+INFO 2025-07-23 06:57:19,862 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:57:21,020 api_clients 6600 8715624192 Found 7 additional citations in Semantic Scholar
+ERROR 2025-07-23 06:57:21,056 fetch_citations 6600 8715624192 Error processing citation for paper 1909: NOT NULL constraint failed: citing_papers.title
+INFO 2025-07-23 06:57:21,078 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1155/2015/547287
+INFO 2025-07-23 06:57:21,774 api_clients 6600 8715624192 Retrieved 6 citing papers (page 1)
+INFO 2025-07-23 06:57:22,162 api_clients 6600 8715624192 Found 6 citations in OpenAlex
+INFO 2025-07-23 06:57:22,162 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:57:23,304 api_clients 6600 8715624192 Found 6 additional citations in Semantic Scholar
+INFO 2025-07-23 06:57:23,335 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1007/s12013-014-0080-8
+INFO 2025-07-23 06:57:23,854 api_clients 6600 8715624192 Found 0 citations in OpenAlex
+INFO 2025-07-23 06:57:23,854 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:57:25,452 api_clients 6600 8715624192 Found 0 additional citations in Semantic Scholar
+INFO 2025-07-23 06:57:25,454 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1007/s12013-014-9880-0
+INFO 2025-07-23 06:57:25,938 api_clients 6600 8715624192 Found 0 citations in OpenAlex
+INFO 2025-07-23 06:57:25,938 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:57:27,531 api_clients 6600 8715624192 Found 1 additional citations in Semantic Scholar
+INFO 2025-07-23 06:57:27,538 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1590/S1516-31802012000500009
+INFO 2025-07-23 06:57:28,281 api_clients 6600 8715624192 Found 0 citations in OpenAlex
+INFO 2025-07-23 06:57:28,281 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:57:29,559 api_clients 6600 8715624192 Found 0 additional citations in Semantic Scholar
+INFO 2025-07-23 06:57:29,560 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.4103/1658-354X.84105
+INFO 2025-07-23 06:57:30,065 api_clients 6600 8715624192 Retrieved 8 citing papers (page 1)
+INFO 2025-07-23 06:57:30,457 api_clients 6600 8715624192 Found 8 citations in OpenAlex
+INFO 2025-07-23 06:57:30,457 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:57:31,626 api_clients 6600 8715624192 Found 6 additional citations in Semantic Scholar
+INFO 2025-07-23 06:57:31,670 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1016/j.sjbs.2011.09.004
+INFO 2025-07-23 06:57:32,251 api_clients 6600 8715624192 Retrieved 10 citing papers (page 1)
+INFO 2025-07-23 06:57:32,651 api_clients 6600 8715624192 Found 10 citations in OpenAlex
+INFO 2025-07-23 06:57:32,692 api_clients 6600 8715624192 Searching OpenAlex for citations of unavailable
+INFO 2025-07-23 06:57:32,767 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:57:33,061 api_clients 6600 8715624192 Searching OpenAlex for citations of unavailable
+INFO 2025-07-23 06:57:33,178 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:57:33,432 basehttp 75532 6137868288 "GET /paper/66189/ HTTP/1.1" 200 31119
+INFO 2025-07-23 06:57:34,091 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1080/14017430801932840
+INFO 2025-07-23 06:57:34,517 api_clients 6600 8715624192 Found 0 citations in OpenAlex
+INFO 2025-07-23 06:57:34,517 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:57:36,058 api_clients 6600 8715624192 Found 0 additional citations in Semantic Scholar
+INFO 2025-07-23 06:57:36,062 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.3109/14017431.2012.672764
+INFO 2025-07-23 06:57:36,514 api_clients 6600 8715624192 Found 0 citations in OpenAlex
+INFO 2025-07-23 06:57:36,515 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:57:38,061 api_clients 6600 8715624192 Found 0 additional citations in Semantic Scholar
+INFO 2025-07-23 06:57:38,063 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1046/j.1365-2168.2000.01393.x
+INFO 2025-07-23 06:57:38,579 api_clients 6600 8715624192 Retrieved 29 citing papers (page 1)
+INFO 2025-07-23 06:57:38,847 api_clients 6600 8715624192 Found 29 citations in OpenAlex
+INFO 2025-07-23 06:57:38,953 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1002/j.1460-2075.1989.tb08465.x
+INFO 2025-07-23 06:57:39,585 api_clients 6600 8715624192 Retrieved 13 citing papers (page 1)
+INFO 2025-07-23 06:57:39,900 api_clients 6600 8715624192 Found 13 citations in OpenAlex
+INFO 2025-07-23 06:57:39,951 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1080/00365510701532662
+INFO 2025-07-23 06:57:41,000 api_clients 6600 8715624192 Retrieved 54 citing papers (page 1)
+INFO 2025-07-23 06:57:41,354 api_clients 6600 8715624192 Found 54 citations in OpenAlex
+INFO 2025-07-23 06:57:41,534 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1080/00365520701420776
+INFO 2025-07-23 06:57:41,965 api_clients 6600 8715624192 Retrieved 2 citing papers (page 1)
+INFO 2025-07-23 06:57:42,292 api_clients 6600 8715624192 Found 2 citations in OpenAlex
+INFO 2025-07-23 06:57:42,293 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:57:43,590 api_clients 6600 8715624192 Found 2 additional citations in Semantic Scholar
+INFO 2025-07-23 06:57:43,604 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1046/j.1365-3083.2002.01081.x
+INFO 2025-07-23 06:57:44,129 api_clients 6600 8715624192 Retrieved 7 citing papers (page 1)
+INFO 2025-07-23 06:57:44,476 api_clients 6600 8715624192 Found 7 citations in OpenAlex
+INFO 2025-07-23 06:57:44,476 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:57:45,762 api_clients 6600 8715624192 Found 7 additional citations in Semantic Scholar
+INFO 2025-07-23 06:57:45,801 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1111/j.1600-0838.2009.00939.x
+INFO 2025-07-23 06:57:46,973 api_clients 6600 8715624192 Retrieved 53 citing papers (page 1)
+INFO 2025-07-23 06:57:47,351 api_clients 6600 8715624192 Found 53 citations in OpenAlex
+INFO 2025-07-23 06:57:47,527 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1111/j.1600-0838.2010.01158.x
+INFO 2025-07-23 06:57:48,206 api_clients 6600 8715624192 Retrieved 5 citing papers (page 1)
+INFO 2025-07-23 06:57:48,604 api_clients 6600 8715624192 Found 5 citations in OpenAlex
+INFO 2025-07-23 06:57:48,604 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:57:49,883 api_clients 6600 8715624192 Found 4 additional citations in Semantic Scholar
+INFO 2025-07-23 06:57:49,917 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1186/2047-783X-15-10-428
+INFO 2025-07-23 06:57:50,460 api_clients 6600 8715624192 Retrieved 1 citing papers (page 1)
+INFO 2025-07-23 06:57:50,795 api_clients 6600 8715624192 Found 1 citations in OpenAlex
+INFO 2025-07-23 06:57:50,795 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:57:52,073 api_clients 6600 8715624192 Found 0 additional citations in Semantic Scholar
+INFO 2025-07-23 06:57:52,085 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1097/00000542-200510000-00010
+INFO 2025-07-23 06:57:53,164 api_clients 6600 8715624192 Retrieved 39 citing papers (page 1)
+INFO 2025-07-23 06:57:53,407 api_clients 6600 8715624192 Found 39 citations in OpenAlex
+INFO 2025-07-23 06:57:53,553 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pone.0035142
+INFO 2025-07-23 06:57:54,116 api_clients 6600 8715624192 Retrieved 28 citing papers (page 1)
+INFO 2025-07-23 06:57:54,403 api_clients 6600 8715624192 Found 28 citations in OpenAlex
+INFO 2025-07-23 06:57:54,500 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1186/s40001-014-0050-z
+INFO 2025-07-23 06:57:55,258 api_clients 6600 8715624192 Retrieved 2 citing papers (page 1)
+INFO 2025-07-23 06:57:55,555 api_clients 6600 8715624192 Found 2 citations in OpenAlex
+INFO 2025-07-23 06:57:55,555 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:57:56,706 api_clients 6600 8715624192 Found 3 additional citations in Semantic Scholar
+INFO 2025-07-23 06:57:56,734 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pone.0030980
+INFO 2025-07-23 06:57:57,332 api_clients 6600 8715624192 Retrieved 1 citing papers (page 1)
+INFO 2025-07-23 06:57:57,566 api_clients 6600 8715624192 Found 1 citations in OpenAlex
+INFO 2025-07-23 06:57:57,567 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:57:58,793 api_clients 6600 8715624192 Found 2 additional citations in Semantic Scholar
+INFO 2025-07-23 06:57:58,805 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pone.0000306
+INFO 2025-07-23 06:57:59,463 api_clients 6600 8715624192 Retrieved 28 citing papers (page 1)
+INFO 2025-07-23 06:57:59,696 api_clients 6600 8715624192 Found 28 citations in OpenAlex
+INFO 2025-07-23 06:57:59,792 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pone.0022730
+INFO 2025-07-23 06:58:00,530 api_clients 6600 8715624192 Retrieved 51 citing papers (page 1)
+INFO 2025-07-23 06:58:00,945 api_clients 6600 8715624192 Found 51 citations in OpenAlex
+INFO 2025-07-23 06:58:01,113 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pone.0016256
+INFO 2025-07-23 06:58:01,843 api_clients 6600 8715624192 Retrieved 27 citing papers (page 1)
+INFO 2025-07-23 06:58:02,157 api_clients 6600 8715624192 Found 27 citations in OpenAlex
+INFO 2025-07-23 06:58:02,238 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pone.0037102
+INFO 2025-07-23 06:58:02,891 api_clients 6600 8715624192 Retrieved 10 citing papers (page 1)
+INFO 2025-07-23 06:58:03,173 api_clients 6600 8715624192 Found 10 citations in OpenAlex
+INFO 2025-07-23 06:58:03,223 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pone.0064576
+INFO 2025-07-23 06:58:03,662 api_clients 6600 8715624192 Retrieved 2 citing papers (page 1)
+INFO 2025-07-23 06:58:03,913 api_clients 6600 8715624192 Found 2 citations in OpenAlex
+INFO 2025-07-23 06:58:03,913 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:58:05,200 api_clients 6600 8715624192 Found 3 additional citations in Semantic Scholar
+INFO 2025-07-23 06:58:05,240 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pone.0032853
+INFO 2025-07-23 06:58:05,725 api_clients 6600 8715624192 Retrieved 7 citing papers (page 1)
+INFO 2025-07-23 06:58:06,081 api_clients 6600 8715624192 Found 7 citations in OpenAlex
+INFO 2025-07-23 06:58:06,081 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:58:07,375 api_clients 6600 8715624192 Found 9 additional citations in Semantic Scholar
+INFO 2025-07-23 06:58:07,428 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pone.0001276
+INFO 2025-07-23 06:58:07,963 api_clients 6600 8715624192 Retrieved 24 citing papers (page 1)
+INFO 2025-07-23 06:58:08,381 api_clients 6600 8715624192 Found 24 citations in OpenAlex
+INFO 2025-07-23 06:58:08,545 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pcbi.0030051
+INFO 2025-07-23 06:58:09,129 api_clients 6600 8715624192 Retrieved 9 citing papers (page 1)
+INFO 2025-07-23 06:58:09,375 api_clients 6600 8715624192 Found 9 citations in OpenAlex
+INFO 2025-07-23 06:58:09,375 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:58:09,480 autoreload 75532 8715624192 /Users/choxos/Documents/GitHub/CitingRetracted/papers/models.py changed, reloading.
+INFO 2025-07-23 06:58:10,034 autoreload 84771 8715624192 Watching for file changes with StatReloader
+INFO 2025-07-23 06:58:10,674 api_clients 6600 8715624192 Found 10 additional citations in Semantic Scholar
+INFO 2025-07-23 06:58:10,721 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pcbi.1002308
+INFO 2025-07-23 06:58:11,457 api_clients 6600 8715624192 Retrieved 13 citing papers (page 1)
+INFO 2025-07-23 06:58:11,759 api_clients 6600 8715624192 Found 13 citations in OpenAlex
+INFO 2025-07-23 06:58:11,807 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1002/cbf.2825
+INFO 2025-07-23 06:58:12,150 api_clients 6600 8715624192 Found 0 citations in OpenAlex
+INFO 2025-07-23 06:58:12,151 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:58:13,437 api_clients 6600 8715624192 Found 0 additional citations in Semantic Scholar
+INFO 2025-07-23 06:58:13,440 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1002/cbin.10388
+INFO 2025-07-23 06:58:13,882 api_clients 6600 8715624192 Retrieved 5 citing papers (page 1)
+INFO 2025-07-23 06:58:14,131 api_clients 6600 8715624192 Found 5 citations in OpenAlex
+INFO 2025-07-23 06:58:14,131 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:58:15,552 api_clients 6600 8715624192 Found 6 additional citations in Semantic Scholar
+INFO 2025-07-23 06:58:15,623 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pgen.1000424
+INFO 2025-07-23 06:58:16,117 api_clients 6600 8715624192 Retrieved 12 citing papers (page 1)
+INFO 2025-07-23 06:58:16,371 api_clients 6600 8715624192 Found 12 citations in OpenAlex
+INFO 2025-07-23 06:58:16,419 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1111/j.1467-9450.2011.00944.x
+INFO 2025-07-23 06:58:16,645 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:58:16,911 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.4161/cc.8863
+INFO 2025-07-23 06:58:17,575 api_clients 6600 8715624192 Retrieved 14 citing papers (page 1)
+INFO 2025-07-23 06:58:17,984 api_clients 6600 8715624192 Found 14 citations in OpenAlex
+INFO 2025-07-23 06:58:18,185 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1111/j.1365-3083.2008.02177.x
+INFO 2025-07-23 06:58:18,585 api_clients 6600 8715624192 Retrieved 6 citing papers (page 1)
+INFO 2025-07-23 06:58:18,850 api_clients 6600 8715624192 Found 6 citations in OpenAlex
+INFO 2025-07-23 06:58:18,850 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:58:20,169 api_clients 6600 8715624192 Found 6 additional citations in Semantic Scholar
+INFO 2025-07-23 06:58:20,226 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pgen.1003361
+INFO 2025-07-23 06:58:21,110 api_clients 6600 8715624192 Retrieved 13 citing papers (page 1)
+INFO 2025-07-23 06:58:21,466 api_clients 6600 8715624192 Found 13 citations in OpenAlex
+ERROR 2025-07-23 06:58:21,734 fetch_citations 6600 8715624192 Error processing citation for paper 1949: NOT NULL constraint failed: citing_papers.title
+INFO 2025-07-23 06:58:21,736 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pgen.1003791
+INFO 2025-07-23 06:58:22,658 api_clients 6600 8715624192 Retrieved 40 citing papers (page 1)
+INFO 2025-07-23 06:58:23,078 api_clients 6600 8715624192 Found 40 citations in OpenAlex
+INFO 2025-07-23 06:58:23,226 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pgen.1005745
+INFO 2025-07-23 06:58:23,912 api_clients 6600 8715624192 Retrieved 24 citing papers (page 1)
+INFO 2025-07-23 06:58:24,183 api_clients 6600 8715624192 Found 24 citations in OpenAlex
+INFO 2025-07-23 06:58:24,321 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pmed.1001214
+INFO 2025-07-23 06:58:25,108 api_clients 6600 8715624192 Retrieved 8 citing papers (page 1)
+INFO 2025-07-23 06:58:25,393 api_clients 6600 8715624192 Found 8 citations in OpenAlex
+INFO 2025-07-23 06:58:25,393 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:58:26,736 api_clients 6600 8715624192 Found 10 additional citations in Semantic Scholar
+INFO 2025-07-23 06:58:26,863 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.4161/cc.9.24.14245
+INFO 2025-07-23 06:58:27,774 api_clients 6600 8715624192 Retrieved 26 citing papers (page 1)
+INFO 2025-07-23 06:58:28,291 api_clients 6600 8715624192 Found 26 citations in OpenAlex
+INFO 2025-07-23 06:58:28,387 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.4161/cc.9.24.14246
+INFO 2025-07-23 06:58:29,162 api_clients 6600 8715624192 Retrieved 6 citing papers (page 1)
+INFO 2025-07-23 06:58:29,418 api_clients 6600 8715624192 Found 6 citations in OpenAlex
+INFO 2025-07-23 06:58:29,418 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:58:30,817 api_clients 6600 8715624192 Found 9 additional citations in Semantic Scholar
+INFO 2025-07-23 06:58:30,857 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pone.0005373
+INFO 2025-07-23 06:58:31,389 api_clients 6600 8715624192 Retrieved 8 citing papers (page 1)
+INFO 2025-07-23 06:58:31,651 api_clients 6600 8715624192 Found 8 citations in OpenAlex
+INFO 2025-07-23 06:58:31,651 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:58:32,794 api_clients 6600 8715624192 Found 6 additional citations in Semantic Scholar
+INFO 2025-07-23 06:58:32,832 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1097/00000542-200510000-00011
+INFO 2025-07-23 06:58:33,675 api_clients 6600 8715624192 Retrieved 64 citing papers (page 1)
+INFO 2025-07-23 06:58:34,045 api_clients 6600 8715624192 Found 64 citations in OpenAlex
+INFO 2025-07-23 06:58:34,469 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pone.0016011
+INFO 2025-07-23 06:58:35,126 api_clients 6600 8715624192 Retrieved 1 citing papers (page 1)
+INFO 2025-07-23 06:58:35,361 api_clients 6600 8715624192 Found 1 citations in OpenAlex
+INFO 2025-07-23 06:58:35,361 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:58:36,688 api_clients 6600 8715624192 Found 2 additional citations in Semantic Scholar
+INFO 2025-07-23 06:58:36,703 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1080/15384101.2016.1144985
+INFO 2025-07-23 06:58:37,216 api_clients 6600 8715624192 Found 0 citations in OpenAlex
+INFO 2025-07-23 06:58:37,216 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:58:38,700 api_clients 6600 8715624192 Found 0 additional citations in Semantic Scholar
+INFO 2025-07-23 06:58:38,703 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1038/cddis.2012.32
+INFO 2025-07-23 06:58:39,472 api_clients 6600 8715624192 Retrieved 11 citing papers (page 1)
+INFO 2025-07-23 06:58:39,712 api_clients 6600 8715624192 Found 11 citations in OpenAlex
+INFO 2025-07-23 06:58:39,766 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pone.0011299
+INFO 2025-07-23 06:58:40,380 api_clients 6600 8715624192 Retrieved 4 citing papers (page 1)
+INFO 2025-07-23 06:58:40,399 basehttp 84771 6122942464 "GET /paper/66189/ HTTP/1.1" 200 31246
+INFO 2025-07-23 06:58:40,666 api_clients 6600 8715624192 Found 4 citations in OpenAlex
+INFO 2025-07-23 06:58:40,666 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:58:41,857 api_clients 6600 8715624192 Found 3 additional citations in Semantic Scholar
+INFO 2025-07-23 06:58:41,907 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1097/ALN.0b013e31818aa6e1
+INFO 2025-07-23 06:58:42,540 api_clients 6600 8715624192 Retrieved 15 citing papers (page 1)
+WARNING 2025-07-23 06:58:42,728 log 84771 6122942464 Not Found: /paper//
+WARNING 2025-07-23 06:58:42,728 basehttp 84771 6122942464 "GET /paper// HTTP/1.1" 404 4058
+INFO 2025-07-23 06:58:42,783 api_clients 6600 8715624192 Found 15 citations in OpenAlex
+INFO 2025-07-23 06:58:42,883 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pone.0045965
+INFO 2025-07-23 06:58:44,134 api_clients 6600 8715624192 Retrieved 67 citing papers (page 1)
+INFO 2025-07-23 06:58:44,472 api_clients 6600 8715624192 Found 67 citations in OpenAlex
+ERROR 2025-07-23 06:58:44,706 fetch_citations 6600 8715624192 Error processing citation for paper 1963: NOT NULL constraint failed: citing_papers.title
+INFO 2025-07-23 06:58:44,726 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pone.0047110
+INFO 2025-07-23 06:58:45,499 api_clients 6600 8715624192 Retrieved 9 citing papers (page 1)
+INFO 2025-07-23 06:58:45,741 api_clients 6600 8715624192 Found 9 citations in OpenAlex
+INFO 2025-07-23 06:58:45,741 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:58:46,888 api_clients 6600 8715624192 Found 11 additional citations in Semantic Scholar
+INFO 2025-07-23 06:58:46,934 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1186/2047-783X-18-37
+INFO 2025-07-23 06:58:47,719 api_clients 6600 8715624192 Retrieved 16 citing papers (page 1)
+INFO 2025-07-23 06:58:48,002 api_clients 6600 8715624192 Found 16 citations in OpenAlex
+INFO 2025-07-23 06:58:48,062 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1186/2047-783X-18-44
+INFO 2025-07-23 06:58:48,665 api_clients 6600 8715624192 Retrieved 5 citing papers (page 1)
+INFO 2025-07-23 06:58:49,031 api_clients 6600 8715624192 Found 5 citations in OpenAlex
+INFO 2025-07-23 06:58:49,031 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:58:50,373 api_clients 6600 8715624192 Found 6 additional citations in Semantic Scholar
+INFO 2025-07-23 06:58:50,400 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1186/2047-783X-18-62
+INFO 2025-07-23 06:58:50,798 api_clients 6600 8715624192 Retrieved 2 citing papers (page 1)
+INFO 2025-07-23 06:58:51,034 api_clients 6600 8715624192 Found 2 citations in OpenAlex
+INFO 2025-07-23 06:58:51,035 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:58:52,322 api_clients 6600 8715624192 Found 2 additional citations in Semantic Scholar
+INFO 2025-07-23 06:58:52,333 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1186/2047-783X-19-15
+INFO 2025-07-23 06:58:52,730 api_clients 6600 8715624192 Retrieved 4 citing papers (page 1)
+INFO 2025-07-23 06:58:52,973 api_clients 6600 8715624192 Found 4 citations in OpenAlex
+INFO 2025-07-23 06:58:52,974 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:58:54,344 api_clients 6600 8715624192 Found 5 additional citations in Semantic Scholar
+INFO 2025-07-23 06:58:54,364 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pone.0029192
+INFO 2025-07-23 06:58:55,284 api_clients 6600 8715624192 Retrieved 37 citing papers (page 1)
+INFO 2025-07-23 06:58:55,543 api_clients 6600 8715624192 Found 37 citations in OpenAlex
+INFO 2025-07-23 06:58:55,669 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pone.0035453
+INFO 2025-07-23 06:58:56,031 api_clients 6600 8715624192 Retrieved 4 citing papers (page 1)
+INFO 2025-07-23 06:58:56,535 api_clients 6600 8715624192 Found 4 citations in OpenAlex
+INFO 2025-07-23 06:58:56,535 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations
+INFO 2025-07-23 06:58:57,833 api_clients 6600 8715624192 Found 8 additional citations in Semantic Scholar
+INFO 2025-07-23 06:58:57,857 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pbio.0030123
+INFO 2025-07-23 06:58:59,365 api_clients 6600 8715624192 Retrieved 200 citing papers (page 1)
+INFO 2025-07-23 06:58:59,911 api_clients 6600 8715624192 Retrieved 46 citing papers (page 2)
+INFO 2025-07-23 06:59:00,154 api_clients 6600 8715624192 Found 246 citations in OpenAlex
+INFO 2025-07-23 06:59:00,575 basehttp 84771 6122942464 "GET /paper/21883/ HTTP/1.1" 200 31218
+INFO 2025-07-23 06:59:01,024 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1371/journal.pbio.0050005
+INFO 2025-07-23 06:59:02,620 api_clients 6600 8715624192 Retrieved 143 citing papers (page 1)
+INFO 2025-07-23 06:59:02,855 api_clients 6600 8715624192 Found 143 citations in OpenAlex
+INFO 2025-07-23 06:59:03,427 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1038/cddis.2012.126
+INFO 2025-07-23 06:59:04,176 api_clients 6600 8715624192 Retrieved 25 citing papers (page 1)
+INFO 2025-07-23 06:59:04,485 api_clients 6600 8715624192 Found 25 citations in OpenAlex
+INFO 2025-07-23 06:59:04,559 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1186/1747-1028-5-4
+INFO 2025-07-23 06:59:05,274 api_clients 6600 8715624192 Retrieved 31 citing papers (page 1)
+INFO 2025-07-23 06:59:05,768 api_clients 6600 8715624192 Found 31 citations in OpenAlex
+INFO 2025-07-23 06:59:05,853 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.5271/sjweh.182
+INFO 2025-07-23 06:59:06,371 api_clients 6600 8715624192 Retrieved 15 citing papers (page 1)
+INFO 2025-07-23 06:59:06,718 api_clients 6600 8715624192 Found 15 citations in OpenAlex
+INFO 2025-07-23 06:59:06,789 api_clients 6600 8715624192 Searching OpenAlex for citations of 10.1093/schbul/30-4-1063
+INFO 2025-07-23 06:59:07,152 api_clients 6600 8715624192 Retrieved 1 citing papers (page 1)
+INFO 2025-07-23 06:59:07,453 api_clients 6600 8715624192 Found 1 citations in OpenAlex
+INFO 2025-07-23 06:59:07,453 api_clients 6600 8715624192 Searching Semantic Scholar for additional citations

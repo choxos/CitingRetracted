@@ -114,13 +114,20 @@ class RetractedPaper(models.Model):
     
     @property
     def years_since_retraction(self):
-        """Calculate years since retraction"""
+        """Calculate years since retraction with user-friendly display"""
         if self.retraction_date:
             from datetime import date
             today = date.today()
             delta = today - self.retraction_date
-            return round(delta.days / 365.25, 1)
-        return None
+            years = delta.days / 365.25
+            
+            if years < 1:
+                return "<1 year"
+            elif years < 2:
+                return f"{round(years, 1)} year"
+            else:
+                return f"{round(years, 1)} years"
+        return "Unknown"
     
     @property
     def days_since_retraction(self):
@@ -220,11 +227,7 @@ class RetractedPaper(models.Model):
         else:
             return "Unknown"
     
-    @property
-    def years_since_retraction(self):
-        if self.retraction_date:
-            return (timezone.now().date() - self.retraction_date).days // 365
-        return None
+
     
     @property
     def is_recent_retraction(self):
