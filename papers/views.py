@@ -85,6 +85,13 @@ class HomeView(ListView):
             count=Count('id')
         ).exclude(journal__isnull=True).exclude(journal__exact='').order_by('-count')[:5]
         
+        # Latest citing papers (papers that recently cited retracted papers)
+        context['latest_citing_papers'] = Citation.objects.select_related(
+            'citing_paper', 'retracted_paper'
+        ).filter(
+            citing_paper__publication_date__isnull=False
+        ).order_by('-citing_paper__publication_date')[:10]
+        
         return context
     
     def _get_top_authors(self):

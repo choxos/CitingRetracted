@@ -87,91 +87,190 @@
     </div>
 </section>
 
-<!-- Recent Retractions -->
+<!-- Main Content with Tabs -->
 <section class="py-5 bg-light">
     <div class="container">
         <div class="row">
             <div class="col-lg-8">
-                <h2 class="mb-4">
-                    <i class="fas fa-clock text-primary"></i>
-                    Recent Retractions
-                </h2>
-                
-                {% if recent_papers %}
-                    {% for paper in recent_papers %}
-                    <div class="card paper-card">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <h5 class="card-title">
-                                    <a href="{{ paper.get_absolute_url }}" class="text-decoration-none">
-                                        {{ paper.title|truncatechars:120 }}
-                                    </a>
-                                </h5>
-                                <span class="retraction-badge">
-                                    Retracted
-                                </span>
+                <!-- Tab Navigation -->
+                <ul class="nav nav-tabs mb-4" id="homeContentTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="retractions-tab" data-bs-toggle="tab" data-bs-target="#retractions" type="button" role="tab">
+                            <i class="fas fa-ban text-danger me-2"></i>Recent Retractions
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="citations-tab" data-bs-toggle="tab" data-bs-target="#citations" type="button" role="tab">
+                            <i class="fas fa-quote-right text-warning me-2"></i>Latest Citations
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- Tab Content -->
+                <div class="tab-content" id="homeContentTabsContent">
+                    <!-- Recent Retractions Tab -->
+                    <div class="tab-pane fade show active" id="retractions" role="tabpanel">
+                        {% if recent_papers %}
+                            {% for paper in recent_papers %}
+                            <div class="card paper-card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h5 class="card-title">
+                                            <a href="{{ paper.get_absolute_url }}" class="text-decoration-none">
+                                                {{ paper.title|truncatechars:120 }}
+                                            </a>
+                                        </h5>
+                                        <span class="retraction-badge">
+                                            Retracted
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="row mb-2">
+                                        <div class="col-md-6">
+                                            <small class="text-muted">
+                                                <i class="fas fa-user"></i>
+                                                {{ paper.author|default:"Unknown Author"|truncatechars:50 }}
+                                            </small>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <small class="text-muted">
+                                                <i class="fas fa-journal-whills"></i>
+                                                {{ paper.journal|default:"Unknown Journal"|truncatechars:40 }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <small class="text-muted">
+                                                <i class="fas fa-calendar"></i>
+                                                Retracted: {{ paper.retraction_date|date:"M d, Y"|default:"Unknown" }}
+                                                {% if paper.formatted_reasons %}
+                                                    <br><i class="fas fa-exclamation-circle"></i>
+                                                    <strong>{{ paper.formatted_reasons|truncatechars:100 }}</strong>
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <span class="citation-count">
+                                                {{ paper.citation_count }} citations
+                                            </span>
+                                            {% if paper.is_open_access %}
+                                                <span class="badge bg-success ms-2">Open Access</span>
+                                            {% endif %}
+                                            {% if paper.formatted_subjects %}
+                                            <br><small class="text-muted">
+                                                <i class="fas fa-tag"></i> {{ paper.formatted_subjects|truncatechars:80 }}
+                                            </small>
+                                            {% endif %}
+                                            {% if paper.article_type %}
+                                            <br><small class="text-muted">
+                                                <i class="fas fa-file-alt"></i> {{ paper.article_type }}
+                                            </small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
+                            {% endfor %}
                             
-                            <div class="row mb-2">
-                                <div class="col-md-6">
-                                    <small class="text-muted">
-                                        <i class="fas fa-user"></i>
-                                        {{ paper.author|default:"Unknown Author"|truncatechars:50 }}
-                                    </small>
-                                </div>
-                                <div class="col-md-6">
-                                    <small class="text-muted">
-                                        <i class="fas fa-journal-whills"></i>
-                                        {{ paper.journal|default:"Unknown Journal"|truncatechars:40 }}
-                                    </small>
+                            <div class="text-center mt-4">
+                                <a href="{% url 'papers:search' %}" class="btn btn-primary">
+                                    View All Papers <i class="fas fa-arrow-right"></i>
+                                </a>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                No retracted papers found. Data may still be loading.
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Latest Citations Tab -->
+                    <div class="tab-pane fade" id="citations" role="tabpanel">
+                        {% if latest_citing_papers %}
+                            {% for citation in latest_citing_papers %}
+                            <div class="card paper-card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h5 class="card-title">
+                                            {% if citation.citing_paper.doi %}
+                                                <a href="https://doi.org/{{ citation.citing_paper.doi }}" target="_blank" class="text-decoration-none">
+                                                    {{ citation.citing_paper.title|truncatechars:120 }}
+                                                    <i class="fas fa-external-link-alt fa-sm ms-1"></i>
+                                                </a>
+                                            {% else %}
+                                                {{ citation.citing_paper.title|truncatechars:120 }}
+                                            {% endif %}
+                                        </h5>
+                                        <div class="text-end">
+                                            {% if citation.days_after_retraction > 0 %}
+                                                <span class="badge bg-danger mb-1">Post-Retraction</span>
+                                            {% elif citation.days_after_retraction < 0 %}
+                                                <span class="badge bg-success mb-1">Pre-Retraction</span>
+                                            {% else %}
+                                                <span class="badge bg-warning mb-1">Same Day</span>
+                                            {% endif %}
+                                            <br>
+                                            {% if citation.citing_paper.is_open_access %}
+                                                <span class="badge bg-info">Open Access</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row mb-2">
+                                        <div class="col-md-6">
+                                            <small class="text-muted">
+                                                <i class="fas fa-user"></i>
+                                                {{ citation.citing_paper.formatted_authors|truncatechars:50 }}
+                                            </small>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <small class="text-muted">
+                                                <i class="fas fa-journal-whills"></i>
+                                                {{ citation.citing_paper.journal|default:"Unknown Journal"|truncatechars:40 }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <small class="text-muted">
+                                                <i class="fas fa-calendar"></i>
+                                                Published: {{ citation.citing_paper.publication_date|date:"M d, Y" }}
+                                                {% if citation.days_after_retraction %}
+                                                    <br><i class="fas fa-clock"></i>
+                                                    <strong>{{ citation.days_after_retraction }} days after retraction</strong>
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <small class="text-muted">
+                                                <i class="fas fa-arrow-right text-danger"></i>
+                                                Cites: <a href="{{ citation.retracted_paper.get_absolute_url }}" class="text-decoration-none">
+                                                    {{ citation.retracted_paper.title|truncatechars:60 }}
+                                                </a>
+                                            </small>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
+                            {% endfor %}
                             
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <small class="text-muted">
-                                        <i class="fas fa-calendar"></i>
-                                        Retracted: {{ paper.retraction_date|date:"M d, Y"|default:"Unknown" }}
-                                        {% if paper.formatted_reasons %}
-                                            <br><i class="fas fa-exclamation-circle"></i>
-                                            <strong>{{ paper.formatted_reasons|truncatechars:100 }}</strong>
-                                        {% endif %}
-                                    </small>
-                                </div>
-                                <div class="col-md-6">
-                                    <span class="citation-count">
-                                        {{ paper.citation_count }} citations
-                                    </span>
-                                    {% if paper.is_open_access %}
-                                        <span class="badge bg-success ms-2">Open Access</span>
-                                    {% endif %}
-                                    {% if paper.formatted_subjects %}
-                                    <br><small class="text-muted">
-                                        <i class="fas fa-tag"></i> {{ paper.formatted_subjects|truncatechars:80 }}
-                                    </small>
-                                    {% endif %}
-                                    {% if paper.article_type %}
-                                    <br><small class="text-muted">
-                                        <i class="fas fa-file-alt"></i> {{ paper.article_type }}
-                                    </small>
-                                    {% endif %}
-                                </div>
+                            <div class="text-center mt-4">
+                                <a href="{% url 'papers:analytics' %}#patterns" class="btn btn-warning">
+                                    View Citation Analytics <i class="fas fa-chart-line"></i>
+                                </a>
                             </div>
-                        </div>
+                        {% else %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                No recent citations found. Citation data may still be loading.
+                            </div>
+                        {% endif %}
                     </div>
-                    {% endfor %}
-                    
-                    <div class="text-center mt-4">
-                        <a href="{% url 'papers:search' %}" class="btn btn-primary">
-                            View All Papers <i class="fas fa-arrow-right"></i>
-                        </a>
-                    </div>
-                {% else %}
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i>
-                        No retracted papers found. Data may still be loading.
-                    </div>
-                {% endif %}
+                </div>
             </div>
             
             <!-- Sidebar -->
