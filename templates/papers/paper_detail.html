@@ -121,6 +121,21 @@
                     </div>
                     {% endif %}
                     
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Open Access:</strong></div>
+                        <div class="col-md-9">
+                            {% if paper.is_open_access %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-unlock"></i> Yes
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary">
+                                    <i class="fas fa-lock"></i> No
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
                     {% if paper.original_paper_doi %}
                     <div class="row mb-3">
                         <div class="col-md-3"><strong>DOI:</strong></div>
