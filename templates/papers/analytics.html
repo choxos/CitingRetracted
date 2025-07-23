@@ -1,0 +1,1275 @@
+{% extends 'base.html' %}
+
+{% block title %}Analytics - Citing Retracted Papers Database{% endblock %}
+
+{% block extra_css %}
+<style>
+.chart-container {
+    position: relative;
+    height: 400px;
+    margin: 20px 0;
+}
+
+.chart-container.tall {
+    height: 500px;
+}
+
+.chart-container.short {
+    height: 300px;
+}
+
+.interactive-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 15px;
+    background: #f8f9fa;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid #dee2e6;
+}
+
+.legend-item:hover {
+    background: #e9ecef;
+    transform: translateY(-1px);
+}
+
+.legend-item.inactive {
+    opacity: 0.5;
+}
+
+.stat-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+}
+
+.chart-controls {
+    margin-bottom: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.filter-group:last-child {
+    margin-bottom: 0;
+}
+
+.network-tooltip {
+    position: absolute;
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    pointer-events: none;
+    z-index: 1000;
+    font-size: 12px;
+    max-width: 200px;
+}
+
+.dashboard-tabs {
+    margin-bottom: 30px;
+}
+
+.dashboard-tabs .nav-link {
+    border-radius: 25px;
+    margin-right: 10px;
+    transition: all 0.3s ease;
+}
+
+.dashboard-tabs .nav-link.active {
+    background: linear-gradient(45deg, #007bff, #0056b3);
+    border: none;
+}
+
+.chart-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    color: #6c757d;
+}
+
+.data-table-container {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+}
+
+.progress-ring {
+    transform: rotate(-90deg);
+}
+
+.progress-ring-circle {
+    transition: stroke-dashoffset 0.35s;
+    transform-origin: 50% 50%;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1><i class="fas fa-chart-bar"></i> Advanced Analytics Dashboard</h1>
+            <p class="text-muted">Interactive visualization of retracted papers and citation patterns with advanced filtering and drill-down capabilities.</p>
+        </div>
+    </div>
+    
+    <!-- Dashboard Navigation Tabs -->
+    <ul class="nav nav-pills dashboard-tabs" id="analyticsTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="overview-tab" data-bs-toggle="pill" data-bs-target="#overview" type="button" role="tab">
+                <i class="fas fa-tachometer-alt"></i> Overview
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="trends-tab" data-bs-toggle="pill" data-bs-target="#trends" type="button" role="tab">
+                <i class="fas fa-chart-line"></i> Trends
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="patterns-tab" data-bs-toggle="pill" data-bs-target="#patterns" type="button" role="tab">
+                <i class="fas fa-search"></i> Patterns
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="network-tab" data-bs-toggle="pill" data-bs-target="#network" type="button" role="tab">
+                <i class="fas fa-project-diagram"></i> Network
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="analyticsTabContent">
+        
+        <!-- Overview Tab -->
+        <div class="tab-pane fade show active" id="overview" role="tabpanel">
+            <!-- Summary Statistics -->
+            <div class="row mb-5">
+                <div class="col-md-3 mb-4">
+                    <div class="card stat-card h-100 text-center">
+                        <div class="card-body">
+                            <i class="fas fa-ban fa-3x text-danger mb-3"></i>
+                            <h3 class="card-title">{{ stats.total_papers|floatformat:0 }}</h3>
+                            <p class="card-text">Total Retracted Papers</p>
+                            <div class="progress mt-2" style="height: 6px;">
+                                <div class="progress-bar bg-danger" role="progressbar" style="width: 100%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-4">
+                    <div class="card stat-card h-100 text-center">
+                        <div class="card-body">
+                            <i class="fas fa-quote-right fa-3x text-warning mb-3"></i>
+                            <h3 class="card-title">{{ stats.total_citations|floatformat:0 }}</h3>
+                            <p class="card-text">Total Citations</p>
+                            <small class="text-muted">~{{ stats.avg_citations_per_paper|floatformat:1 }} per paper</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-4">
+                    <div class="card stat-card h-100 text-center">
+                        <div class="card-body">
+                            <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                            <h3 class="card-title">{{ stats.post_retraction_citations|floatformat:0 }}</h3>
+                            <p class="card-text">Post-Retraction Citations</p>
+                            <div class="mt-2">
+                                <span class="badge bg-danger">{{ stats.post_retraction_percentage|floatformat:1 }}% of total</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-4">
+                    <div class="card stat-card h-100 text-center">
+                        <div class="card-body">
+                            <i class="fas fa-clock fa-3x text-success mb-3"></i>
+                            <h3 class="card-title">{{ stats.recent_retractions|floatformat:0 }}</h3>
+                            <p class="card-text">Recent Retractions</p>
+                            <small class="text-muted">Last 12 months</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Charts Row -->
+            <div class="row mb-5">
+                <div class="col-lg-6 mb-4">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5><i class="fas fa-chart-pie"></i> Citation Patterns</h5>
+                            <button class="btn btn-sm btn-outline-primary" onclick="refreshChart('citationPatternsChart')">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container short">
+                                <canvas id="citationPatternsChart"></canvas>
+                            </div>
+                            <div class="mt-3 text-center">
+                                <span class="badge bg-danger fs-6">
+                                    {{ citation_patterns.post_retraction_percentage|floatformat:1 }}% post-retraction
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-clock"></i> Post-Retraction Timeline</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container short">
+                                <canvas id="postRetractionTimelineChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Trends Tab -->
+        <div class="tab-pane fade" id="trends" role="tabpanel">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="chart-controls">
+                        <div class="filter-group">
+                            <label><strong>Time Range:</strong></label>
+                            <select class="form-select form-select-sm" id="timeRangeFilter" style="width: auto;">
+                                <option value="all">All Time</option>
+                                <option value="5y">Last 5 Years</option>
+                                <option value="3y">Last 3 Years</option>
+                                <option value="1y">Last Year</option>
+                            </select>
+                            <button class="btn btn-sm btn-primary" onclick="updateTrendCharts()">
+                                <i class="fas fa-filter"></i> Apply Filter
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mb-5">
+                <div class="col-12 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-chart-line"></i> Retraction Trends Over Time</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="retractionsTimelineChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mb-5">
+                <div class="col-lg-8 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-chart-area"></i> Citation Comparison: Before vs After Retraction</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="citationComparisonChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-chart-bar"></i> Subject Distribution</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="subjectDistributionChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Patterns Tab -->
+        <div class="tab-pane fade" id="patterns" role="tabpanel">
+            <div class="row mb-5">
+                <div class="col-lg-8 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-th"></i> Citation Heatmap</h5>
+                            <small class="text-muted">Citations by month and time after retraction</small>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container tall">
+                                <canvas id="citationHeatmapChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-chart-line"></i> Citation Timing Distribution</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="citationTimingChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mb-5">
+                <div class="col-12 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-circle-notch"></i> Journal Impact Analysis</h5>
+                            <small class="text-muted">Bubble size represents average citations per paper</small>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container tall">
+                                <canvas id="journalBubbleChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- New Stratified Analytics Section -->
+            <div class="row mb-5">
+                <div class="col-lg-6 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-globe"></i> Geographic Distribution</h5>
+                            <small class="text-muted">Retractions by country with open access rates</small>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="countryChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-file-alt"></i> Article Type Analysis</h5>
+                            <small class="text-muted">Distribution by article type</small>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="articleTypeChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mb-5">
+                <div class="col-lg-8 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-university"></i> Publisher Analysis</h5>
+                            <small class="text-muted">Top publishers with retraction issues</small>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="publisherChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-unlock"></i> Open Access Analysis</h5>
+                            <small class="text-muted">Access status distribution</small>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="openAccessChart"></canvas>
+                            </div>
+                            <div class="mt-3">
+                                <div class="row text-center">
+                                    <div class="col-4">
+                                        <div class="text-success">
+                                            <i class="fas fa-unlock fa-2x"></i>
+                                            <div><strong>{{ access_analytics.open_access.count }}</strong></div>
+                                            <small>Open Access</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-warning">
+                                            <i class="fas fa-lock fa-2x"></i>
+                                            <div><strong>{{ access_analytics.paywalled.count }}</strong></div>
+                                            <small>Paywalled</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-muted">
+                                            <i class="fas fa-question fa-2x"></i>
+                                            <div><strong>{{ access_analytics.unknown.count }}</strong></div>
+                                            <small>Unknown</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Enhanced Problematic Papers Table -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-exclamation-triangle"></i> Most Problematic Papers</h5>
+                            <small class="text-muted">Papers with highest post-retraction citation counts</small>
+                        </div>
+                        <div class="card-body">
+                            <div class="data-table-container">
+                                <table class="table table-hover table-sm">
+                                    <thead class="table-dark sticky-top">
+                                        <tr>
+                                            <th>Title</th>
+                                            <th>Journal</th>
+                                            <th>Country</th>
+                                            <th>Institution</th>
+                                            <th>Access</th>
+                                            <th>Retraction Date</th>
+                                            <th>Post-Retraction Citations</th>
+                                            <th>Citation Rate</th>
+                                            <th>Links</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for paper in problematic_papers_detailed %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ paper.title }}</strong>
+                                                {% if paper.formatted_reasons %}
+                                                <br><small class="text-danger"><i class="fas fa-exclamation-circle"></i> {{ paper.formatted_reasons|truncatechars:80 }}</small>
+                                                {% endif %}
+                                                {% if paper.formatted_subjects %}
+                                                <br><small class="text-info"><i class="fas fa-tag"></i> {{ paper.formatted_subjects|truncatechars:60 }}</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ paper.journal|default:"Unknown" }}</td>
+                                            <td>
+                                                {% if paper.country %}
+                                                    <span class="badge bg-primary">{{ paper.country }}</span>
+                                                {% else %}
+                                                    <span class="text-muted">Unknown</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <small>{{ paper.institution|default:"Unknown" }}</small>
+                                            </td>
+                                            <td>
+                                                {% if paper.access_status == "Open Access" %}
+                                                    <span class="badge bg-success"><i class="fas fa-unlock"></i> Open</span>
+                                                {% elif paper.access_status == "Paywalled" %}
+                                                    <span class="badge bg-warning"><i class="fas fa-lock"></i> Paywalled</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Unknown</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if paper.retraction_date %}
+                                                    {{ paper.retraction_date }}
+                                                    <br><small class="text-muted">{{ paper.days_since_retraction }} days ago</small>
+                                                    {% if paper.formatted_reasons %}
+                                                        <br><small class="text-danger"><strong>{{ paper.formatted_reasons|truncatechars:50 }}</strong></small>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="text-muted">Unknown</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-danger">{{ paper.post_retraction_citations }}</span>
+                                                <br><small class="text-muted">of {{ paper.total_citations }} total</small>
+                                            </td>
+                                            <td>
+                                                <div class="progress" style="height: 20px;">
+                                                    <div class="progress-bar bg-danger" 
+                                                         style="width: {{ paper.citation_rate|floatformat:0 }}%">
+                                                        {{ paper.citation_rate|floatformat:1 }}%
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group-vertical" role="group">
+                                                    <a href="{% url 'papers:detail' paper.record_id %}" class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-eye"></i> View
+                                                    </a>
+                                                    {% if paper.original_paper_url %}
+                                                    <a href="{{ paper.original_paper_url }}" target="_blank" class="btn btn-sm btn-outline-success">
+                                                        <i class="fas fa-external-link-alt"></i> DOI
+                                                    </a>
+                                                    {% endif %}
+                                                    {% if paper.pubmed_url %}
+                                                    <a href="{{ paper.pubmed_url }}" target="_blank" class="btn btn-sm btn-outline-info">
+                                                        <i class="fas fa-book-medical"></i> PubMed
+                                                    </a>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="9" class="text-center text-muted">No problematic papers found</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Network Tab -->
+        <div class="tab-pane fade" id="network" role="tabpanel">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="chart-controls">
+                        <div class="filter-group">
+                            <label><strong>Network View:</strong></label>
+                            <select class="form-select form-select-sm" id="networkTypeFilter" style="width: auto;">
+                                <option value="journals">Journal Relationships</option>
+                                <option value="subjects">Subject Areas</option>
+                                <option value="combined">Combined View</option>
+                            </select>
+                            <button class="btn btn-sm btn-primary" onclick="updateNetworkChart()">
+                                <i class="fas fa-project-diagram"></i> Update Network
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-project-diagram"></i> Interactive Network Analysis</h5>
+                            <small class="text-muted">Click and drag nodes to explore relationships</small>
+                        </div>
+                        <div class="card-body position-relative">
+                            <div id="networkVisualization" style="height: 600px; border: 1px solid #dee2e6; border-radius: 8px;"></div>
+                            <div id="networkTooltip" class="network-tooltip" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<!-- D3.js for network visualization -->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+
+<script>
+// Global chart instances
+let chartInstances = {};
+
+// Chart color schemes
+const colorSchemes = {
+    primary: ['#007bff', '#6c757d', '#28a745', '#dc3545', '#ffc107', '#17a2b8'],
+    danger: ['#dc3545', '#fd7e14', '#ffc107', '#20c997', '#6f42c1', '#e83e8c'],
+    gradient: ['rgba(0,123,255,0.8)', 'rgba(40,167,69,0.8)', 'rgba(220,53,69,0.8)', 'rgba(255,193,7,0.8)']
+};
+
+// Initialize all charts when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initializeOverviewCharts();
+    
+    // Initialize charts when tabs are shown
+    document.getElementById('trends-tab').addEventListener('shown.bs.tab', function() {
+        initializeTrendCharts();
+    });
+    
+    document.getElementById('patterns-tab').addEventListener('shown.bs.tab', function() {
+        initializePatternCharts();
+    });
+    
+    document.getElementById('network-tab').addEventListener('shown.bs.tab', function() {
+        initializeNetworkVisualization();
+    });
+});
+
+function initializeOverviewCharts() {
+    // Citation Patterns Pie Chart
+    const citationPatternsData = {
+        labels: ['Post-Retraction', 'Pre-Retraction', 'Same Day'],
+        datasets: [{
+            data: [
+                {{ citation_patterns.post_retraction }},
+                {{ citation_patterns.pre_retraction }},
+                {{ citation_patterns.same_day }}
+            ],
+            backgroundColor: [
+                'rgba(220, 53, 69, 0.8)',
+                'rgba(40, 167, 69, 0.8)', 
+                'rgba(255, 193, 7, 0.8)'
+            ],
+            borderColor: [
+                'rgba(220, 53, 69, 1)',
+                'rgba(40, 167, 69, 1)',
+                'rgba(255, 193, 7, 1)'
+            ],
+            borderWidth: 2
+        }]
+    };
+    
+    chartInstances.citationPatterns = new Chart(
+        document.getElementById('citationPatternsChart'),
+        {
+            type: 'doughnut',
+            data: citationPatternsData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                            }
+                        }
+                    }
+                },
+                animation: {
+                    animateRotate: true,
+                    duration: 2000
+                }
+            }
+        }
+    );
+    
+    // Post-Retraction Timeline Bar Chart
+    const timelineData = {
+        labels: ['Within 30 Days', 'Within 6 Months', 'Within 1 Year', 'Within 2 Years', 'After 2 Years'],
+        datasets: [{
+            label: 'Citations',
+            data: [
+                {{ post_retraction_timeline.within_30_days }},
+                {{ post_retraction_timeline.within_6_months }},
+                {{ post_retraction_timeline.within_1_year }},
+                {{ post_retraction_timeline.within_2_years }},
+                {{ post_retraction_timeline.after_2_years }}
+            ],
+            backgroundColor: 'rgba(220, 53, 69, 0.6)',
+            borderColor: 'rgba(220, 53, 69, 1)',
+            borderWidth: 1
+        }]
+    };
+    
+    chartInstances.postRetractionTimeline = new Chart(
+        document.getElementById('postRetractionTimelineChart'),
+        {
+            type: 'bar',
+            data: timelineData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        }
+    );
+}
+
+function initializeTrendCharts() {
+    // Retraction trends over time
+    const retractionYearsData = {{ retraction_years|safe }};
+    
+    const retractionsTimelineData = {
+        labels: retractionYearsData.map(item => item.year),
+        datasets: [{
+            label: 'Retractions',
+            data: retractionYearsData.map(item => item.count),
+            borderColor: 'rgba(220, 53, 69, 1)',
+            backgroundColor: 'rgba(220, 53, 69, 0.1)',
+            tension: 0.4,
+            fill: true
+        }]
+    };
+    
+    chartInstances.retractionsTimeline = new Chart(
+        document.getElementById('retractionsTimelineChart'),
+        {
+            type: 'line',
+            data: retractionsTimelineData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        }
+    );
+    
+    // Citation comparison chart
+    const comparisonData = {{ retraction_comparison|safe }};
+    
+    const citationComparisonData = {
+        labels: comparisonData.map(item => item.year),
+        datasets: [
+            {
+                label: 'Pre-Retraction Citations',
+                data: comparisonData.map(item => item.pre_retraction),
+                backgroundColor: 'rgba(40, 167, 69, 0.6)',
+                borderColor: 'rgba(40, 167, 69, 1)'
+            },
+            {
+                label: 'Post-Retraction Citations',
+                data: comparisonData.map(item => item.post_retraction),
+                backgroundColor: 'rgba(220, 53, 69, 0.6)',
+                borderColor: 'rgba(220, 53, 69, 1)'
+            }
+        ]
+    };
+    
+    chartInstances.citationComparison = new Chart(
+        document.getElementById('citationComparisonChart'),
+        {
+            type: 'bar',
+            data: citationComparisonData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        stacked: false
+                    },
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        }
+    );
+    
+    // Subject distribution donut
+    const subjectData = {{ subject_donut_data|safe }};
+    
+    const subjectDistributionData = {
+        labels: subjectData.map(item => item.subject.substring(0, 20) + (item.subject.length > 20 ? '...' : '')),
+        datasets: [{
+            data: subjectData.map(item => item.count),
+            backgroundColor: colorSchemes.primary.slice(0, subjectData.length)
+        }]
+    };
+    
+    chartInstances.subjectDistribution = new Chart(
+        document.getElementById('subjectDistributionChart'),
+        {
+            type: 'doughnut',
+            data: subjectDistributionData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        }
+    );
+}
+
+function initializePatternCharts() {
+    // Citation timing distribution
+    const timingData = {{ citation_timing_distribution|safe }};
+    
+    const citationTimingData = {
+        labels: timingData.map(item => item.days + ' days'),
+        datasets: [{
+            label: 'Citations',
+            data: timingData.map(item => item.count),
+            backgroundColor: 'rgba(0, 123, 255, 0.6)',
+            borderColor: 'rgba(0, 123, 255, 1)',
+            borderWidth: 1
+        }]
+    };
+    
+    chartInstances.citationTiming = new Chart(
+        document.getElementById('citationTimingChart'),
+        {
+            type: 'line',
+            data: citationTimingData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        display: false
+                    },
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        }
+    );
+    
+    // Journal bubble chart
+    const journalBubbleData = {{ journal_bubble_data|safe }};
+    
+    const bubbleChartData = {
+        datasets: [{
+            label: 'Journals',
+            data: journalBubbleData.map(item => ({
+                x: item.x,
+                y: item.y,
+                r: Math.max(5, item.size || 5)
+            })),
+            backgroundColor: 'rgba(0, 123, 255, 0.6)',
+            borderColor: 'rgba(0, 123, 255, 1)'
+        }]
+    };
+    
+    chartInstances.journalBubble = new Chart(
+        document.getElementById('journalBubbleChart'),
+        {
+            type: 'bubble',
+            data: bubbleChartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const dataIndex = context.dataIndex;
+                                const journal = journalBubbleData[dataIndex];
+                                return [
+                                    'Journal: ' + journal.journal,
+                                    'Retractions: ' + journal.x,
+                                    'Post-Retraction Citations: ' + journal.y,
+                                    'Impact Score: ' + journal.impact_score
+                                ];
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Number of Retractions'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Post-Retraction Citations'
+                        }
+                    }
+                }
+            }
+        }
+    );
+    
+    // Country analytics chart
+    const countryData = {{ country_analytics|safe }};
+    
+    const countryChartData = {
+        labels: countryData.map(item => item.country),
+        datasets: [
+            {
+                label: 'Retractions',
+                data: countryData.map(item => item.retraction_count),
+                backgroundColor: 'rgba(220, 53, 69, 0.6)',
+                borderColor: 'rgba(220, 53, 69, 1)',
+                yAxisID: 'y'
+            },
+            {
+                label: 'Open Access Rate (%)',
+                data: countryData.map(item => item.open_access_percentage),
+                type: 'line',
+                backgroundColor: 'rgba(40, 167, 69, 0.6)',
+                borderColor: 'rgba(40, 167, 69, 1)',
+                yAxisID: 'y1'
+            }
+        ]
+    };
+    
+    chartInstances.country = new Chart(
+        document.getElementById('countryChart'),
+        {
+            type: 'bar',
+            data: countryChartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'Number of Retractions'
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Open Access Rate (%)'
+                        },
+                        grid: {
+                            drawOnChartArea: false,
+                        },
+                        max: 100
+                    }
+                }
+            }
+        }
+    );
+    
+    // Article type chart
+    const articleTypeData = {{ article_type_analytics|safe }};
+    
+    const articleTypeChartData = {
+        labels: articleTypeData.map(item => item.type),
+        datasets: [{
+            data: articleTypeData.map(item => item.count),
+            backgroundColor: colorSchemes.primary.slice(0, articleTypeData.length)
+        }]
+    };
+    
+    chartInstances.articleType = new Chart(
+        document.getElementById('articleTypeChart'),
+        {
+            type: 'doughnut',
+            data: articleTypeChartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const dataIndex = context.dataIndex;
+                                const item = articleTypeData[dataIndex];
+                                return [
+                                    context.label + ': ' + item.count,
+                                    'Post-retraction citations: ' + item.post_retraction_citations,
+                                    'Citation rate: ' + item.citation_rate.toFixed(1) + '%'
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    );
+    
+    // Publisher chart
+    const publisherData = {{ publisher_analytics|safe }};
+    
+    const publisherChartData = {
+        labels: publisherData.map(item => item.publisher.length > 20 ? item.publisher.substring(0, 20) + '...' : item.publisher),
+        datasets: [{
+            label: 'Retractions',
+            data: publisherData.map(item => item.retraction_count),
+            backgroundColor: 'rgba(255, 193, 7, 0.6)',
+            borderColor: 'rgba(255, 193, 7, 1)'
+        }]
+    };
+    
+    chartInstances.publisher = new Chart(
+        document.getElementById('publisherChart'),
+        {
+            type: 'horizontalBar',
+            data: publisherChartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const dataIndex = context.dataIndex;
+                                const item = publisherData[dataIndex];
+                                return [
+                                    'Publisher: ' + item.publisher,
+                                    'Retractions: ' + item.retraction_count,
+                                    'Post-retraction citations: ' + item.post_retraction_citations,
+                                    'Impact score: ' + item.impact_score
+                                ];
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        }
+    );
+    
+    // Open Access chart
+    const accessData = {{ access_analytics|safe }};
+    
+    const openAccessChartData = {
+        labels: ['Open Access', 'Paywalled', 'Unknown'],
+        datasets: [{
+            data: [
+                accessData.open_access.count,
+                accessData.paywalled.count,
+                accessData.unknown.count
+            ],
+            backgroundColor: [
+                'rgba(40, 167, 69, 0.8)',
+                'rgba(255, 193, 7, 0.8)',
+                'rgba(108, 117, 125, 0.8)'
+            ],
+            borderColor: [
+                'rgba(40, 167, 69, 1)',
+                'rgba(255, 193, 7, 1)',
+                'rgba(108, 117, 125, 1)'
+            ]
+        }]
+    };
+    
+    chartInstances.openAccess = new Chart(
+        document.getElementById('openAccessChart'),
+        {
+            type: 'doughnut',
+            data: openAccessChartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const types = ['open_access', 'paywalled', 'unknown'];
+                                const type = types[context.dataIndex];
+                                const data = accessData[type];
+                                return [
+                                    context.label + ': ' + data.count,
+                                    'Percentage: ' + data.percentage.toFixed(1) + '%',
+                                    'Post-retraction citations: ' + data.post_retraction_citations,
+                                    'Citations per paper: ' + data.citations_per_paper.toFixed(1)
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    );
+}
+
+function initializeNetworkVisualization() {
+    const networkData = {{ network_data|safe }};
+    const svg = d3.select("#networkVisualization")
+        .append("svg")
+        .attr("width", "100%")
+        .attr("height", "100%");
+    
+    const width = document.getElementById("networkVisualization").clientWidth;
+    const height = 600;
+    
+    const simulation = d3.forceSimulation(networkData.nodes)
+        .force("link", d3.forceLink(networkData.links).id(d => d.id))
+        .force("charge", d3.forceManyBody().strength(-300))
+        .force("center", d3.forceCenter(width / 2, height / 2));
+    
+    const link = svg.append("g")
+        .selectAll("line")
+        .data(networkData.links)
+        .enter()
+        .append("line")
+        .attr("stroke", "#999")
+        .attr("stroke-opacity", 0.6)
+        .attr("stroke-width", 2);
+    
+    const node = svg.append("g")
+        .selectAll("circle")
+        .data(networkData.nodes)
+        .enter()
+        .append("circle")
+        .attr("r", d => Math.max(8, d.size / 2))
+        .attr("fill", d => d.type === 'journal' ? '#007bff' : '#28a745')
+        .call(d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended));
+    
+    const label = svg.append("g")
+        .selectAll("text")
+        .data(networkData.nodes)
+        .enter()
+        .append("text")
+        .text(d => d.name)
+        .attr("font-size", "12px")
+        .attr("dx", 15)
+        .attr("dy", 4);
+    
+    // Tooltip functionality
+    node.on("mouseover", function(event, d) {
+        const tooltip = document.getElementById("networkTooltip");
+        tooltip.style.display = "block";
+        tooltip.style.left = (event.pageX + 10) + "px";
+        tooltip.style.top = (event.pageY - 10) + "px";
+        tooltip.innerHTML = `
+            <strong>${d.full_name}</strong><br>
+            Type: ${d.type}<br>
+            Papers: ${d.size}
+        `;
+    })
+    .on("mouseout", function() {
+        document.getElementById("networkTooltip").style.display = "none";
+    });
+    
+    simulation.on("tick", () => {
+        link
+            .attr("x1", d => d.source.x)
+            .attr("y1", d => d.source.y)
+            .attr("x2", d => d.target.x)
+            .attr("y2", d => d.target.y);
+        
+        node
+            .attr("cx", d => d.x)
+            .attr("cy", d => d.y);
+            
+        label
+            .attr("x", d => d.x)
+            .attr("y", d => d.y);
+    });
+    
+    function dragstarted(event, d) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+    }
+    
+    function dragged(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+    }
+    
+    function dragended(event, d) {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+    }
+}
+
+// Utility functions
+function refreshChart(chartId) {
+    if (chartInstances[chartId]) {
+        chartInstances[chartId].update('active');
+    }
+}
+
+function updateTrendCharts() {
+    // Implement filter functionality here
+    console.log('Updating trend charts with filters...');
+}
+
+function updateNetworkChart() {
+    // Implement network filter functionality here
+    console.log('Updating network visualization...');
+}
+
+// Add loading indicators
+function showLoading(elementId) {
+    document.getElementById(elementId).innerHTML = '<div class="chart-loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+}
+
+// Responsive chart handling
+window.addEventListener('resize', function() {
+    Object.values(chartInstances).forEach(chart => {
+        if (chart) chart.resize();
+    });
+});
+</script>
+{% endblock %} 

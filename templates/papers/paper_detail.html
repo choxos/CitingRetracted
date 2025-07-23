@@ -1,0 +1,548 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ paper.title|truncatechars:60 }} - Citing Retracted Papers Database{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Paper Header -->
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'papers:home' %}">Home</a></li>
+                            <li class="breadcrumb-item"><a href="{% url 'papers:search' %}">Search</a></li>
+                            <li class="breadcrumb-item active">{{ paper.record_id }}</li>
+                        </ol>
+                    </nav>
+                </div>
+                <span class="retraction-badge">
+                    <i class="fas fa-ban"></i> Retracted Paper
+                </span>
+            </div>
+            
+            <h1 class="mb-3">{{ paper.title }}</h1>
+        </div>
+    </div>
+    
+    <!-- Paper Details -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4><i class="fas fa-info-circle"></i> Paper Information</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Record ID:</strong></div>
+                        <div class="col-md-9">{{ paper.record_id }}</div>
+                    </div>
+                    
+                    {% if paper.author %}
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Author(s):</strong></div>
+                        <div class="col-md-9">{{ paper.author }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if paper.journal %}
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Journal:</strong></div>
+                        <div class="col-md-9">
+                            {{ paper.journal }}
+                            {% if paper.publisher %}
+                                <small class="text-muted">({{ paper.publisher }})</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Publication Date:</strong></div>
+                        <div class="col-md-9">{{ paper.original_paper_date|date:"F d, Y"|default:"Unknown" }}</div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Retraction Date:</strong></div>
+                        <div class="col-md-9">
+                            {{ paper.retraction_date|date:"F d, Y"|default:"Unknown" }}
+                            {% if paper.years_since_retraction %}
+                                <small class="text-muted">({{ paper.years_since_retraction }} years ago)</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if paper.subject_list %}
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Subject{{ paper.subject_list|length|pluralize }}:</strong></div>
+                        <div class="col-md-9">
+                            {% for subject in paper.subject_list %}
+                                <a href="{% url 'papers:search' %}?subject={{ subject|urlencode }}" 
+                                   class="text-decoration-none"
+                                   title="Find other papers in this subject area">
+                                    <span class="badge bg-secondary me-1 mb-1 clickable-badge">
+                                        {{ subject }}
+                                        <i class="fas fa-search fa-sm ms-1"></i>
+                                    </span>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if paper.institution %}
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Institution:</strong></div>
+                        <div class="col-md-9">{{ paper.institution }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if paper.country %}
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Country:</strong></div>
+                        <div class="col-md-9">{{ paper.country }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if paper.article_type %}
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Article Type:</strong></div>
+                        <div class="col-md-9">
+                            <span class="badge bg-info">{{ paper.article_type }}</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if paper.publisher %}
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Publisher:</strong></div>
+                        <div class="col-md-9">{{ paper.publisher }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if paper.original_paper_doi %}
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>DOI:</strong></div>
+                        <div class="col-md-9">
+                            <a href="https://doi.org/{{ paper.original_paper_doi }}" target="_blank" class="text-decoration-none">
+                                {{ paper.original_paper_doi }}
+                                <i class="fas fa-external-link-alt ms-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if paper.original_paper_pubmed_id %}
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>PubMed ID:</strong></div>
+                        <div class="col-md-9">
+                            <a href="{{ paper.pubmed_url }}" target="_blank" class="text-decoration-none">
+                                {{ paper.original_paper_pubmed_id }}
+                                <i class="fas fa-external-link-alt ms-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if paper.retraction_pubmed_id %}
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Retraction PubMed ID:</strong></div>
+                        <div class="col-md-9">
+                            <a href="{{ paper.retraction_pubmed_url }}" target="_blank" class="text-decoration-none">
+                                {{ paper.retraction_pubmed_id }}
+                                <i class="fas fa-external-link-alt ms-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if paper.is_open_access %}
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Open Access:</strong></div>
+                        <div class="col-md-9">
+                            <span class="badge bg-success">
+                                <i class="fas fa-unlock"></i> Yes
+                            </span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Retraction Details -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4><i class="fas fa-exclamation-triangle"></i> Retraction Details</h4>
+                </div>
+                <div class="card-body">
+                    {% if paper.reason %}
+                    <div class="mb-3">
+                        <h6>Retraction Reason{{ paper.reason_list|length|pluralize }}:</h6>
+                        {% if paper.reason_list|length > 1 %}
+                            <ul class="list-unstyled">
+                                {% for reason in paper.reason_list %}
+                                <li class="mb-1">
+                                    <i class="fas fa-exclamation-circle text-danger me-2"></i>
+                                    <a href="{% url 'papers:search' %}?reason={{ reason|urlencode }}" 
+                                       class="text-decoration-none text-danger fw-bold"
+                                       title="Find other papers with this retraction reason">
+                                        {{ reason }}
+                                        <i class="fas fa-search fa-sm ms-1"></i>
+                                    </a>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p>
+                                <a href="{% url 'papers:search' %}?reason={{ paper.formatted_reasons|urlencode }}" 
+                                   class="text-decoration-none text-danger fw-bold"
+                                   title="Find other papers with this retraction reason">
+                                    {{ paper.formatted_reasons }}
+                                    <i class="fas fa-search fa-sm ms-1"></i>
+                                </a>
+                            </p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    
+                    {% if paper.retraction_nature %}
+                    <div class="mb-3">
+                        <h6>Nature of Retraction:</h6>
+                        <p>{{ paper.retraction_nature }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if paper.retraction_doi %}
+                    <div class="mb-3">
+                        <h6>Retraction Notice:</h6>
+                        <a href="https://doi.org/{{ paper.retraction_doi }}" target="_blank">
+                            {{ paper.retraction_doi }}
+                            <i class="fas fa-external-link-alt"></i>
+                        </a>
+                    </div>
+                    {% endif %}
+                    
+                    {% if paper.notes %}
+                    <div class="mb-3">
+                        <h6>Additional Notes:</h6>
+                        <p>{{ paper.notes }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Abstract -->
+            {% if paper.abstract %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4><i class="fas fa-file-alt"></i> Abstract</h4>
+                </div>
+                <div class="card-body">
+                    <p>{{ paper.abstract }}</p>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Citations Section -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4><i class="fas fa-quote-right"></i> Citations ({{ citation_stats.total_citations }})</h4>
+                    <button class="btn btn-sm btn-outline-primary" onclick="loadCitationChart()">
+                        <i class="fas fa-chart-bar"></i> View Chart
+                    </button>
+                </div>
+                <div class="card-body">
+                    <!-- Citation Statistics -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h5 class="text-primary">{{ citation_stats.total_citations }}</h5>
+                                <small>Total Citations</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h5 class="text-danger">{{ citation_stats.post_retraction_citations }}</h5>
+                                <small>Post-Retraction</small>
+                                {% if citation_stats.post_retraction_percentage > 0 %}
+                                <br><small class="text-muted">({{ citation_stats.post_retraction_percentage|floatformat:1 }}%)</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h5 class="text-warning">{{ citation_stats.pre_retraction_citations }}</h5>
+                                <small>Pre-Retraction</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h5 class="text-info">{{ citation_stats.same_day_citations }}</h5>
+                                <small>Same Day</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Post-Retraction Analysis -->
+                    {% if citation_stats.post_retraction_citations > 0 %}
+                    <div class="alert alert-warning mb-4">
+                        <h6><i class="fas fa-exclamation-triangle"></i> Post-Retraction Citation Analysis</h6>
+                        <div class="row">
+                            {% if post_retraction_stats %}
+                            <div class="col-md-3">
+                                <strong>{{ post_retraction_stats.within_30_days }}</strong>
+                                <small class="d-block">Within 30 days</small>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>{{ post_retraction_stats.within_1_year }}</strong>
+                                <small class="d-block">Within 1 year</small>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>{{ post_retraction_stats.after_2_years }}</strong>
+                                <small class="d-block">After 2+ years</small>
+                            </div>
+                            <div class="col-md-3">
+                                {% if post_retraction_stats.latest_citation_days %}
+                                <strong>{{ post_retraction_stats.latest_citation_days }}</strong>
+                                <small class="d-block">Days since retraction (latest)</small>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Citation Chart Container -->
+                    <div id="citationChart" class="mb-4" style="display: none;">
+                        <canvas id="citationChartCanvas" width="400" height="200"></canvas>
+                    </div>
+                    
+                    <!-- Citations List -->
+                    {% if citations %}
+                        {% for citation in citations %}
+                        <div class="citation-item">
+                            <h6>
+                                {% if citation.citing_paper.doi %}
+                                    <a href="https://doi.org/{{ citation.citing_paper.doi }}" target="_blank" class="text-decoration-none">
+                                        {{ citation.citing_paper.title }}
+                                        <i class="fas fa-external-link-alt fa-sm text-muted"></i>
+                                    </a>
+                                {% else %}
+                                    {{ citation.citing_paper.title }}
+                                {% endif %}
+                            </h6>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <small class="text-muted">
+                                        <i class="fas fa-user"></i>
+                                        {{ citation.citing_paper.formatted_authors }}
+                                    </small>
+                                </div>
+                                <div class="col-md-6">
+                                    <small class="text-muted">
+                                        <i class="fas fa-journal-whills"></i>
+                                        {{ citation.citing_paper.journal|default:"Unknown Journal" }}
+                                        {% if citation.citing_paper.is_open_access %}
+                                            <span class="badge bg-success ms-1">Open Access</span>
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            <div class="row mt-1">
+                                <div class="col-md-6">
+                                    <small class="text-muted">
+                                        <i class="fas fa-calendar"></i>
+                                        Published: {{ citation.citing_paper.publication_date|date:"M Y"|default:"Unknown" }}
+                                        {% if citation.citing_paper.cited_by_count > 0 %}
+                                            <br><i class="fas fa-quote-right"></i>
+                                            {{ citation.citing_paper.cited_by_count }} citation{{ citation.citing_paper.cited_by_count|pluralize }}
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                <div class="col-md-6">
+                                    {% if citation.days_after_retraction is not None %}
+                                        {% if citation.days_after_retraction > 0 %}
+                                            <small class="text-danger">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                                <strong>{{ citation.days_after_retraction }} days after retraction</strong>
+                                            </small>
+                                        {% elif citation.days_after_retraction < 0 %}
+                                            <small class="text-success">
+                                                <i class="fas fa-check-circle"></i>
+                                                {{ citation.days_after_retraction|floatformat:0|cut:"-" }} days before retraction
+                                            </small>
+                                        {% else %}
+                                            <small class="text-warning">
+                                                <i class="fas fa-clock"></i>
+                                                Same day as retraction
+                                            </small>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        
+                        <!-- Pagination for Citations -->
+                        {% if citations.has_other_pages %}
+                        <nav aria-label="Citations pagination" class="mt-3">
+                            <ul class="pagination pagination-sm justify-content-center">
+                                {% if citations.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ citations.previous_page_number }}">Previous</a>
+                                    </li>
+                                {% endif %}
+                                
+                                <li class="page-item active">
+                                    <span class="page-link">{{ citations.number }} of {{ citations.paginator.num_pages }}</span>
+                                </li>
+                                
+                                {% if citations.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ citations.next_page_number }}">Next</a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            No citations found for this paper.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Quick Stats -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-line"></i> Quick Stats</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Total Citations:</span>
+                        <strong>{{ paper.citation_count }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Years Since Retraction:</span>
+                        <strong>{{ paper.years_since_retraction|default:"Unknown" }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Open Access:</span>
+                        <strong>{{ paper.paywalled|yesno:"No,Yes,Unknown" }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Last Checked:</span>
+                        <strong>{{ paper.last_citation_check|date:"M d, Y"|default:"Never" }}</strong>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Related Papers -->
+            {% if related_papers %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-link"></i> Related Papers</h5>
+                </div>
+                <div class="card-body">
+                    {% for related in related_papers %}
+                    <div class="mb-3">
+                        <h6>
+                            <a href="{{ related.get_absolute_url }}" class="text-decoration-none">
+                                {{ related.title|truncatechars:60 }}
+                            </a>
+                        </h6>
+                        <small class="text-muted">
+                            {{ related.journal|default:"Unknown Journal" }} • 
+                            {{ related.citation_count }} citations
+                        </small>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-tools"></i> Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'papers:search' %}?journal={{ paper.journal|urlencode }}" 
+                           class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-search"></i> More from this journal
+                        </a>
+                        <a href="{% url 'papers:search' %}?subject={{ paper.subject|urlencode }}" 
+                           class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-tag"></i> Similar subjects
+                        </a>
+                        {% if paper.original_paper_doi %}
+                        <a href="https://doi.org/{{ paper.original_paper_doi }}" 
+                           target="_blank" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-external-link-alt"></i> View Original Paper
+                        </a>
+                        {% endif %}
+                        {% if paper.retraction_doi %}
+                        <a href="https://doi.org/{{ paper.retraction_doi }}" 
+                           target="_blank" class="btn btn-outline-warning btn-sm">
+                            <i class="fas fa-ban"></i> View Retraction Notice
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function loadCitationChart() {
+    $('#citationChart').show();
+    
+    // Get citation data via AJAX
+    $.get('{% url "papers:paper_citations_json" record_id=paper.record_id %}')
+        .done(function(data) {
+            const ctx = document.getElementById('citationChartCanvas').getContext('2d');
+            
+            // Prepare data for chart
+            const years = Object.keys(data.citations_by_year).sort();
+            const counts = years.map(year => data.citations_by_year[year]);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: years,
+                    datasets: [{
+                        label: 'Citations by Year',
+                        data: counts,
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        })
+        .fail(function() {
+            $('#citationChart').html('<div class="alert alert-danger">Error loading chart data</div>');
+        });
+}
+</script>
+{% endblock %} 

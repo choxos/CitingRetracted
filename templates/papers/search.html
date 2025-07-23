@@ -1,0 +1,272 @@
+{% extends 'base.html' %}
+
+{% block title %}Search - Citing Retracted Papers Database{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1><i class="fas fa-search"></i> Search Retracted Papers</h1>
+            <p class="text-muted">Find retracted papers and see how many times they've been cited.</p>
+        </div>
+    </div>
+    
+    <!-- Search Form -->
+    <div class="search-filters">
+        <form method="get" action="{% url 'papers:search' %}">
+            <div class="row">
+                <div class="col-lg-6 mb-3">
+                    <label for="q" class="form-label">Search Term</label>
+                    <input type="text" 
+                           id="q"
+                           name="q" 
+                           class="form-control" 
+                           value="{{ search_query }}"
+                           placeholder="Title, author, DOI, or keywords...">
+                </div>
+                <div class="col-lg-3 mb-3">
+                    <label for="journal" class="form-label">Journal</label>
+                    <input type="text" 
+                           id="journal"
+                           name="journal" 
+                           class="form-control" 
+                           value="{{ journal_filter }}"
+                           placeholder="Journal name">
+                </div>
+                <div class="col-lg-3 mb-3">
+                    <label for="subject" class="form-label">Subject</label>
+                    <input type="text" 
+                           id="subject"
+                           name="subject" 
+                           class="form-control" 
+                           value="{{ subject_filter }}"
+                           placeholder="Research area">
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-lg-6 mb-3">
+                    <label for="reason" class="form-label">Retraction Reason</label>
+                    <input type="text" 
+                           id="reason"
+                           name="reason" 
+                           class="form-control" 
+                           value="{{ reason_filter }}"
+                           placeholder="Data fabrication, plagiarism, etc.">
+                </div>
+                <div class="col-lg-6 mb-3">
+                    <div class="row">
+                        <div class="col-6">
+                            <label for="year_from" class="form-label">Retracted From</label>
+                            <input type="number" 
+                                   id="year_from"
+                                   name="year_from" 
+                                   class="form-control" 
+                                   value="{{ year_from }}"
+                                   placeholder="2000"
+                                   min="1900"
+                                   max="2030">
+                        </div>
+                        <div class="col-6">
+                            <label for="year_to" class="form-label">Retracted To</label>
+                            <input type="number" 
+                                   id="year_to"
+                                   name="year_to" 
+                                   class="form-control" 
+                                   value="{{ year_to }}"
+                                   placeholder="2024"
+                                   min="1900"
+                                   max="2030">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-lg-12 mb-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                    <a href="{% url 'papers:search' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times"></i> Clear
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Search Results -->
+    <div class="row">
+        <div class="col-12">
+            {% if papers %}
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3>Search Results</h3>
+                    <span class="text-muted">
+                        {{ papers|length }} of {{ paginator.count }} papers
+                    </span>
+                </div>
+                
+                {% for paper in papers %}
+                <div class="card paper-card">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <h5 class="card-title">
+                                    <a href="{{ paper.get_absolute_url }}" class="text-decoration-none">
+                                        {{ paper.title }}
+                                    </a>
+                                </h5>
+                                
+                                <div class="mb-2">
+                                    <span class="text-muted">
+                                        <i class="fas fa-user"></i>
+                                        {{ paper.author|default:"Unknown Author" }}
+                                    </span>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <span class="text-muted">
+                                        <i class="fas fa-journal-whills"></i>
+                                        {{ paper.journal|default:"Unknown Journal" }}
+                                    </span>
+                                    {% if paper.publisher %}
+                                    <span class="text-muted ms-2">
+                                        ({{ paper.publisher }})
+                                    </span>
+                                    {% endif %}
+                                    {% if paper.article_type %}
+                                    <span class="badge bg-info ms-2">{{ paper.article_type }}</span>
+                                    {% endif %}
+                                </div>
+                                
+                                {% if paper.reason %}
+                                <p class="card-text">
+                                    <strong>Retraction Reason:</strong>
+                                    {{ paper.reason|truncatechars:200 }}
+                                </p>
+                                {% endif %}
+                                
+                                {% if paper.formatted_subjects %}
+                                <p class="card-text">
+                                    <small class="text-muted">
+                                        <i class="fas fa-tag"></i>
+                                        {{ paper.formatted_subjects }}
+                                    </small>
+                                </p>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-lg-4 text-end">
+                                <div class="mb-2">
+                                    <span class="retraction-badge">
+                                        Retracted
+                                    </span>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <span class="citation-count">
+                                        {{ paper.citation_count }} citations
+                                    </span>
+                                    {% if paper.is_open_access %}
+                                        <span class="badge bg-success ms-2">
+                                            <i class="fas fa-unlock"></i> Open Access
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="text-muted">
+                                    <small>
+                                        <i class="fas fa-calendar"></i>
+                                        Retracted: {{ paper.retraction_date|date:"M d, Y"|default:"Unknown" }}
+                                        {% if paper.formatted_reasons %}
+                                            <br><i class="fas fa-exclamation-circle"></i>
+                                            <strong>{{ paper.formatted_reasons }}</strong>
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                
+                                {% if paper.original_paper_date %}
+                                <div class="text-muted">
+                                    <small>
+                                        <i class="fas fa-calendar-alt"></i>
+                                        Published: {{ paper.original_paper_date|date:"M d, Y" }}
+                                    </small>
+                                </div>
+                                {% endif %}
+                                
+                                {% if paper.years_since_retraction %}
+                                <div class="text-muted mt-2">
+                                    <small>
+                                        {{ paper.years_since_retraction }} years since retraction
+                                    </small>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                
+                <!-- Pagination -->
+                {% if is_paginated %}
+                <nav aria-label="Search results pagination" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?q={{ search_query }}&journal={{ journal_filter }}&reason={{ reason_filter }}&year_from={{ year_from }}&year_to={{ year_to }}&subject={{ subject_filter }}&page=1">First</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?q={{ search_query }}&journal={{ journal_filter }}&reason={{ reason_filter }}&year_from={{ year_from }}&year_to={{ year_to }}&subject={{ subject_filter }}&page={{ page_obj.previous_page_number }}">Previous</a>
+                            </li>
+                        {% endif %}
+                        
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                        </li>
+                        
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?q={{ search_query }}&journal={{ journal_filter }}&reason={{ reason_filter }}&year_from={{ year_from }}&year_to={{ year_to }}&subject={{ subject_filter }}&page={{ page_obj.next_page_number }}">Next</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?q={{ search_query }}&journal={{ journal_filter }}&reason={{ reason_filter }}&year_from={{ year_from }}&year_to={{ year_to }}&subject={{ subject_filter }}&page={{ page_obj.paginator.num_pages }}">Last</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                
+            {% elif search_query %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    No papers found matching your search criteria.
+                    <a href="{% url 'papers:search' %}" class="alert-link">Try a different search</a>.
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    Enter search terms above to find retracted papers.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Search autocomplete (if you want to implement it)
+$(document).ready(function() {
+    $('#q').on('input', function() {
+        const query = $(this).val();
+        if (query.length >= 3) {
+            $.get('{% url "papers:search_autocomplete" %}', {q: query})
+                .done(function(data) {
+                    // Handle autocomplete suggestions
+                    console.log(data.suggestions);
+                });
+        }
+    });
+});
+</script>
+{% endblock %} 
