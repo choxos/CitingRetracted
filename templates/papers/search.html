@@ -139,10 +139,10 @@
                                     {% endif %}
                                 </div>
                                 
-                                {% if paper.reason %}
+                                {% if paper.formatted_reasons %}
                                 <p class="card-text">
                                     <strong>Retraction Reason:</strong>
-                                    {{ paper.reason|truncatechars:200 }}
+                                    <span class="text-danger">{{ paper.formatted_reasons|truncatechars:300 }}</span>
                                 </p>
                                 {% endif %}
                                 
