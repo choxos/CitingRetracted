@@ -224,13 +224,13 @@ class SearchView(ListView):
             'subject', flat=True
         ).distinct().exclude(
             Q(subject__isnull=True) | Q(subject__exact='')
-        ).order_by('subject')[:100]
+        ).order_by('subject')  # Show all subjects, no limit
         
         context['reasons'] = RetractedPaper.objects.values_list(
             'reason', flat=True
         ).distinct().exclude(
             Q(reason__isnull=True) | Q(reason__exact='')
-        ).order_by('reason')[:100]
+        ).order_by('reason')  # Show all reasons, no limit
         
         # Get individual countries from semicolon-separated strings
         country_strings = RetractedPaper.objects.values_list(
@@ -249,7 +249,7 @@ class SearchView(ListView):
         # Remove invalid entries and sort
         invalid_entries = {'', 'Unknown', 'unknown', 'N/A', 'n/a', 'None', 'null'}
         clean_countries = sorted(list(all_countries - invalid_entries))
-        context['countries'] = clean_countries[:100]
+        context['countries'] = clean_countries  # Show all countries, no limit
         
         # Institution is now a text input, so no need for dropdown options
         
@@ -257,7 +257,7 @@ class SearchView(ListView):
             'publisher', flat=True
         ).distinct().exclude(
             Q(publisher__isnull=True) | Q(publisher__exact='')
-        ).order_by('publisher')[:100]
+        ).order_by('publisher')  # Show all publishers, no limit
         
         return context
 
