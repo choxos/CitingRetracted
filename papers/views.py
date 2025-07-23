@@ -779,7 +779,7 @@ class AnalyticsView(ListView):
                 'access_status': paper.access_status,
                 'reason': paper.reason[:100] + '...' if paper.reason and len(paper.reason) > 100 else paper.reason,
                 'original_paper_url': paper.original_paper_url,
-                'pubmed_url': paper.original_paper_pubmed_url
+                'pubmed_url': paper.pubmed_url
             })
         
         # 12. Network analysis data (simplified - journals and subject connections)

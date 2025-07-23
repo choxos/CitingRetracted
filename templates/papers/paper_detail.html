@@ -152,7 +152,7 @@
                         <div class="col-md-3"><strong>PubMed ID:</strong></div>
                         <div class="col-md-9">
                             {% if paper.original_paper_pubmed_id and paper.original_paper_pubmed_id != '0' %}
-                                <a href="{{ paper.original_paper_pubmed_url }}" target="_blank" class="text-decoration-none">
+                                <a href="{{ paper.pubmed_url }}" target="_blank" class="text-decoration-none">
                                     {{ paper.original_paper_pubmed_id }}
                                     <i class="fas fa-external-link-alt ms-1"></i>
                                 </a>
