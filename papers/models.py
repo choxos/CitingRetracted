@@ -238,8 +238,8 @@ class RetractedPaper(models.Model):
     @property
     def original_paper_url(self):
         """Generate URL to original paper if DOI is available."""
-        if self.doi:
-            return f"https://doi.org/{self.doi}"
+        if self.original_paper_doi:
+            return f"https://doi.org/{self.original_paper_doi}"
         return None
     
     @property
