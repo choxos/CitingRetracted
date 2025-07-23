@@ -218,18 +218,6 @@ class RetractedPaper(models.Model):
         return ''
     
     @property
-    def access_status(self):
-        """Return human-readable access status."""
-        if self.is_open_access:
-            return "Open Access"
-        elif self.is_paywalled:
-            return "Paywalled"
-        else:
-            return "Unknown"
-    
-
-    
-    @property
     def is_recent_retraction(self):
         if self.retraction_date:
             return (timezone.now().date() - self.retraction_date).days <= 365
@@ -285,16 +273,6 @@ class RetractedPaper(models.Model):
                     subject = subject.split(')', 1)[1].strip()
                 return subject
         return ''
-    
-    @property
-    def access_status(self):
-        """Return human-readable access status."""
-        if self.is_open_access:
-            return "Open Access"
-        elif self.is_paywalled:
-            return "Paywalled"
-        else:
-            return "Unknown"
 
 
 class CitingPaper(models.Model):

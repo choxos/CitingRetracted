@@ -32,6 +32,7 @@ class HomeView(ListView):
         total_retracted = RetractedPaper.objects.count()
         context['total_retracted'] = total_retracted
         context['total_citations'] = Citation.objects.count()
+        context['current_year'] = timezone.now().year
         context['recent_retractions'] = RetractedPaper.objects.filter(
             retraction_date__gte=timezone.now().date() - timedelta(days=365)
         ).count()
