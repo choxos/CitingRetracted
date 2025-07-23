@@ -84,21 +84,6 @@
                 </a>
             </div>
         </div>
-        
-        <!-- Second row for Open Access stats -->
-        <div class="row justify-content-center">
-            <div class="col-md-4 mb-4">
-                <a href="{% url 'papers:analytics' %}#patterns" class="text-decoration-none">
-                    <div class="card stat-card h-100 text-center clickable-card">
-                        <div class="card-body">
-                            <i class="fas fa-unlock fa-3x text-success mb-3"></i>
-                            <h3 class="card-title">{{ open_access_count|default:0 }}</h3>
-                            <p class="card-text">Open Access Papers<br><small>({{ open_access_percentage|default:0 }}% of total)</small></p>
-                        </div>
-                    </div>
-                </a>
-            </div>
-        </div>
     </div>
 </section>
 
@@ -191,27 +176,128 @@
             
             <!-- Sidebar -->
             <div class="col-lg-4">
-                <div class="card">
+                <!-- Top Reasons -->
+                <div class="card mb-4">
                     <div class="card-header">
-                        <h5><i class="fas fa-chart-pie"></i> Top Affected Journals</h5>
+                        <h6><i class="fas fa-exclamation-triangle text-danger"></i> Top Retraction Reasons</h6>
                     </div>
-                    <div class="card-body">
-                        {% if top_journals %}
-                            {% for journal_data in top_journals %}
-                            <a href="{% url 'papers:search' %}?journal={{ journal_data.journal|urlencode }}" class="text-decoration-none">
-                                <div class="d-flex justify-content-between mb-2 p-2 rounded hover-bg">
-                                    <span class="text-truncate me-2 text-dark">{{ journal_data.journal|truncatechars:30 }}</span>
-                                    <span class="badge bg-secondary">{{ journal_data.count }}</span>
+                    <div class="card-body p-2">
+                        {% if top_reasons %}
+                            {% for reason_data in top_reasons %}
+                            <a href="{% url 'papers:search' %}?reason={{ reason_data.reason|urlencode }}" class="text-decoration-none">
+                                <div class="d-flex justify-content-between mb-1 p-2 rounded hover-bg">
+                                    <span class="text-truncate me-2 text-dark small">{{ reason_data.reason|truncatechars:35 }}</span>
+                                    <span class="badge bg-danger small">{{ reason_data.count }}</span>
                                 </div>
                             </a>
                             {% endfor %}
-                            <div class="text-center mt-3">
-                                <a href="{% url 'papers:analytics' %}#patterns" class="btn btn-sm btn-outline-primary">
-                                    <i class="fas fa-chart-bar"></i> View Journal Analytics
-                                </a>
-                            </div>
                         {% else %}
-                            <p class="text-muted">No data available</p>
+                            <p class="text-muted small">No data available</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Top Publishers -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6><i class="fas fa-building text-primary"></i> Top Publishers</h6>
+                    </div>
+                    <div class="card-body p-2">
+                        {% if top_publishers %}
+                            {% for publisher_data in top_publishers %}
+                            <a href="{% url 'papers:search' %}?publisher={{ publisher_data.publisher|urlencode }}" class="text-decoration-none">
+                                <div class="d-flex justify-content-between mb-1 p-2 rounded hover-bg">
+                                    <span class="text-truncate me-2 text-dark small">{{ publisher_data.publisher|truncatechars:35 }}</span>
+                                    <span class="badge bg-primary small">{{ publisher_data.count }}</span>
+                                </div>
+                            </a>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted small">No data available</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Top Countries -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6><i class="fas fa-globe text-success"></i> Top Countries</h6>
+                    </div>
+                    <div class="card-body p-2">
+                        {% if top_countries %}
+                            {% for country_data in top_countries %}
+                            <a href="{% url 'papers:search' %}?country={{ country_data.country|urlencode }}" class="text-decoration-none">
+                                <div class="d-flex justify-content-between mb-1 p-2 rounded hover-bg">
+                                    <span class="text-truncate me-2 text-dark small">{{ country_data.country|truncatechars:35 }}</span>
+                                    <span class="badge bg-success small">{{ country_data.count }}</span>
+                                </div>
+                            </a>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted small">No data available</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Top Authors -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6><i class="fas fa-user text-secondary"></i> Top Authors</h6>
+                    </div>
+                    <div class="card-body p-2">
+                        {% if top_authors %}
+                            {% for author_data in top_authors %}
+                            <a href="{% url 'papers:search' %}?author={{ author_data.author|urlencode }}" class="text-decoration-none">
+                                <div class="d-flex justify-content-between mb-1 p-2 rounded hover-bg">
+                                    <span class="text-truncate me-2 text-dark small">{{ author_data.author|truncatechars:35 }}</span>
+                                    <span class="badge bg-secondary small">{{ author_data.count }}</span>
+                                </div>
+                            </a>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted small">No data available</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Top Institutions -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6><i class="fas fa-university text-warning"></i> Top Institutions</h6>
+                    </div>
+                    <div class="card-body p-2">
+                        {% if top_institutions %}
+                            {% for institution_data in top_institutions %}
+                            <a href="{% url 'papers:search' %}?institution={{ institution_data.institution|urlencode }}" class="text-decoration-none">
+                                <div class="d-flex justify-content-between mb-1 p-2 rounded hover-bg">
+                                    <span class="text-truncate me-2 text-dark small">{{ institution_data.institution|truncatechars:35 }}</span>
+                                    <span class="badge bg-warning small">{{ institution_data.count }}</span>
+                                </div>
+                            </a>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted small">No data available</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Top Subjects -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6><i class="fas fa-tags text-info"></i> Top Subjects</h6>
+                    </div>
+                    <div class="card-body p-2">
+                        {% if top_subjects %}
+                            {% for subject_data in top_subjects %}
+                            <a href="{% url 'papers:search' %}?subject={{ subject_data.subject|urlencode }}" class="text-decoration-none">
+                                <div class="d-flex justify-content-between mb-1 p-2 rounded hover-bg">
+                                    <span class="text-truncate me-2 text-dark small">{{ subject_data.subject|truncatechars:35 }}</span>
+                                    <span class="badge bg-info small">{{ subject_data.count }}</span>
+                                </div>
+                            </a>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted small">No data available</p>
                         {% endif %}
                     </div>
                 </div>

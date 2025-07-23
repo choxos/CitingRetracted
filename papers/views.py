@@ -41,10 +41,44 @@ class HomeView(ListView):
             days_after_retraction__gt=0
         ).count()
         
-        # Open Access statistics
-        open_access_count = RetractedPaper.objects.filter(is_open_access=True).count()
-        context['open_access_count'] = open_access_count
-        context['open_access_percentage'] = round((open_access_count / max(total_retracted, 1)) * 100, 1)
+        # Sidebar statistics
+        # Top reasons  
+        context['top_reasons'] = RetractedPaper.objects.exclude(
+            Q(reason__isnull=True) | Q(reason__exact='')
+        ).values('reason').annotate(
+            count=Count('id')
+        ).order_by('-count')[:5]
+        
+        # Top publishers
+        context['top_publishers'] = RetractedPaper.objects.exclude(
+            Q(publisher__isnull=True) | Q(publisher__exact='')
+        ).values('publisher').annotate(
+            count=Count('id')
+        ).order_by('-count')[:5]
+        
+        # Top countries
+        context['top_countries'] = RetractedPaper.objects.exclude(
+            Q(country__isnull=True) | Q(country__exact='')
+        ).values('country').annotate(
+            count=Count('id')
+        ).order_by('-count')[:5]
+        
+        # Top institutions
+        context['top_institutions'] = RetractedPaper.objects.exclude(
+            Q(institution__isnull=True) | Q(institution__exact='')
+        ).values('institution').annotate(
+            count=Count('id')
+        ).order_by('-count')[:5]
+        
+        # Top authors (extract from JSON authors field)
+        context['top_authors'] = self._get_top_authors()
+        
+        # Top subjects
+        context['top_subjects'] = RetractedPaper.objects.exclude(
+            Q(subject__isnull=True) | Q(subject__exact='')
+        ).values('subject').annotate(
+            count=Count('id')
+        ).order_by('-count')[:5]
         
         # Get top journals with retractions  
         context['top_journals'] = RetractedPaper.objects.values('journal').annotate(
@@ -52,6 +86,29 @@ class HomeView(ListView):
         ).exclude(journal__isnull=True).exclude(journal__exact='').order_by('-count')[:5]
         
         return context
+    
+    def _get_top_authors(self):
+        """Extract and count top authors from semicolon-separated authors field"""
+        from collections import Counter
+        
+        author_counts = Counter()
+        
+        # Get papers with authors data
+        papers_with_authors = RetractedPaper.objects.exclude(
+            Q(author__isnull=True) | Q(author__exact='')
+        ).values_list('author', flat=True)
+        
+        for authors_string in papers_with_authors:
+            if authors_string:
+                # Split by semicolon and clean up each author name
+                authors = [author.strip() for author in authors_string.split(';')]
+                for author in authors:
+                    if author and len(author) > 2:  # Filter out very short names
+                        author_counts[author] += 1
+        
+        # Return top 5 authors as list of dicts for template compatibility
+        return [{'author': author, 'count': count} 
+                for author, count in author_counts.most_common(5)]
 
 
 class SearchView(ListView):
