@@ -171,6 +171,41 @@
         <div class="col-12">
             <h1><i class="fas fa-chart-bar"></i> Advanced Analytics Dashboard</h1>
             <p class="text-muted">Interactive visualization of retracted papers and citation patterns with advanced filtering and drill-down capabilities.</p>
+            
+            <!-- Real-time Update Controls -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="autoRefreshToggle">
+                            <label class="form-check-label" for="autoRefreshToggle">
+                                <i class="fas fa-sync-alt"></i> Auto-refresh
+                            </label>
+                        </div>
+                        <select class="form-select form-select-sm" id="refreshInterval" style="width: auto;" disabled>
+                            <option value="30000">30 seconds</option>
+                            <option value="60000" selected>1 minute</option>
+                            <option value="300000">5 minutes</option>
+                            <option value="600000">10 minutes</option>
+                        </select>
+                        <button class="btn btn-sm btn-outline-primary" id="manualRefresh">
+                            <i class="fas fa-refresh"></i> Refresh Now
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-6 text-end">
+                    <div class="d-flex align-items-center justify-content-end gap-2">
+                        <small class="text-muted">Last updated:</small>
+                        <span id="lastUpdated" class="badge bg-secondary">{{ "now"|date:"M d, Y H:i" }}</span>
+                        <div id="updateStatus" class="badge bg-success" style="display: none;">
+                            <i class="fas fa-check"></i> Updated
+                        </div>
+                        <div id="updateLoading" class="spinner-border spinner-border-sm text-primary" style="display: none;" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -1857,6 +1892,87 @@ window.addEventListener('resize', function() {
     Object.values(chartInstances).forEach(chart => {
         if (chart) chart.resize();
     });
+});
+
+// Real-time update functionality
+let autoRefreshTimer = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-refresh toggle
+    const autoRefreshToggle = document.getElementById('autoRefreshToggle');
+    const refreshInterval = document.getElementById('refreshInterval');
+    const manualRefresh = document.getElementById('manualRefresh');
+    const lastUpdated = document.getElementById('lastUpdated');
+    const updateStatus = document.getElementById('updateStatus');
+    const updateLoading = document.getElementById('updateLoading');
+    
+    // Enable/disable interval selector based on toggle
+    autoRefreshToggle.addEventListener('change', function() {
+        refreshInterval.disabled = !this.checked;
+        
+        if (this.checked) {
+            startAutoRefresh();
+        } else {
+            stopAutoRefresh();
+        }
+    });
+    
+    // Update interval when changed
+    refreshInterval.addEventListener('change', function() {
+        if (autoRefreshToggle.checked) {
+            stopAutoRefresh();
+            startAutoRefresh();
+        }
+    });
+    
+    // Manual refresh button
+    manualRefresh.addEventListener('click', function() {
+        refreshAnalytics();
+    });
+    
+    function startAutoRefresh() {
+        const interval = parseInt(refreshInterval.value);
+        autoRefreshTimer = setInterval(refreshAnalytics, interval);
+        console.log('Auto-refresh started:', interval + 'ms');
+    }
+    
+    function stopAutoRefresh() {
+        if (autoRefreshTimer) {
+            clearInterval(autoRefreshTimer);
+            autoRefreshTimer = null;
+            console.log('Auto-refresh stopped');
+        }
+    }
+    
+    function refreshAnalytics() {
+        // Show loading indicator
+        updateLoading.style.display = 'inline-block';
+        updateStatus.style.display = 'none';
+        
+        // Reload the page to get fresh data
+        setTimeout(function() {
+            window.location.reload();
+        }, 500);
+    }
+    
+    // Show temporary success indicator when page loads
+    function showUpdateSuccess() {
+        updateLoading.style.display = 'none';
+        updateStatus.style.display = 'inline-block';
+        lastUpdated.textContent = new Date().toLocaleString();
+        
+        setTimeout(function() {
+            updateStatus.style.display = 'none';
+        }, 3000);
+    }
+    
+    // Check if page was refreshed automatically
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('auto_refreshed') === 'true') {
+        showUpdateSuccess();
+        // Remove the parameter from URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
 });
 </script>
 {% endblock %} 

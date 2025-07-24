@@ -11,6 +11,8 @@ import json
 from datetime import datetime, timedelta
 from django.utils import timezone
 from django.views.generic import View
+from django.views.decorators.cache import cache_page
+import calendar
 
 
 class HomeView(ListView):
@@ -1321,7 +1323,6 @@ class AnalyticsView(View):
         }
         
         # Citation heatmap data (by month and days after retraction)
-        import calendar
         citation_heatmap = []
         for month in range(1, 13):
             month_data = []
@@ -1767,3 +1768,39 @@ def export_data(request):
         })
     
     return JsonResponse({'papers': data})
+
+
+@cache_page(60)  # Cache for 1 minute
+def analytics_data_ajax(request):
+    """AJAX endpoint for real-time analytics data updates"""
+    
+    # Get basic stats
+    stats = RetractedPaper.objects.aggregate(
+        total_papers=Count('id'),
+        total_citations=Count('citations'),
+        post_retraction_citations=Count('citations', filter=Q(citations__days_after_retraction__gt=0)),
+        recent_retractions=Count('id', filter=Q(retraction_date__gte=timezone.now() - timedelta(days=30)))
+    )
+    
+    # Get recent activity (last 24 hours)
+    recent_imports = DataImportLog.objects.filter(
+        start_time__gte=timezone.now() - timedelta(hours=24)
+    ).aggregate(
+        total_imports=Count('id'),
+        records_imported=Sum('records_created')
+    )
+    
+    # Quick citation patterns
+    citation_patterns = Citation.objects.aggregate(
+        post_retraction=Count('id', filter=Q(days_after_retraction__gt=0)),
+        pre_retraction=Count('id', filter=Q(days_after_retraction__lt=0)),
+        same_day=Count('id', filter=Q(days_after_retraction=0))
+    )
+    
+    return JsonResponse({
+        'stats': stats,
+        'recent_activity': recent_imports,
+        'citation_patterns': citation_patterns,
+        'last_updated': timezone.now().isoformat(),
+        'status': 'success'
+    })

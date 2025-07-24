@@ -15,5 +15,6 @@ urlpatterns = [
     path('api/paper/<str:record_id>/citations/', views.paper_citations_json, name='paper_citations_json'),
     path('api/post-retraction-analytics/', views.PostRetractionAnalyticsAPIView.as_view(), name='post_retraction_analytics_api'),
     path('api/analytics-data/', views.AnalyticsDataAPIView.as_view(), name='analytics_data_api'),
+    path('api/analytics-realtime/', views.analytics_data_ajax, name='analytics_realtime_api'),
     path('api/export/', views.export_data, name='export_data'),
 ] 
