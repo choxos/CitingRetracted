@@ -126,12 +126,17 @@ class HybridCitationFetcher:
         2. Fallback: OpenAlex + Semantic Scholar (rate-limited)
         """
         doi = retracted_paper.original_paper_doi
-        if not doi:
-            logger.warning(f"No DOI for paper {retracted_paper.id}")
+        if not doi or doi.lower() in ['unavailable', 'none', 'null', '']:
+            logger.warning(f"No valid DOI for paper {retracted_paper.id}: '{doi}'")
             return 0, 0
         
         # Clean DOI
         clean_doi = doi.replace('https://doi.org/', '').replace('http://dx.doi.org/', '')
+        
+        # Validate DOI format (basic check)
+        if not clean_doi.startswith('10.'):
+            logger.warning(f"Invalid DOI format for paper {retracted_paper.id}: '{clean_doi}'")
+            return 0, 0
         
         # Step 1: Try OpenCitations first (primary source)
         citations_found = 0
@@ -161,13 +166,14 @@ class HybridCitationFetcher:
                         delta = citation_date - retracted_paper.retraction_date
                         days_after_retraction = delta.days
                     
-                    # Create or update citing paper
+                    # Create or update citing paper - using correct field names
                     citing_paper, created = CitingPaper.objects.get_or_create(
                         doi=citing_doi,
                         defaults={
+                            'openalex_id': f'opencitations_{citing_doi}',  # Generate a unique ID
                             'title': f'Paper citing {retracted_paper.title[:50]}...',
                             'publication_date': citation_date,
-                            'source': 'opencitations'
+                            'source_api': 'opencitations'  # Fixed: was 'source'
                         }
                     )
                     
@@ -178,8 +184,7 @@ class HybridCitationFetcher:
                         defaults={
                             'citation_date': citation_date,
                             'days_after_retraction': days_after_retraction,
-                            'source': 'opencitations',
-                            'timespan_original': timespan
+                            'source_api': 'opencitations'  # Fixed: was 'source'
                         }
                     )
                     
@@ -368,10 +373,17 @@ class Command(BaseCommand):
     def _fetch_opencitations_only(self, fetcher, paper):
         """Fetch citations using only OpenCitations"""
         doi = paper.original_paper_doi
-        if not doi:
+        if not doi or doi.lower() in ['unavailable', 'none', 'null', '']:
+            logger.warning(f"No valid DOI for paper {paper.id}: '{doi}'")
             return 0, 0
 
         clean_doi = doi.replace('https://doi.org/', '').replace('http://dx.doi.org/', '')
+        
+        # Validate DOI format
+        if not clean_doi.startswith('10.'):
+            logger.warning(f"Invalid DOI format for paper {paper.id}: '{clean_doi}'")
+            return 0, 0
+            
         citations = fetcher.get_citations(clean_doi)
         
         citations_found = 0
@@ -397,13 +409,14 @@ class Command(BaseCommand):
                     delta = citation_date - paper.retraction_date
                     days_after_retraction = delta.days
 
-                # Create citing paper
+                # Create citing paper - using correct field names
                 citing_paper, created = CitingPaper.objects.get_or_create(
                     doi=citing_doi,
                     defaults={
+                        'openalex_id': f'opencitations_{citing_doi}',  # Generate unique ID
                         'title': f'Paper citing {paper.title[:50]}...',
                         'publication_date': citation_date,
-                        'source': 'opencitations'
+                        'source_api': 'opencitations'  # Fixed: was 'source'
                     }
                 )
 
@@ -414,7 +427,7 @@ class Command(BaseCommand):
                     defaults={
                         'citation_date': citation_date,
                         'days_after_retraction': days_after_retraction,
-                        'source': 'opencitations'
+                        'source_api': 'opencitations'
                     }
                 )
 
