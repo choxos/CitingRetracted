@@ -257,8 +257,8 @@ class Command(BaseCommand):
         parser.add_argument(
             '--limit',
             type=int,
-            default=100,
-            help='Limit number of papers to process (default: 100)'
+            default=None,  # Changed from 100 to None (no limit by default)
+            help='Limit number of papers to process (default: all papers)'
         )
         parser.add_argument(
             '--source',
@@ -274,7 +274,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         paper_id = options.get('paper_id')
-        limit = options.get('limit', 100)
+        limit = options.get('limit')  # Can be None for no limit
         source = options.get('source', 'hybrid')
         oc_token = options.get('opencitations_token')
 
@@ -294,27 +294,51 @@ class Command(BaseCommand):
         total_citations_found = 0
         total_new_citations = 0
 
-        self.stdout.write(
-            self.style.SUCCESS(f'Starting citation fetch using {source} source...')
-        )
+        if limit:
+            self.stdout.write(
+                self.style.SUCCESS(f'Starting citation fetch using {source} source (limit: {limit})...')
+            )
+        else:
+            self.stdout.write(
+                self.style.SUCCESS(f'Starting citation fetch using {source} source (ALL papers)...')
+            )
 
         try:
             # Query papers
             if paper_id:
                 papers = RetractedPaper.objects.filter(id=paper_id)
+                papers_queryset = papers  # For count calculation
                 if not papers.exists():
                     self.stdout.write(
                         self.style.ERROR(f'No paper found with ID {paper_id}')
                     )
                     return
             else:
-                # Process papers with no citations first, then recently retracted
-                papers = RetractedPaper.objects.filter(
+                # Process papers with valid DOIs, ordered by retraction date
+                papers_queryset = RetractedPaper.objects.filter(
                     original_paper_doi__isnull=False,
                     original_paper_doi__gt=''
-                ).order_by('-retraction_date')[:limit]
+                ).exclude(
+                    original_paper_doi__iexact='unavailable'
+                ).exclude(
+                    original_paper_doi__iexact='none'
+                ).exclude(
+                    original_paper_doi__iexact='null'
+                ).order_by('-retraction_date')
+                
+                # Apply limit only if specified
+                if limit:
+                    papers = papers_queryset[:limit]
+                else:
+                    papers = papers_queryset
 
-            self.stdout.write(f'Processing {papers.count()} papers...')
+            total_available = papers_queryset.count()
+            processing_count = papers.count() if hasattr(papers, 'count') else len(papers)
+            
+            if limit and not paper_id:
+                self.stdout.write(f'Processing {processing_count} of {total_available} papers (limited to {limit})...')
+            else:
+                self.stdout.write(f'Processing ALL {processing_count} papers with valid DOIs...')
 
             for paper in papers:
                 try:
@@ -338,6 +362,19 @@ class Command(BaseCommand):
 
                         # Be polite to APIs
                         time.sleep(0.5)
+                        
+                        # Progress update every 50 papers
+                        if total_papers % 50 == 0:
+                            elapsed = timezone.now() - start_time
+                            avg_per_paper = total_citations_found / total_papers
+                            self.stdout.write(
+                                self.style.WARNING(
+                                    f'Progress: {total_papers} papers processed, '
+                                    f'{total_citations_found} citations found '
+                                    f'(avg: {avg_per_paper:.1f}/paper), '
+                                    f'elapsed: {elapsed}'
+                                )
+                            )
 
                 except Exception as e:
                     logger.error(f'Error processing paper {paper.id}: {e}')
