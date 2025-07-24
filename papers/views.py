@@ -1137,6 +1137,18 @@ class AnalyticsView(View):
         # Add missing chart data that JavaScript expects
         chart_data.update(self._get_missing_chart_data())
         
+        # Ensure all required data has fallback values
+        chart_data.setdefault('retraction_years', [])
+        chart_data.setdefault('retraction_comparison', [])
+        chart_data.setdefault('subject_donut_data', [])
+        chart_data.setdefault('citation_timing_distribution', [])
+        chart_data.setdefault('journal_bubble_data', [])
+        chart_data.setdefault('citation_heatmap', [])
+        chart_data.setdefault('sunburst_data', {'name': 'No Data', 'children': []})
+        chart_data.setdefault('network_data', {'nodes': [], 'links': []})
+        chart_data.setdefault('world_map_data', [])
+        chart_data.setdefault('country_analytics', [])
+        
         return chart_data
     
     def _get_missing_chart_data(self):
@@ -1144,64 +1156,67 @@ class AnalyticsView(View):
         missing_data = {}
         
         # Retraction comparison data (before vs after retraction by year)
+        from django.db.models.functions import TruncYear
         retraction_comparison = []
-        current_year = timezone.now().year
         
-        for year in range(current_year - 5, current_year + 1):  # Last 6 years
-            pre_retraction = Citation.objects.filter(
-                days_after_retraction__lt=0,
-                citing_paper__publication_year=year
-            ).count()
-            
-            post_retraction = Citation.objects.filter(
-                days_after_retraction__gt=0,
-                citing_paper__publication_year=year
-            ).count()
-            
+        retraction_years = RetractedPaper.objects.filter(
+            retraction_date__isnull=False
+        ).annotate(
+            year=TruncYear('retraction_date')
+        ).values('year').annotate(
+            retracted_count=Count('id'),
+            pre_retraction_citations=Count('citations', filter=Q(citations__days_after_retraction__lt=0)),
+            post_retraction_citations=Count('citations', filter=Q(citations__days_after_retraction__gt=0)),
+            same_day_citations=Count('citations', filter=Q(citations__days_after_retraction=0))
+        ).order_by('year')[:10]
+        
+        for item in retraction_years:
             retraction_comparison.append({
-                'year': year,
-                'pre_retraction': pre_retraction,
-                'post_retraction': post_retraction
+                'year': item['year'].year if item['year'] else 'Unknown',
+                'pre_retraction': item['pre_retraction_citations'],
+                'post_retraction': item['post_retraction_citations'],
+                'same_day': item['same_day_citations']
             })
         
         missing_data['retraction_comparison'] = retraction_comparison
         
-        # Subject donut data
-        subject_distribution = RetractedPaper.objects.exclude(
-            subject__isnull=True
-        ).exclude(subject__exact='').values('subject').annotate(
-            count=Count('id'),
-            post_retraction_citations=Count(
-                'citations', filter=Q(citations__days_after_retraction__gt=0)
-            ),
-            open_access_count=Count('id', filter=Q(is_open_access=True))
-        ).order_by('-count')[:15]
+        # Subject donut data for distribution chart
+        subjects = RetractedPaper.objects.values('subject').annotate(
+            count=Count('id')
+        ).filter(
+            subject__isnull=False
+        ).exclude(
+            subject__exact=''
+        ).order_by('-count')[:8]
         
         missing_data['subject_donut_data'] = [
             {
-                'subject': item['subject'],
-                'count': item['count'],
-                'post_retraction_citations': item['post_retraction_citations'],
-                'open_access_count': item['open_access_count'],
-                'open_access_rate': (item['open_access_count'] / max(item['count'], 1)) * 100
+                'label': item['subject'][:30] + '...' if len(item['subject']) > 30 else item['subject'],
+                'value': item['count'],
+                'full_subject': item['subject']
             }
-            for item in subject_distribution
+            for item in subjects
         ]
         
         # Citation timing distribution
-        citation_timing = Citation.objects.filter(
-            days_after_retraction__gte=0,
-            days_after_retraction__lte=1095  # 3 years
-        ).values('days_after_retraction').annotate(
-            count=Count('id')
-        ).order_by('days_after_retraction')[:365]  # Limit to first year for performance
+        timing_data = Citation.objects.filter(
+            days_after_retraction__isnull=False
+        ).aggregate(
+            pre_retraction=Count('id', filter=Q(days_after_retraction__lt=0)),
+            same_day=Count('id', filter=Q(days_after_retraction=0)),
+            within_30_days=Count('id', filter=Q(days_after_retraction__gt=0, days_after_retraction__lte=30)),
+            within_6_months=Count('id', filter=Q(days_after_retraction__gt=30, days_after_retraction__lte=180)),
+            within_1_year=Count('id', filter=Q(days_after_retraction__gt=180, days_after_retraction__lte=365)),
+            after_1_year=Count('id', filter=Q(days_after_retraction__gt=365))
+        )
         
         missing_data['citation_timing_distribution'] = [
-            {
-                'days': item['days_after_retraction'],
-                'count': item['count']
-            }
-            for item in citation_timing
+            {'label': 'Pre-Retraction', 'value': timing_data['pre_retraction']},
+            {'label': 'Same Day', 'value': timing_data['same_day']},
+            {'label': 'Within 30 Days', 'value': timing_data['within_30_days']},
+            {'label': 'Within 6 Months', 'value': timing_data['within_6_months']},
+            {'label': 'Within 1 Year', 'value': timing_data['within_1_year']},
+            {'label': 'After 1 Year', 'value': timing_data['after_1_year']}
         ]
         
         # Network data with connections
@@ -1231,12 +1246,14 @@ class AnalyticsView(View):
         ).filter(country__isnull=False).exclude(country__exact='').order_by('-count')[:8]
         
         for i, country in enumerate(top_countries):
+            # Handle semicolon-separated countries by taking the first one
+            country_name = country['country'].split(';')[0].strip() if ';' in country['country'] else country['country']
             network_nodes.append({
                 'id': f"country_{i}",
-                'name': country['country'][:15] + '...' if len(country['country']) > 15 else country['country'],
+                'name': country_name[:15] + '...' if len(country_name) > 15 else country_name,
                 'type': 'country',
                 'size': max(8, min(25, country['count'] / 20)),
-                'full_name': country['country'],
+                'full_name': country_name,
                 'retraction_count': country['count']
             })
         
@@ -1262,7 +1279,7 @@ class AnalyticsView(View):
         ).filter(
             journal__in=[j['journal'] for j in top_journals],
             country__in=[c['country'] for c in top_countries],
-            count__gte=5  # At least 5 papers in common
+            count__gte=2  # At least 2 papers in common
         )[:20]
         
         for link in journal_country_links:
@@ -1283,7 +1300,7 @@ class AnalyticsView(View):
         ).filter(
             subject__in=[s['subject'] for s in top_subjects],
             journal__in=[j['journal'] for j in top_journals],
-            count__gte=3  # At least 3 papers in common
+            count__gte=2  # At least 2 papers in common
         )[:15]
         
         for link in subject_journal_links:
