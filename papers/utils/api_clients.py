@@ -39,7 +39,7 @@ class OpenAlexAPI:
         self.session = requests.Session()
         # Set User-Agent as recommended by OpenAlex
         self.session.headers.update({
-            'User-Agent': 'CitingRetracted/1.0 (https://github.com/yourrepo; mailto:your@email.com)'
+            'User-Agent': 'PRCT/1.0 (https://github.com/yourrepo; mailto:your@email.com)'
         })
     
     def search_works_by_doi(self, doi: str) -> Optional[Dict[str, Any]]:

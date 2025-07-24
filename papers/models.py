@@ -36,6 +36,8 @@ class RetractedPaper(models.Model):
     paywalled = models.BooleanField(default=False, help_text="Whether the paper is behind a paywall")
     is_open_access = models.BooleanField(default=False, help_text="Whether the paper is open access")
     subject = models.CharField(max_length=500, blank=True, null=True, help_text="Subject area")
+    broad_subjects = models.TextField(blank=True, null=True, help_text="Semicolon-separated broad subject categories")
+    specific_fields = models.TextField(blank=True, null=True, help_text="Semicolon-separated specific fields")
     institution = models.TextField(blank=True, null=True, help_text="Author institution(s)")
     country = models.CharField(max_length=200, blank=True, null=True, help_text="Country of origin")
     article_type = models.CharField(max_length=200, blank=True, null=True, help_text="Type of article")
@@ -201,6 +203,23 @@ class RetractedPaper(models.Model):
         return self.reason_list
     
     @property
+    def author_list(self):
+        """Parse multiple authors separated by semicolons"""
+        if not self.author:
+            return []
+        
+        # Split by semicolon and clean up each author name
+        authors = [author.strip() for author in self.author.split(';') if author.strip()]
+        
+        # Filter out very short names and clean up
+        cleaned_authors = []
+        for author in authors:
+            if author and len(author) > 2:  # Filter out very short names
+                cleaned_authors.append(author)
+        
+        return cleaned_authors
+    
+    @property
     def subject_list(self):
         """Parse multiple subjects separated by semicolons"""
         if not self.subject:
@@ -209,6 +228,122 @@ class RetractedPaper(models.Model):
         # Split by semicolon and clean up each subject
         subjects = [subject.strip() for subject in self.subject.split(';') if subject.strip()]
         return subjects
+    
+    @property
+    def parsed_subjects(self):
+        """Parse subjects into broad categories and specific fields"""
+        if not self.subject:
+            return []
+        
+        parsed = []
+        subjects = [subject.strip() for subject in self.subject.split(';') if subject.strip()]
+        
+        for subject in subjects:
+            # Handle format: (ABBR) Field Name
+            if subject.startswith('(') and ')' in subject:
+                # Extract abbreviation and expand it
+                end_paren = subject.find(')')
+                abbr = subject[1:end_paren].strip()
+                field = subject[end_paren + 1:].strip()
+                
+                # Map abbreviations to full names
+                broad_category = self._expand_subject_abbreviation(abbr)
+                parsed.append({
+                    'broad_category': broad_category,
+                    'broad_abbr': abbr,
+                    'specific_field': field,
+                    'full_text': subject
+                })
+            # Handle format: Broad Category - Specific Field
+            elif ' - ' in subject:
+                parts = subject.split(' - ', 1)
+                broad_category = parts[0].strip()
+                specific_field = parts[1].strip()
+                parsed.append({
+                    'broad_category': broad_category,
+                    'broad_abbr': self._get_subject_abbreviation(broad_category),
+                    'specific_field': specific_field,
+                    'full_text': subject
+                })
+            # Handle single category
+            else:
+                parsed.append({
+                    'broad_category': subject,
+                    'broad_abbr': self._get_subject_abbreviation(subject),
+                    'specific_field': None,
+                    'full_text': subject
+                })
+        
+        return parsed
+    
+    def _expand_subject_abbreviation(self, abbr):
+        """Expand subject abbreviations to full names"""
+        abbreviation_map = {
+            'HSC': 'Health Sciences',
+            'BLS': 'Biological and Life Sciences',
+            'PSE': 'Physical Sciences and Engineering',
+            'SSH': 'Social Sciences and Humanities',
+            'CS': 'Computer Science',
+            'MATH': 'Mathematics',
+            'ENVS': 'Environmental Sciences',
+            'AGRI': 'Agriculture',
+            'EDU': 'Education',
+            'BUS': 'Business',
+            'LAW': 'Law',
+            'ART': 'Arts',
+            'MED': 'Medicine',
+            'BIO': 'Biology',
+            'CHEM': 'Chemistry',
+            'PHYS': 'Physics',
+            'PSYCH': 'Psychology',
+            'SOC': 'Sociology',
+        }
+        return abbreviation_map.get(abbr.upper(), abbr)
+    
+    def _get_subject_abbreviation(self, broad_category):
+        """Get abbreviation for broad category"""
+        category_abbr_map = {
+            'Health Sciences': 'HSC',
+            'Medicine': 'HSC',
+            'Biology': 'BLS',
+            'Biochemistry': 'BLS',
+            'Chemistry': 'PSE',
+            'Physics': 'PSE',
+            'Engineering': 'PSE',
+            'Computer Science': 'CS',
+            'Mathematics': 'MATH',
+            'Psychology': 'SSH',
+            'Sociology': 'SSH',
+            'Public Health and Safety': 'HSC',
+            'Environmental Science': 'ENVS',
+            'Agriculture': 'AGRI',
+            'Business': 'BUS',
+            'Education': 'EDU',
+            'Arts': 'ART',
+        }
+        return category_abbr_map.get(broad_category, broad_category[:3].upper())
+    
+    @property
+    def broad_subject_categories(self):
+        """Get unique broad subject categories"""
+        parsed = self.parsed_subjects
+        return list(set([s['broad_category'] for s in parsed if s['broad_category']]))
+    
+    @property
+    def formatted_subjects_with_broad(self):
+        """Get formatted string showing broad categories and specific fields"""
+        parsed = self.parsed_subjects
+        if not parsed:
+            return ""
+        
+        formatted = []
+        for subject in parsed:
+            if subject['specific_field']:
+                formatted.append(f"{subject['broad_category']} - {subject['specific_field']}")
+            else:
+                formatted.append(subject['broad_category'])
+        
+        return "; ".join(formatted)
     
     @property
     def formatted_subjects(self):

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Search - Citing Retracted Papers Database{% endblock %}
+{% block title %}Search - Post-Retraction Citation Tracker (PRCT){% endblock %}
 
 {% block content %}
 <div class="container mt-4">
@@ -132,6 +132,51 @@
                 </div>
             </div>
             
+            <!-- Advanced Filters -->
+            <div class="row border-top pt-3 mt-2">
+                <div class="col-12 mb-2">
+                    <h6 class="text-muted"><i class="fas fa-sliders-h"></i> Advanced Filters</h6>
+                </div>
+                <div class="col-lg-3 mb-3">
+                    <label for="min_citations" class="form-label">Min Citations</label>
+                    <input type="number" 
+                           id="min_citations"
+                           name="min_citations" 
+                           class="form-control" 
+                           value="{{ min_citations }}"
+                           placeholder="0"
+                           min="0">
+                </div>
+                <div class="col-lg-3 mb-3">
+                    <label for="max_citations" class="form-label">Max Citations</label>
+                    <input type="number" 
+                           id="max_citations"
+                           name="max_citations" 
+                           class="form-control" 
+                           value="{{ max_citations }}"
+                           placeholder="10000"
+                           min="0">
+                </div>
+                <div class="col-lg-3 mb-3">
+                    <label for="min_post_retraction" class="form-label">Min Post-Retraction Citations</label>
+                    <input type="number" 
+                           id="min_post_retraction"
+                           name="min_post_retraction" 
+                           class="form-control" 
+                           value="{{ min_post_retraction }}"
+                           placeholder="0"
+                           min="0">
+                </div>
+                <div class="col-lg-3 mb-3">
+                    <label for="has_post_retraction" class="form-label">Post-Retraction Filter</label>
+                    <select id="has_post_retraction" name="has_post_retraction" class="form-select">
+                        <option value="">All Papers</option>
+                        <option value="yes" {% if has_post_retraction == 'yes' %}selected{% endif %}>With Post-Retraction Citations</option>
+                        <option value="no" {% if has_post_retraction == 'no' %}selected{% endif %}>No Post-Retraction Citations</option>
+                    </select>
+                </div>
+            </div>
+            
             <div class="row">
                 <div class="col-lg-12 mb-3 text-end">
                     <a href="{% url 'papers:search' %}" class="btn btn-outline-secondary">
@@ -148,9 +193,23 @@
             {% if papers %}
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h3>Search Results</h3>
-                    <span class="text-muted">
-                        {{ papers|length }} of {{ paginator.count }} papers
-                    </span>
+                    <div class="d-flex align-items-center">
+                        <span class="text-muted me-3">
+                            {{ papers|length }} of {{ paginator.count }} papers
+                        </span>
+                        <div class="btn-group" role="group">
+                            <a href="{% url 'papers:export_search' %}?{{ request.GET.urlencode }}&format=csv" 
+                               class="btn btn-outline-success btn-sm" 
+                               title="Export current search results to CSV">
+                                <i class="fas fa-file-csv"></i> CSV
+                            </a>
+                            <a href="{% url 'papers:export_search' %}?{{ request.GET.urlencode }}&format=excel" 
+                               class="btn btn-outline-primary btn-sm" 
+                               title="Export current search results to Excel">
+                                <i class="fas fa-file-excel"></i> Excel
+                            </a>
+                        </div>
+                    </div>
                 </div>
                 
                 {% for paper in papers %}
@@ -167,22 +226,54 @@
                                 <div class="mb-2">
                                     <span class="text-muted">
                                         <i class="fas fa-user"></i>
-                                        {{ paper.author|default:"Unknown Author" }}
+                                        {% if paper.author_list %}
+                                            {% for author in paper.author_list %}
+                                                <a href="{% url 'papers:search' %}?author={{ author|urlencode }}" 
+                                                   class="text-decoration-none text-muted"
+                                                   title="Find other papers by {{ author }}">
+                                                    {{ author }}
+                                                    <i class="fas fa-search fa-sm ms-1"></i>
+                                                </a>{% if not forloop.last %}, {% endif %}
+                                            {% endfor %}
+                                        {% else %}
+                                            Unknown Author
+                                        {% endif %}
                                     </span>
                                 </div>
                                 
                                 <div class="mb-2">
                                     <span class="text-muted">
                                         <i class="fas fa-journal-whills"></i>
-                                        {{ paper.journal|default:"Unknown Journal" }}
+                                        {% if paper.journal %}
+                                            <a href="{% url 'papers:search' %}?journal={{ paper.journal|urlencode }}" 
+                                               class="text-decoration-none text-muted"
+                                               title="Find other papers in this journal">
+                                                {{ paper.journal }}
+                                                <i class="fas fa-search fa-sm ms-1"></i>
+                                            </a>
+                                        {% else %}
+                                            Unknown Journal
+                                        {% endif %}
                                     </span>
                                     {% if paper.publisher %}
                                     <span class="text-muted ms-2">
-                                        ({{ paper.publisher }})
+                                        (<a href="{% url 'papers:search' %}?publisher={{ paper.publisher|urlencode }}" 
+                                            class="text-decoration-none text-muted"
+                                            title="Find other papers by this publisher">
+                                            {{ paper.publisher }}
+                                            <i class="fas fa-search fa-sm ms-1"></i>
+                                        </a>)
                                     </span>
                                     {% endif %}
                                     {% if paper.article_type %}
-                                    <span class="badge bg-info ms-2">{{ paper.article_type }}</span>
+                                    <a href="{% url 'papers:search' %}?q={{ paper.article_type|urlencode }}" 
+                                       class="text-decoration-none"
+                                       title="Find other papers of this type">
+                                        <span class="badge bg-info ms-2 clickable-badge">
+                                            {{ paper.article_type }}
+                                            <i class="fas fa-search fa-sm ms-1"></i>
+                                        </span>
+                                    </a>
                                     {% endif %}
                                 </div>
                                 
@@ -199,11 +290,39 @@
                                 </div>
                                 {% endif %}
                                 
-                                {% if paper.formatted_subjects %}
+                                {% if paper.subject_list %}
                                 <p class="card-text">
                                     <small class="text-muted">
                                         <i class="fas fa-tag"></i>
-                                        {{ paper.formatted_subjects }}
+                                        
+                                        <!-- Show broad categories first -->
+                                        {% if paper.broad_subject_categories %}
+                                            <span class="text-muted me-1">Broad:</span>
+                                            {% for broad_category in paper.broad_subject_categories %}
+                                                <a href="{% url 'papers:search' %}?broad_subject={{ broad_category|urlencode }}" 
+                                                   class="text-decoration-none"
+                                                   title="Find other papers in this broad category">
+                                                    <span class="badge bg-primary me-1 mb-1 clickable-badge">
+                                                        {{ broad_category|truncatechars:20 }}
+                                                        <i class="fas fa-search fa-sm ms-1"></i>
+                                                    </span>
+                                                </a>
+                                            {% endfor %}
+                                            <br/>
+                                        {% endif %}
+                                        
+                                        <!-- Show specific fields -->
+                                        <span class="text-muted me-1">Fields:</span>
+                                        {% for subject in paper.subject_list %}
+                                            <a href="{% url 'papers:search' %}?subject={{ subject|urlencode }}" 
+                                               class="text-decoration-none"
+                                               title="Find other papers in this specific field">
+                                                <span class="badge bg-secondary me-1 mb-1 clickable-badge">
+                                                    {{ subject|truncatechars:25 }}
+                                                    <i class="fas fa-search fa-sm ms-1"></i>
+                                                </span>
+                                            </a>
+                                        {% endfor %}
                                     </small>
                                 </p>
                                 {% endif %}

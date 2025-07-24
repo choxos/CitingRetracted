@@ -1,8 +1,8 @@
-# 🚀 CitingRetracted Enhanced Database - Usage Guide
+# 🚀 Post-Retraction Citation Tracker (PRCT) - Usage Guide
 
-## 📊 **Complete Database Enhancement with Advanced Analytics**
+## Overview
 
-This guide covers how to use the fully enhanced CitingRetracted database with comprehensive Retraction Watch integration and advanced stratified analytics.
+This guide covers how to use the fully enhanced Post-Retraction Citation Tracker (PRCT) database with comprehensive Retraction Watch integration and advanced stratified analytics.
 
 ## 🗃️ **New Database Features**
 

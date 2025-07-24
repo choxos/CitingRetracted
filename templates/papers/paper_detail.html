@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ paper.title|truncatechars:60 }} - Citing Retracted Papers Database{% endblock %}
+{% block title %}{{ paper.title|truncatechars:60 }} - Post-Retraction Citation Tracker (PRCT){% endblock %}
 
 {% block content %}
 <div class="container mt-4">
@@ -18,7 +18,7 @@
                     </nav>
                 </div>
                 <span class="{{ paper.retraction_badge_class }}">
-                    <i class="fas fa-ban"></i> {{ paper.retraction_nature_display }} Paper
+                    <i class="fas fa-ban"></i> Retracted Paper
                 </span>
             </div>
             
@@ -39,10 +39,19 @@
                         <div class="col-md-9">{{ paper.record_id }}</div>
                     </div>
                     
-                    {% if paper.author %}
+                    {% if paper.author_list %}
                     <div class="row mb-3">
                         <div class="col-md-3"><strong>Author(s):</strong></div>
-                        <div class="col-md-9">{{ paper.author }}</div>
+                        <div class="col-md-9">
+                            {% for author in paper.author_list %}
+                                <a href="{% url 'papers:search' %}?author={{ author|urlencode }}" 
+                                   class="text-decoration-none"
+                                   title="Find other papers by {{ author }}">
+                                    {{ author }}
+                                    <i class="fas fa-search fa-sm ms-2"></i>
+                                </a>{% if not forloop.last %}<br>{% endif %}
+                            {% endfor %}
+                        </div>
                     </div>
                     {% endif %}
                     
@@ -50,9 +59,21 @@
                     <div class="row mb-3">
                         <div class="col-md-3"><strong>Journal:</strong></div>
                         <div class="col-md-9">
-                            {{ paper.journal }}
+                            <a href="{% url 'papers:search' %}?journal={{ paper.journal|urlencode }}" 
+                               class="text-decoration-none"
+                               title="Find other papers in this journal">
+                                {{ paper.journal }}
+                                <i class="fas fa-search fa-sm ms-2"></i>
+                            </a>
                             {% if paper.publisher %}
-                                <small class="text-muted">({{ paper.publisher }})</small>
+                                <small class="text-muted">
+                                    (<a href="{% url 'papers:search' %}?publisher={{ paper.publisher|urlencode }}" 
+                                        class="text-decoration-none text-muted"
+                                        title="Find other papers by this publisher">
+                                        {{ paper.publisher }}
+                                        <i class="fas fa-search fa-sm ms-1"></i>
+                                    </a>)
+                                </small>
                             {% endif %}
                         </div>
                     </div>
@@ -77,16 +98,37 @@
                     <div class="row mb-3">
                         <div class="col-md-3"><strong>Subject{{ paper.subject_list|length|pluralize }}:</strong></div>
                         <div class="col-md-9">
-                            {% for subject in paper.subject_list %}
-                                <a href="{% url 'papers:search' %}?subject={{ subject|urlencode }}" 
-                                   class="text-decoration-none"
-                                   title="Find other papers in this subject area">
-                                    <span class="badge bg-secondary me-1 mb-1 clickable-badge">
-                                        {{ subject }}
-                                        <i class="fas fa-search fa-sm ms-1"></i>
-                                    </span>
-                                </a>
-                            {% endfor %}
+                            <!-- Show broad categories first -->
+                            {% if paper.broad_subject_categories %}
+                                <div class="mb-2">
+                                    <small class="text-muted fw-bold">Broad Categories:</small><br/>
+                                    {% for broad_category in paper.broad_subject_categories %}
+                                        <a href="{% url 'papers:search' %}?broad_subject={{ broad_category|urlencode }}" 
+                                           class="text-decoration-none"
+                                           title="Find other papers in this broad category">
+                                            <span class="badge bg-primary me-1 mb-1 clickable-badge">
+                                                {{ broad_category }}
+                                                <i class="fas fa-search fa-sm ms-1"></i>
+                                            </span>
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            
+                            <!-- Show specific fields -->
+                            <div>
+                                <small class="text-muted fw-bold">Specific Fields:</small><br/>
+                                {% for subject in paper.subject_list %}
+                                    <a href="{% url 'papers:search' %}?subject={{ subject|urlencode }}" 
+                                       class="text-decoration-none"
+                                       title="Find other papers in this specific field">
+                                        <span class="badge bg-secondary me-1 mb-1 clickable-badge">
+                                            {{ subject }}
+                                            <i class="fas fa-search fa-sm ms-1"></i>
+                                        </span>
+                                    </a>
+                                {% endfor %}
+                            </div>
                         </div>
                     </div>
                     {% endif %}
@@ -94,14 +136,28 @@
                     {% if paper.institution %}
                     <div class="row mb-3">
                         <div class="col-md-3"><strong>Institution:</strong></div>
-                        <div class="col-md-9">{{ paper.institution }}</div>
+                        <div class="col-md-9">
+                            <a href="{% url 'papers:search' %}?institution={{ paper.institution|urlencode }}" 
+                               class="text-decoration-none"
+                               title="Find other papers from this institution">
+                                {{ paper.institution }}
+                                <i class="fas fa-search fa-sm ms-2"></i>
+                            </a>
+                        </div>
                     </div>
                     {% endif %}
                     
                     {% if paper.country %}
                     <div class="row mb-3">
                         <div class="col-md-3"><strong>Country:</strong></div>
-                        <div class="col-md-9">{{ paper.country }}</div>
+                        <div class="col-md-9">
+                            <a href="{% url 'papers:search' %}?country={{ paper.primary_country|urlencode }}" 
+                               class="text-decoration-none"
+                               title="Find other papers from this country">
+                                {{ paper.country }}
+                                <i class="fas fa-search fa-sm ms-2"></i>
+                            </a>
+                        </div>
                     </div>
                     {% endif %}
                     
@@ -109,7 +165,14 @@
                     <div class="row mb-3">
                         <div class="col-md-3"><strong>Article Type:</strong></div>
                         <div class="col-md-9">
-                            <span class="badge bg-info">{{ paper.article_type }}</span>
+                            <a href="{% url 'papers:search' %}?q={{ paper.article_type|urlencode }}" 
+                               class="text-decoration-none"
+                               title="Find other papers of this type">
+                                <span class="badge bg-info clickable-badge">
+                                    {{ paper.article_type }}
+                                    <i class="fas fa-search fa-sm ms-1"></i>
+                                </span>
+                            </a>
                         </div>
                     </div>
                     {% endif %}

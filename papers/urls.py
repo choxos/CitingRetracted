@@ -8,6 +8,7 @@ urlpatterns = [
     path('search/', views.SearchView.as_view(), name='search'),
     path('analytics/', views.AnalyticsView.as_view(), name='analytics'),
     path('paper/<str:record_id>/', views.PaperDetailView.as_view(), name='detail'),
+    path('export-search/', views.ExportSearchView.as_view(), name='export_search'),
     
     # AJAX endpoints
     path('api/search-autocomplete/', views.search_autocomplete, name='search_autocomplete'),

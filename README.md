@@ -1,6 +1,6 @@
-# Citing Retracted Papers Database
+# Post-Retraction Citation Tracker (PRCT)
 
-A comprehensive web application built with Django to track retracted scientific papers and analyze their citation patterns. This tool helps researchers identify potential issues in academic literature by showing which retracted papers are still being cited in current research.
+A comprehensive web application built with Django to track retracted scientific papers and analyze their post-retraction citation patterns. PRCT helps researchers and institutions identify potential issues in academic literature by monitoring which retracted papers continue to be cited in current research, providing critical insights for maintaining research integrity.
 
 ## ✨ Key Features
 

@@ -304,6 +304,6 @@ class DataImportLogAdmin(admin.ModelAdmin):
 
 
 # Custom admin site title and header
-admin.site.site_title = "Citing Retracted Papers Database"
-admin.site.site_header = "Citing Retracted Papers Administration"
+admin.site.site_title = "Post-Retraction Citation Tracker (PRCT)"
+admin.site.site_header = "Post-Retraction Citation Tracker Administration"
 admin.site.index_title = "Database Administration"

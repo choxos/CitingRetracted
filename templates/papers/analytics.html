@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}Analytics - Citing Retracted Papers Database{% endblock %}
+{% block title %}Analytics - PRCT{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -126,6 +127,41 @@
     transition: stroke-dashoffset 0.35s;
     transform-origin: 50% 50%;
 }
+
+/* Mobile-responsive heatmap styles */
+.heatmap-container {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+@media (max-width: 768px) {
+    .heatmap-container {
+        padding: 10px !important;
+        font-size: 11px !important;
+    }
+    
+    .heatmap-table {
+        min-width: 600px;
+    }
+    
+    .heatmap-table th,
+    .heatmap-table td {
+        padding: 6px 4px !important;
+        font-size: 10px !important;
+        min-width: 60px !important;
+    }
+    
+    .heatmap-container .legend {
+        flex-direction: column !important;
+        gap: 4px !important;
+    }
+    
+    .chart-container {
+        height: 300px;
+        margin: 15px 0;
+    }
+}
 </style>
 {% endblock %}
 
@@ -186,7 +222,13 @@
                             <i class="fas fa-quote-right fa-3x text-warning mb-3"></i>
                             <h3 class="card-title">{{ stats.total_citations|floatformat:0 }}</h3>
                             <p class="card-text">Total Citations</p>
-                            <small class="text-muted">~{{ stats.avg_citations_per_paper|floatformat:1 }} per paper</small>
+                            <small class="text-muted">
+                                <strong>Mean:</strong> {{ stats.avg_citations_per_paper|floatformat:1 }} (SD: {{ stats.stdev_citations_per_paper|floatformat:1 }})<br>
+                                <strong>Median:</strong> {{ stats.median_citations_per_paper|floatformat:1 }} (Q1: {{ stats.q1_citations_per_paper|floatformat:1 }}, Q3: {{ stats.q3_citations_per_paper|floatformat:1 }})
+                                {% if stats.avg_citations_per_paper > stats.median_citations_per_paper|add:1 %}
+                                    <br><span class="text-info"><i class="fas fa-info-circle"></i> Skewed distribution</span>
+                                {% endif %}
+                            </small>
                         </div>
                     </div>
                 </div>
@@ -346,7 +388,7 @@
             </div>
             
             <div class="row mb-5">
-                <div class="col-12 mb-4">
+                <div class="col-lg-8 mb-4">
                     <div class="card">
                         <div class="card-header">
                             <h5><i class="fas fa-circle-notch"></i> Journal Impact Analysis</h5>
@@ -355,6 +397,20 @@
                         <div class="card-body">
                             <div class="chart-container tall">
                                 <canvas id="journalBubbleChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-sun"></i> Subject Hierarchy Sunburst</h5>
+                            <small class="text-muted">Interactive hierarchy of broad subjects and specific fields</small>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <div id="sunburstChart" style="height: 400px;"></div>
                             </div>
                         </div>
                     </div>
@@ -470,7 +526,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {% for paper in problematic_papers_detailed %}
+                                        {% for paper in problematic_papers_detailed|slice:":5" %}
                                         <tr>
                                             <td>
                                                 <strong>{{ paper.title }}</strong>
@@ -483,8 +539,13 @@
                                             </td>
                                             <td>{{ paper.journal|default:"Unknown" }}</td>
                                             <td>
-                                                {% if paper.country %}
-                                                    <span class="badge bg-primary">{{ paper.country }}</span>
+                                                {% if paper.countries %}
+                                                    {% for country in paper.countries %}
+                                                        <span class="badge bg-primary me-1 mb-1">{{ country }}</span>
+                                                    {% endfor %}
+                                                    {% if paper.country_count > 3 %}
+                                                        <small class="text-muted d-block">+{{ paper.country_count|add:'-3' }} more</small>
+                                                    {% endif %}
                                                 {% else %}
                                                     <span class="text-muted">Unknown</span>
                                                 {% endif %}
@@ -597,6 +658,8 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Plotly.js for interactive choropleth maps -->
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
@@ -618,12 +681,16 @@ const colorSchemes = {
 document.addEventListener('DOMContentLoaded', function() {
     initializeOverviewCharts();
     
+    // Initialize pattern charts immediately (including heatmap) so they're visible on page load
+    initializePatternCharts();
+    
     // Initialize charts when tabs are shown
     document.getElementById('trends-tab').addEventListener('shown.bs.tab', function() {
         initializeTrendCharts();
     });
     
     document.getElementById('patterns-tab').addEventListener('shown.bs.tab', function() {
+        // Re-initialize pattern charts when tab is explicitly shown
         initializePatternCharts();
     });
     
@@ -939,230 +1006,406 @@ function initializePatternCharts() {
         }
     );
     
+    // Citation Heatmap Chart - Custom implementation using HTML table
+    const heatmapData = {{ citation_heatmap|safe }};
+    
+    if (heatmapData && heatmapData.length > 0) {
+        const heatmapContainer = document.getElementById('citationHeatmapChart').parentElement;
+        
+        // Hide the canvas and create a custom heatmap
+        document.getElementById('citationHeatmapChart').style.display = 'none';
+        
+        // Create heatmap table
+        const heatmapDiv = document.createElement('div');
+        heatmapDiv.style.padding = '20px';
+        heatmapDiv.style.overflowX = 'auto';
+        heatmapDiv.classList.add('heatmap-container');
+        
+        // Add mobile-responsive styles
+        const isMobile = window.innerWidth <= 768;
+        if (isMobile) {
+            heatmapDiv.style.padding = '10px';
+            heatmapDiv.style.fontSize = '11px';
+        }
+        
+        const timeLabels = ['0-30 days', '30-90 days', '90-180 days', '180-365 days', '1-2 years', '2+ years'];
+        const monthLabels = heatmapData.map(item => item.month);
+        
+        // Calculate column-wise max values for proper heat scaling
+        const columnMaxValues = [];
+        const columnMinValues = [];
+        
+        for (let timeIndex = 0; timeIndex < timeLabels.length; timeIndex++) {
+            const columnValues = heatmapData.map(month => month.data[timeIndex]);
+            columnMaxValues[timeIndex] = Math.max(...columnValues);
+            columnMinValues[timeIndex] = Math.min(...columnValues);
+        }
+        
+        // Create table
+        const table = document.createElement('table');
+        table.style.borderCollapse = 'collapse';
+        table.style.width = '100%';
+        table.style.fontSize = isMobile ? '10px' : '12px';
+        table.classList.add('heatmap-table');
+        
+        // Add responsive table wrapper for better mobile experience
+        if (isMobile) {
+            table.style.minWidth = '600px'; // Ensure readability on mobile
+        }
+        
+        // Create header row
+        const headerRow = document.createElement('tr');
+        const cornerCell = document.createElement('th');
+        cornerCell.textContent = 'Month / Time Period';
+        cornerCell.style.padding = '8px';
+        cornerCell.style.border = '1px solid #ddd';
+        cornerCell.style.backgroundColor = '#f8f9fa';
+        cornerCell.style.fontWeight = 'bold';
+        headerRow.appendChild(cornerCell);
+        
+        timeLabels.forEach((timeLabel, timeIndex) => {
+            const th = document.createElement('th');
+            if (isMobile) {
+                // Shorter labels for mobile
+                const shortLabels = ['0-30d', '30-90d', '90-180d', '180d-1y', '1-2y', '2y+'];
+                th.innerHTML = `${shortLabels[timeIndex]}<br/><small style="font-weight: normal; font-size: 9px;">(${columnMinValues[timeIndex]}-${columnMaxValues[timeIndex].toLocaleString()})</small>`;
+            } else {
+                th.innerHTML = `${timeLabel}<br/><small style="font-weight: normal; font-size: 10px;">(${columnMinValues[timeIndex]}-${columnMaxValues[timeIndex].toLocaleString()})</small>`;
+            }
+            th.style.padding = isMobile ? '6px 4px' : '8px';
+            th.style.border = '1px solid #ddd';
+            th.style.backgroundColor = '#f8f9fa';
+            th.style.fontWeight = 'bold';
+            th.style.textAlign = 'center';
+            th.style.minWidth = isMobile ? '60px' : '90px';
+            th.style.lineHeight = '1.2';
+            headerRow.appendChild(th);
+        });
+        table.appendChild(headerRow);
+        
+        // Create data rows
+        heatmapData.forEach((monthData, monthIndex) => {
+            const row = document.createElement('tr');
+            
+            // Month label
+            const monthCell = document.createElement('td');
+            monthCell.textContent = monthData.month;
+            monthCell.style.padding = '8px';
+            monthCell.style.border = '1px solid #ddd';
+            monthCell.style.backgroundColor = '#f8f9fa';
+            monthCell.style.fontWeight = 'bold';
+            row.appendChild(monthCell);
+            
+            // Data cells with column-wise color scaling
+            monthData.data.forEach((value, timeIndex) => {
+                const cell = document.createElement('td');
+                // Format numbers more compactly on mobile
+                if (isMobile && value >= 1000) {
+                    cell.textContent = (value / 1000).toFixed(1) + 'k';
+                } else {
+                    cell.textContent = value.toLocaleString();
+                }
+                cell.style.padding = isMobile ? '6px 4px' : '8px';
+                cell.style.border = '1px solid #ddd';
+                cell.style.textAlign = 'center';
+                cell.style.cursor = 'pointer';
+                cell.style.fontSize = isMobile ? '10px' : '12px';
+                
+                // Column-wise color intensity calculation
+                const columnMax = columnMaxValues[timeIndex];
+                const columnMin = columnMinValues[timeIndex];
+                const columnRange = columnMax - columnMin;
+                
+                // Avoid division by zero and ensure meaningful scaling
+                let intensity;
+                if (columnRange === 0) {
+                    intensity = 0.5; // Mid-intensity if all values are the same
+                } else {
+                    intensity = (value - columnMin) / columnRange;
+                }
+                
+                // Enhanced color scaling with better contrast
+                const alpha = Math.max(0.15, Math.min(0.9, intensity * 0.8 + 0.1));
+                
+                // Use different color schemes for different time periods
+                let baseColor;
+                if (timeIndex === 0) {
+                    baseColor = '54, 162, 235'; // Blue for 0-30 days
+                } else if (timeIndex === 1) {
+                    baseColor = '75, 192, 192'; // Teal for 30-90 days
+                } else if (timeIndex === 2) {
+                    baseColor = '255, 206, 86'; // Yellow for 90-180 days
+                } else if (timeIndex === 3) {
+                    baseColor = '255, 159, 64'; // Orange for 180-365 days
+                } else if (timeIndex === 4) {
+                    baseColor = '255, 99, 132'; // Pink for 1-2 years
+                } else {
+                    baseColor = '153, 102, 255'; // Purple for 2+ years
+                }
+                
+                cell.style.backgroundColor = `rgba(${baseColor}, ${alpha})`;
+                cell.style.color = intensity > 0.6 ? 'white' : 'black';
+                cell.style.fontWeight = intensity > 0.7 ? 'bold' : 'normal';
+                
+                // Enhanced tooltip with percentile information
+                const columnValues = heatmapData.map(month => month.data[timeIndex]).sort((a, b) => b - a);
+                const percentile = Math.round((1 - columnValues.indexOf(value) / columnValues.length) * 100);
+                
+                cell.title = `${monthData.month} - ${timeLabels[timeIndex]}\n${value.toLocaleString()} citations\n${percentile}th percentile in this time period\nColumn range: ${columnMin.toLocaleString()}-${columnMax.toLocaleString()}`;
+                
+                // Hover effect
+                cell.addEventListener('mouseenter', function() {
+                    this.style.transform = 'scale(1.05)';
+                    this.style.zIndex = '10';
+                    this.style.position = 'relative';
+                    this.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+                });
+                
+                cell.addEventListener('mouseleave', function() {
+                    this.style.transform = 'scale(1)';
+                    this.style.zIndex = 'auto';
+                    this.style.position = 'static';
+                    this.style.boxShadow = 'none';
+                });
+                
+                row.appendChild(cell);
+            });
+            
+            table.appendChild(row);
+        });
+        
+        heatmapDiv.appendChild(table);
+        
+        // Add column-wise legend
+        const legend = document.createElement('div');
+        legend.style.marginTop = '15px';
+        legend.style.textAlign = 'center';
+        legend.style.fontSize = '11px';
+        
+        legend.innerHTML = `
+            <div style="margin-bottom: 10px;">
+                <strong>Color Scale:</strong> Each column uses its own intensity scale (dark = high for that time period)
+            </div>
+            <div style="display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px;">
+                ${timeLabels.map((label, index) => {
+                    const baseColors = [
+                        '54, 162, 235',    // Blue
+                        '75, 192, 192',    // Teal  
+                        '255, 206, 86',    // Yellow
+                        '255, 159, 64',    // Orange
+                        '255, 99, 132',    // Pink
+                        '153, 102, 255'    // Purple
+                    ];
+                    const color = baseColors[index];
+                    return `
+                        <div style="display: flex; align-items: center; margin: 2px;">
+                            <div style="width: 15px; height: 15px; background: rgba(${color}, 0.7); border-radius: 3px; margin-right: 5px;"></div>
+                            <span style="font-size: 10px;">${label.split(' ')[0]}${label.includes('days') ? 'd' : label.includes('years') ? 'y' : ''}</span>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+        
+        heatmapDiv.appendChild(legend);
+        
+        // Add enhanced summary stats
+        const stats = document.createElement('div');
+        stats.style.marginTop = '15px';
+        stats.style.textAlign = 'center';
+        stats.style.fontSize = '11px';
+        stats.style.color = '#666';
+        stats.style.lineHeight = '1.4';
+        
+        const totalCitations = heatmapData.reduce((total, month) => total + month.data.reduce((sum, val) => sum + val, 0), 0);
+        const avgPerCell = Math.round(totalCitations / (heatmapData.length * timeLabels.length));
+        
+        // Calculate insights
+        const columnTotals = columnMaxValues.map((_, index) => 
+            heatmapData.reduce((sum, month) => sum + month.data[index], 0)
+        );
+        const highestColumn = columnTotals.indexOf(Math.max(...columnTotals));
+        const lowestColumn = columnTotals.indexOf(Math.min(...columnTotals));
+        
+        stats.innerHTML = `
+            <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+                <span><strong>Total Citations:</strong> ${totalCitations.toLocaleString()}</span>
+                <span><strong>Average per Cell:</strong> ${avgPerCell.toLocaleString()}</span>
+                <span><strong>Most Citations:</strong> ${timeLabels[highestColumn]} (${columnTotals[highestColumn].toLocaleString()})</span>
+                <span><strong>Least Citations:</strong> ${timeLabels[lowestColumn]} (${columnTotals[lowestColumn].toLocaleString()})</span>
+            </div>
+            <div style="margin-top: 5px; font-style: italic;">
+                📊 Each column shows relative intensity within that time period | Hover cells for percentile rankings
+            </div>
+        `;
+        heatmapDiv.appendChild(stats);
+        
+        heatmapContainer.appendChild(heatmapDiv);
+        
+            // Debug output
+    console.log('Citation heatmap table created successfully with', heatmapData.length, 'months of data');
+    
+} else {
+    document.getElementById('citationHeatmapChart').innerHTML = '<p class="text-center text-muted">No heatmap data available</p>';
+    console.log('No heatmap data available');
+}
+
+// Initialize sunburst chart
+const sunburstData = {{ sunburst_data|safe }};
+if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
+    initializeSunburstChart(sunburstData);
+} else {
+    document.getElementById('sunburstChart').innerHTML = '<p class="text-center text-muted">No subject hierarchy data available</p>';
+}
+    
     // Country analytics chart
     const countryData = {{ country_analytics|safe }};
+    const worldMapData = {{ world_map_data|safe }};
     
-    const countryChartData = {
-        labels: countryData.map(item => item.country),
-        datasets: [
-            {
-                label: 'Retractions',
-                data: countryData.map(item => item.retraction_count),
-                backgroundColor: 'rgba(220, 53, 69, 0.6)',
-                borderColor: 'rgba(220, 53, 69, 1)',
-                yAxisID: 'y'
-            },
-            {
-                label: 'Open Access Rate (%)',
-                data: countryData.map(item => item.open_access_percentage),
-                type: 'line',
-                backgroundColor: 'rgba(40, 167, 69, 0.6)',
-                borderColor: 'rgba(40, 167, 69, 1)',
-                yAxisID: 'y1'
+    // Create Plotly choropleth world map
+    const worldMapContainer = document.getElementById('countryChart').parentElement;
+    const worldMapDiv = document.createElement('div');
+    worldMapDiv.id = 'worldMap';
+    worldMapDiv.style.height = '600px';
+    worldMapDiv.style.marginBottom = '30px';
+    worldMapDiv.style.padding = '20px';
+    worldMapDiv.style.backgroundColor = '#f8f9fa';
+    worldMapDiv.style.borderRadius = '8px';
+    worldMapContainer.insertBefore(worldMapDiv, document.getElementById('countryChart'));
+    
+    // Create title
+    const worldMapTitle = document.createElement('h5');
+    worldMapTitle.innerHTML = '<i class="fas fa-globe"></i> World Retraction Choropleth Map';
+    worldMapTitle.style.marginBottom = '15px';
+    worldMapDiv.appendChild(worldMapTitle);
+    
+    // Create Plotly map container
+    const plotlyMapContainer = document.createElement('div');
+    plotlyMapContainer.id = 'plotlyWorldMap';
+    plotlyMapContainer.style.height = '500px';
+    plotlyMapContainer.style.width = '100%';
+    worldMapDiv.appendChild(plotlyMapContainer);
+    
+    // Prepare data for Plotly choropleth
+    const plotlyMapData = worldMapData.filter(country => country.iso_alpha); // Only countries with ISO codes
+    
+    const choroplethData = [{
+        type: 'choropleth',
+        locations: plotlyMapData.map(country => country.iso_alpha),
+        z: plotlyMapData.map(country => country.value),
+        text: plotlyMapData.map(country => 
+            `${country.country}<br>` +
+            `Retractions: ${country.value.toLocaleString()}<br>` +
+            `Post-retraction citations: ${country.post_retraction_citations.toLocaleString()}<br>` +
+            `Open access rate: ${country.open_access_percentage.toFixed(1)}%`
+        ),
+        hovertemplate: '%{text}<extra></extra>',
+        colorscale: [
+            [0, '#fff5f5'],
+            [0.2, '#fecaca'],
+            [0.4, '#f87171'],
+            [0.6, '#ef4444'],
+            [0.8, '#dc2626'],
+            [1, '#b91c1c']
+        ],
+        colorbar: {
+            title: 'Retractions',
+            titleside: 'right'
+        }
+    }];
+    
+    const choroplethLayout = {
+        title: false,
+        geo: {
+            showframe: false,
+            showcoastlines: true,
+            coastlinecolor: 'lightgray',
+            projection: {
+                type: 'natural earth'
             }
-        ]
+        },
+        margin: { t: 0, r: 0, b: 0, l: 0 },
+        font: {
+            family: 'system-ui, -apple-system, sans-serif',
+            size: 12
+        }
     };
     
-    chartInstances.country = new Chart(
-        document.getElementById('countryChart'),
-        {
-            type: 'bar',
-            data: countryChartData,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        type: 'linear',
-                        display: true,
-                        position: 'left',
-                        title: {
-                            display: true,
-                            text: 'Number of Retractions'
-                        }
-                    },
-                    y1: {
-                        type: 'linear',
-                        display: true,
-                        position: 'right',
-                        title: {
-                            display: true,
-                            text: 'Open Access Rate (%)'
-                        },
-                        grid: {
-                            drawOnChartArea: false,
-                        },
-                        max: 100
-                    }
-                }
-            }
-        }
-    );
-    
-    // Article type chart
-    const articleTypeData = {{ article_type_analytics|safe }};
-    
-    const articleTypeChartData = {
-        labels: articleTypeData.map(item => item.type),
-        datasets: [{
-            data: articleTypeData.map(item => item.count),
-            backgroundColor: colorSchemes.primary.slice(0, articleTypeData.length)
-        }]
+    const config = {
+        responsive: true,
+        displayModeBar: true,
+        modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+        displaylogo: false
     };
     
-    chartInstances.articleType = new Chart(
-        document.getElementById('articleTypeChart'),
-        {
-            type: 'doughnut',
-            data: articleTypeChartData,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const dataIndex = context.dataIndex;
-                                const item = articleTypeData[dataIndex];
-                                return [
-                                    context.label + ': ' + item.count,
-                                    'Post-retraction citations: ' + item.post_retraction_citations,
-                                    'Citation rate: ' + item.citation_rate.toFixed(1) + '%'
-                                ];
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    );
+    // Create the Plotly choropleth map
+    Plotly.newPlot('plotlyWorldMap', choroplethData, choroplethLayout, config);
     
-    // Publisher chart
-    const publisherData = {{ publisher_analytics|safe }};
-    
-    const publisherChartData = {
-        labels: publisherData.map(item => item.publisher.length > 20 ? item.publisher.substring(0, 20) + '...' : item.publisher),
-        datasets: [{
-            label: 'Retractions',
-            data: publisherData.map(item => item.retraction_count),
-            backgroundColor: 'rgba(255, 193, 7, 0.6)',
-            borderColor: 'rgba(255, 193, 7, 1)'
-        }]
-    };
-    
-    chartInstances.publisher = new Chart(
-        document.getElementById('publisherChart'),
-        {
-            type: 'horizontalBar',
-            data: publisherChartData,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                indexAxis: 'y',
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const dataIndex = context.dataIndex;
-                                const item = publisherData[dataIndex];
-                                return [
-                                    'Publisher: ' + item.publisher,
-                                    'Retractions: ' + item.retraction_count,
-                                    'Post-retraction citations: ' + item.post_retraction_citations,
-                                    'Impact score: ' + item.impact_score
-                                ];
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        }
-    );
-    
-    // Open Access chart
-    const accessData = {{ access_analytics|safe }};
-    
-    const openAccessChartData = {
-        labels: ['Open Access', 'Paywalled', 'Unknown'],
-        datasets: [{
-            data: [
-                accessData.open_access.count,
-                accessData.paywalled.count,
-                accessData.unknown.count
-            ],
-            backgroundColor: [
-                'rgba(40, 167, 69, 0.8)',
-                'rgba(255, 193, 7, 0.8)',
-                'rgba(108, 117, 125, 0.8)'
-            ],
-            borderColor: [
-                'rgba(40, 167, 69, 1)',
-                'rgba(255, 193, 7, 1)',
-                'rgba(108, 117, 125, 1)'
-            ]
-        }]
-    };
-    
-    chartInstances.openAccess = new Chart(
-        document.getElementById('openAccessChart'),
-        {
-            type: 'doughnut',
-            data: openAccessChartData,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const types = ['open_access', 'paywalled', 'unknown'];
-                                const type = types[context.dataIndex];
-                                const data = accessData[type];
-                                return [
-                                    context.label + ': ' + data.count,
-                                    'Percentage: ' + data.percentage.toFixed(1) + '%',
-                                    'Post-retraction citations: ' + data.post_retraction_citations,
-                                    'Citations per paper: ' + data.citations_per_paper.toFixed(1)
-                                ];
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    );
+    console.log('Plotly choropleth world map initialized with', plotlyMapData.length, 'countries');
 }
 
 function initializeNetworkVisualization() {
     const networkData = {{ network_data|safe }};
-    const svg = d3.select("#networkVisualization")
-        .append("svg")
-        .attr("width", "100%")
-        .attr("height", "100%");
+    
+    // Clear any existing visualization
+    d3.select("#networkVisualization").selectAll("*").remove();
     
     const width = document.getElementById("networkVisualization").clientWidth;
     const height = 600;
     
+    const svg = d3.select("#networkVisualization")
+        .append("svg")
+        .attr("width", width)
+        .attr("height", height);
+    
+    // Add zoom behavior
+    const zoom = d3.zoom()
+        .scaleExtent([0.1, 10])
+        .on("zoom", function(event) {
+            container.attr("transform", event.transform);
+        });
+    
+    svg.call(zoom);
+    
+    // Add zoom controls
+    const controls = d3.select("#networkVisualization")
+        .append("div")
+        .style("position", "absolute")
+        .style("top", "10px")
+        .style("right", "10px")
+        .style("z-index", "1000");
+    
+    controls.append("button")
+        .text("Zoom In")
+        .attr("class", "btn btn-sm btn-outline-primary me-1")
+        .on("click", function() {
+            svg.transition().call(zoom.scaleBy, 1.5);
+        });
+    
+    controls.append("button")
+        .text("Zoom Out")
+        .attr("class", "btn btn-sm btn-outline-primary me-1")
+        .on("click", function() {
+            svg.transition().call(zoom.scaleBy, 1 / 1.5);
+        });
+    
+    controls.append("button")
+        .text("Reset")
+        .attr("class", "btn btn-sm btn-outline-secondary")
+        .on("click", function() {
+            svg.transition().call(zoom.transform, d3.zoomIdentity);
+        });
+    
+    // Create container for all network elements
+    const container = svg.append("g");
+    
     const simulation = d3.forceSimulation(networkData.nodes)
         .force("link", d3.forceLink(networkData.links).id(d => d.id))
         .force("charge", d3.forceManyBody().strength(-300))
-        .force("center", d3.forceCenter(width / 2, height / 2));
+        .force("center", d3.forceCenter(width / 2, height / 2))
+        .force("collision", d3.forceCollide().radius(d => Math.max(8, d.size / 2) + 2));
     
-    const link = svg.append("g")
+    const link = container.append("g")
         .selectAll("line")
         .data(networkData.links)
         .enter()
@@ -1171,19 +1414,20 @@ function initializeNetworkVisualization() {
         .attr("stroke-opacity", 0.6)
         .attr("stroke-width", 2);
     
-    const node = svg.append("g")
+    const node = container.append("g")
         .selectAll("circle")
         .data(networkData.nodes)
         .enter()
         .append("circle")
         .attr("r", d => Math.max(8, d.size / 2))
         .attr("fill", d => d.type === 'journal' ? '#007bff' : '#28a745')
+        .style("cursor", "pointer")
         .call(d3.drag()
             .on("start", dragstarted)
             .on("drag", dragged)
             .on("end", dragended));
     
-    const label = svg.append("g")
+    const label = container.append("g")
         .selectAll("text")
         .data(networkData.nodes)
         .enter()
@@ -1191,7 +1435,8 @@ function initializeNetworkVisualization() {
         .text(d => d.name)
         .attr("font-size", "12px")
         .attr("dx", 15)
-        .attr("dy", 4);
+        .attr("dy", 4)
+        .style("pointer-events", "none");
     
     // Tooltip functionality
     node.on("mouseover", function(event, d) {
@@ -1256,8 +1501,350 @@ function updateTrendCharts() {
 }
 
 function updateNetworkChart() {
-    // Implement network filter functionality here
-    console.log('Updating network visualization...');
+    const networkType = document.getElementById('networkTypeFilter').value;
+    const networkData = {{ network_data|safe }};
+    
+    // Filter nodes and links based on network type
+    let filteredNodes = [];
+    let filteredLinks = [];
+    
+    switch(networkType) {
+        case 'journals':
+            filteredNodes = networkData.nodes.filter(node => node.type === 'journal');
+            filteredLinks = networkData.links.filter(link => 
+                link.type === 'journal-country' && 
+                filteredNodes.some(n => n.id === link.source) &&
+                networkData.nodes.filter(n => n.type === 'country').some(n => n.id === link.target)
+            );
+            // Add country nodes that are connected to journals
+            const connectedCountryIds = [...new Set(filteredLinks.map(l => l.target))];
+            const connectedCountries = networkData.nodes.filter(node => 
+                node.type === 'country' && connectedCountryIds.includes(node.id)
+            );
+            filteredNodes = [...filteredNodes, ...connectedCountries];
+            break;
+            
+        case 'subjects':
+            filteredNodes = networkData.nodes.filter(node => node.type === 'subject');
+            filteredLinks = networkData.links.filter(link => 
+                link.type === 'subject-journal' &&
+                filteredNodes.some(n => n.id === link.source) &&
+                networkData.nodes.filter(n => n.type === 'journal').some(n => n.id === link.target)
+            );
+            // Add journal nodes that are connected to subjects
+            const connectedJournalIds = [...new Set(filteredLinks.map(l => l.target))];
+            const connectedJournals = networkData.nodes.filter(node => 
+                node.type === 'journal' && connectedJournalIds.includes(node.id)
+            );
+            filteredNodes = [...filteredNodes, ...connectedJournals];
+            break;
+            
+        case 'combined':
+        default:
+            filteredNodes = networkData.nodes;
+            filteredLinks = networkData.links;
+            break;
+    }
+    
+    // Clear and reinitialize the network visualization
+    d3.select("#networkVisualization").selectAll("*").remove();
+    
+    const width = document.getElementById("networkVisualization").clientWidth;
+    const height = 600;
+    
+    const svg = d3.select("#networkVisualization")
+        .append("svg")
+        .attr("width", width)
+        .attr("height", height);
+    
+    // Add zoom behavior
+    const zoom = d3.zoom()
+        .scaleExtent([0.1, 10])
+        .on("zoom", function(event) {
+            container.attr("transform", event.transform);
+        });
+    
+    svg.call(zoom);
+    
+    // Add zoom controls
+    const controls = d3.select("#networkVisualization")
+        .append("div")
+        .style("position", "absolute")
+        .style("top", "10px")
+        .style("right", "10px")
+        .style("z-index", "1000");
+    
+    controls.append("button")
+        .text("Zoom In")
+        .attr("class", "btn btn-sm btn-outline-primary me-1")
+        .on("click", function() {
+            svg.transition().call(zoom.scaleBy, 1.5);
+        });
+    
+    controls.append("button")
+        .text("Zoom Out")
+        .attr("class", "btn btn-sm btn-outline-primary me-1")
+        .on("click", function() {
+            svg.transition().call(zoom.scaleBy, 1 / 1.5);
+        });
+    
+    controls.append("button")
+        .text("Reset")
+        .attr("class", "btn btn-sm btn-outline-secondary")
+        .on("click", function() {
+            svg.transition().call(zoom.transform, d3.zoomIdentity);
+        });
+    
+    // Create container for all network elements
+    const container = svg.append("g");
+    
+    const simulation = d3.forceSimulation(filteredNodes)
+        .force("link", d3.forceLink(filteredLinks).id(d => d.id))
+        .force("charge", d3.forceManyBody().strength(-300))
+        .force("center", d3.forceCenter(width / 2, height / 2))
+        .force("collision", d3.forceCollide().radius(d => Math.max(8, d.size / 2) + 2));
+    
+    const link = container.append("g")
+        .selectAll("line")
+        .data(filteredLinks)
+        .enter()
+        .append("line")
+        .attr("stroke", "#999")
+        .attr("stroke-opacity", 0.6)
+        .attr("stroke-width", d => Math.max(1, d.value / 10));
+    
+    const node = container.append("g")
+        .selectAll("circle")
+        .data(filteredNodes)
+        .enter()
+        .append("circle")
+        .attr("r", d => Math.max(8, d.size / 2))
+        .attr("fill", d => {
+            switch(d.type) {
+                case 'journal': return '#007bff';
+                case 'country': return '#28a745';
+                case 'subject': return '#ffc107';
+                default: return '#6c757d';
+            }
+        })
+        .style("cursor", "pointer")
+        .call(d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended));
+    
+    const label = container.append("g")
+        .selectAll("text")
+        .data(filteredNodes)
+        .enter()
+        .append("text")
+        .text(d => d.name)
+        .attr("font-size", "12px")
+        .attr("dx", 15)
+        .attr("dy", 4)
+        .style("pointer-events", "none");
+    
+    // Tooltip functionality
+    node.on("mouseover", function(event, d) {
+        d3.select(this).attr("r", Math.max(12, d.size / 2 + 4));
+        
+        const tooltip = d3.select("body").append("div")
+            .attr("class", "tooltip")
+            .style("opacity", 0)
+            .style("position", "absolute")
+            .style("background", "rgba(0,0,0,0.8)")
+            .style("color", "white")
+            .style("padding", "8px")
+            .style("border-radius", "4px")
+            .style("font-size", "12px")
+            .style("z-index", "1000");
+        
+        tooltip.transition()
+            .duration(200)
+            .style("opacity", .9);
+            
+        tooltip.html(`
+            <strong>${d.full_name}</strong><br/>
+            Type: ${d.type}<br/>
+            ${d.retraction_count ? `Retractions: ${d.retraction_count}` : ''}
+            ${d.post_retraction_citations ? `<br/>Post-retraction citations: ${d.post_retraction_citations}` : ''}
+        `)
+            .style("left", (event.pageX + 10) + "px")
+            .style("top", (event.pageY - 28) + "px");
+    })
+    .on("mouseout", function(event, d) {
+        d3.select(this).attr("r", Math.max(8, d.size / 2));
+        d3.selectAll(".tooltip").remove();
+    });
+    
+    simulation
+        .nodes(filteredNodes)
+        .on("tick", ticked);
+    
+    simulation.force("link")
+        .links(filteredLinks);
+    
+    function ticked() {
+        link
+            .attr("x1", d => d.source.x)
+            .attr("y1", d => d.source.y)
+            .attr("x2", d => d.target.x)
+            .attr("y2", d => d.target.y);
+        
+        node
+            .attr("cx", d => d.x)
+            .attr("cy", d => d.y);
+        
+        label
+            .attr("x", d => d.x)
+            .attr("y", d => d.y);
+    }
+    
+    function dragstarted(event, d) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+    }
+    
+    function dragged(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+    }
+    
+    function dragended(event, d) {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+    }
+    
+    console.log(`Network updated: ${networkType} view with ${filteredNodes.length} nodes and ${filteredLinks.length} links`);
+}
+
+function initializeSunburstChart(data) {
+    // Clear any existing chart
+    d3.select("#sunburstChart").selectAll("*").remove();
+    
+    const width = 400;
+    const height = 400;
+    const radius = Math.min(width, height) / 2;
+    
+    const svg = d3.select("#sunburstChart")
+        .append("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .append("g")
+        .attr("transform", `translate(${width / 2},${height / 2})`);
+    
+    // Create color scale
+    const color = d3.scaleOrdinal(d3.schemeCategory10);
+    
+    // Create partition layout
+    const partition = d3.partition()
+        .size([2 * Math.PI, radius]);
+    
+    // Create hierarchy
+    const root = d3.hierarchy(data)
+        .sum(d => d.value)
+        .sort((a, b) => b.value - a.value);
+    
+    // Apply partition
+    partition(root);
+    
+    // Create arc generator
+    const arc = d3.arc()
+        .startAngle(d => d.x0)
+        .endAngle(d => d.x1)
+        .innerRadius(d => d.y0)
+        .outerRadius(d => d.y1);
+    
+    // Add arcs
+    const arcs = svg.selectAll("path")
+        .data(root.descendants())
+        .enter()
+        .append("path")
+        .attr("d", arc)
+        .style("fill", d => {
+            if (d.depth === 0) return "#f8f9fa"; // Center
+            if (d.depth === 1) return color(d.data.name); // Broad categories
+            return d3.color(color(d.parent.data.name)).brighter(0.5); // Specific fields
+        })
+        .style("stroke", "#fff")
+        .style("stroke-width", 1)
+        .style("cursor", "pointer")
+        .on("mouseover", function(event, d) {
+            if (d.depth > 0) {
+                d3.select(this).style("opacity", 0.8);
+                
+                // Show tooltip
+                const tooltip = d3.select("body").append("div")
+                    .attr("class", "tooltip")
+                    .style("opacity", 0)
+                    .style("position", "absolute")
+                    .style("background", "rgba(0,0,0,0.8)")
+                    .style("color", "white")
+                    .style("padding", "8px")
+                    .style("border-radius", "4px")
+                    .style("font-size", "12px")
+                    .style("z-index", "1000");
+                
+                tooltip.transition()
+                    .duration(200)
+                    .style("opacity", .9);
+                    
+                const fullName = d.data.full_name || d.data.name;
+                tooltip.html(`
+                    <strong>${fullName}</strong><br/>
+                    Papers: ${d.value.toLocaleString()}<br/>
+                    ${d.depth === 1 ? 'Broad Category' : 'Specific Field'}
+                `)
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 28) + "px");
+            }
+        })
+        .on("mouseout", function(event, d) {
+            d3.select(this).style("opacity", 1);
+            d3.selectAll(".tooltip").remove();
+        })
+        .on("click", function(event, d) {
+            if (d.depth > 0) {
+                const fullName = d.data.full_name || d.data.name;
+                const searchUrl = d.depth === 1 ? 
+                    `/search/?broad_subject=${encodeURIComponent(d.data.name)}` :
+                    `/search/?subject=${encodeURIComponent(fullName)}`;
+                window.open(searchUrl, '_blank');
+            }
+        });
+    
+    // Add text labels for broad categories only
+    svg.selectAll("text")
+        .data(root.descendants().filter(d => d.depth === 1 && d.value > 50))
+        .enter()
+        .append("text")
+        .attr("transform", function(d) {
+            const x = (d.x0 + d.x1) / 2 * 180 / Math.PI;
+            const y = (d.y0 + d.y1) / 2;
+            return `rotate(${x - 90}) translate(${y},0) rotate(${x < 180 ? 0 : 180})`;
+        })
+        .attr("dy", "0.35em")
+        .style("text-anchor", function(d) {
+            return (d.x0 + d.x1) / 2 < Math.PI ? "start" : "end";
+        })
+        .style("font-size", "10px")
+        .style("font-weight", "bold")
+        .style("fill", "#333")
+        .style("pointer-events", "none")
+        .text(d => d.data.name.length > 12 ? d.data.name.substring(0, 12) + "..." : d.data.name);
+    
+    // Add center text
+    svg.append("text")
+        .attr("text-anchor", "middle")
+        .attr("dy", "0.35em")
+        .style("font-size", "12px")
+        .style("font-weight", "bold")
+        .style("fill", "#666")
+        .text("Subjects");
+    
+    console.log('Sunburst chart initialized with', data.children.length, 'broad categories');
 }
 
 // Add loading indicators

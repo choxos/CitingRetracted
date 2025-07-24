@@ -1,6 +1,6 @@
-# 🎯 Key Features: Post-Retraction Citation Analysis
+# 📊 Post-Retraction Citation Tracker (PRCT) - Enhanced Analytics
 
-The Citing Retracted Papers Database now includes comprehensive analytics specifically focused on post-retraction citations - one of the most critical issues in academic integrity.
+The Post-Retraction Citation Tracker (PRCT) database now includes comprehensive analytics specifically focused on post-retraction citations - one of the most critical issues in academic integrity.
 
 ## 🚨 Post-Retraction Citation Tracking
 

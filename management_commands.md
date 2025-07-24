@@ -1,6 +1,6 @@
-# Management Commands Guide
+# Django Management Commands
 
-This document explains all available Django management commands for the CitingRetracted application.
+This document explains all available Django management commands for the Post-Retraction Citation Tracker (PRCT) application.
 
 ## Data Import Commands
 

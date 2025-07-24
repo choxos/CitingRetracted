@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide covers deploying the CitingRetracted application locally and on various cloud platforms.
+This guide covers deploying the Post-Retraction Citation Tracker (PRCT) application locally and on various cloud platforms.
 
 ## Prerequisites
 
@@ -583,4 +583,5 @@ railway run python manage.py migrate
 ```
 
 ### Google Cloud Deployment:
+```
 ```
