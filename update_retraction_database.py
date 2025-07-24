@@ -34,6 +34,7 @@ class RetractionDatabaseUpdater:
         self.log("🔍 Downloading latest Retraction Watch data...")
         
         urls = [
+            "https://gitlab.com/crossref/retraction-watch-data/-/raw/main/retraction_watch.csv?ref_type=heads&inline=false",
             "http://retractiondatabase.org/RetractionWatch.csv",
             "https://retractionwatch.com/retraction-watch-database/",
         ]

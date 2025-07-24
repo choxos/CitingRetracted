@@ -2,16 +2,18 @@
 
 ## 🎯 **Official Sources**
 
-### **1. Retraction Watch Database (Primary)**
-- **Website**: http://retractiondatabase.org/
-- **Direct CSV**: http://retractiondatabase.org/RetractionWatch.csv
+### **1. Retraction Watch Database (Current Official Source)**
+- **GitLab Repository**: https://gitlab.com/crossref/retraction-watch-data/
+- **Direct CSV**: https://gitlab.com/crossref/retraction-watch-data/-/raw/main/retraction_watch.csv?ref_type=heads&inline=false
+- **Maintained by**: CrossRef in collaboration with Retraction Watch
 - **Format**: CSV with comprehensive retraction metadata
-- **Update Frequency**: Regularly updated by Retraction Watch team
+- **Update Frequency**: Regularly updated
 
-### **2. Alternative Sources**
+### **2. Legacy Sources**
+- **Old Website**: http://retractiondatabase.org/ (may be outdated)
+- **Direct CSV (Legacy)**: http://retractiondatabase.org/RetractionWatch.csv
 - **CrossRef API**: For DOI-based retraction data
 - **PubMed Retractions**: MEDLINE retraction notices
-- **Manual Export**: Via Retraction Watch website interface
 
 ## 🤖 **Automated Download Options**
 
@@ -32,13 +34,13 @@ python fetch_retraction_watch_data.py
 
 ### **Option 3: Direct Download Commands**
 ```bash
-# Quick download with curl
+# Quick download with curl - OFFICIAL CURRENT URL
 curl -L -o "retraction_watch_$(date +%Y%m%d).csv" \
-  "http://retractiondatabase.org/RetractionWatch.csv"
+  "https://gitlab.com/crossref/retraction-watch-data/-/raw/main/retraction_watch.csv?ref_type=heads&inline=false"
 
 # Or with wget
 wget -O "retraction_watch_$(date +%Y%m%d).csv" \
-  "http://retractiondatabase.org/RetractionWatch.csv"
+  "https://gitlab.com/crossref/retraction-watch-data/-/raw/main/retraction_watch.csv?ref_type=heads&inline=false"
 ```
 
 ## 🔍 **Manual Download Process**

@@ -15,6 +15,7 @@ def fetch_retraction_watch_data():
     
     # Primary URL for Retraction Watch CSV
     urls = [
+        "https://gitlab.com/crossref/retraction-watch-data/-/raw/main/retraction_watch.csv?ref_type=heads&inline=false",
         "http://retractiondatabase.org/RetractionWatch.csv",
         "https://retractionwatch.com/retraction-watch-database/",
         "http://retractiondatabase.org/download/",

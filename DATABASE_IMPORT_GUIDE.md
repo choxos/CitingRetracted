@@ -35,9 +35,9 @@ export DJANGO_SETTINGS_MODULE=citing_retracted.production_settings
 
 ### **Option 3: Manual Process**
 ```bash
-# 1. Manual download
+# 1. Manual download - OFFICIAL CURRENT URL
 curl -L -o "retraction_watch_$(date +%Y%m%d).csv" \
-  "http://retractiondatabase.org/RetractionWatch.csv"
+  "https://gitlab.com/crossref/retraction-watch-data/-/raw/main/retraction_watch.csv?ref_type=heads&inline=false"
 
 # 2. Test import (dry run)
 ./venv/bin/python manage.py import_retraction_watch \

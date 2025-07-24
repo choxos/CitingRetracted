@@ -12,6 +12,7 @@ FILENAME="retraction_watch_${TIMESTAMP}.csv"
 
 # Primary URLs to try
 URLS=(
+    "https://gitlab.com/crossref/retraction-watch-data/-/raw/main/retraction_watch.csv?ref_type=heads&inline=false"
     "http://retractiondatabase.org/RetractionWatch.csv"
     "https://api.crossref.org/works?filter=type:retraction&rows=1000&mailto=your-email@domain.com"
     "http://retractiondatabase.org/download/"
