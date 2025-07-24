@@ -125,7 +125,7 @@ class HybridCitationFetcher:
         1. Primary: OpenCitations (unlimited)
         2. Fallback: OpenAlex + Semantic Scholar (rate-limited)
         """
-        doi = retracted_paper.doi
+        doi = retracted_paper.original_paper_doi
         if not doi:
             logger.warning(f"No DOI for paper {retracted_paper.id}")
             return 0, 0
@@ -305,8 +305,8 @@ class Command(BaseCommand):
             else:
                 # Process papers with no citations first, then recently retracted
                 papers = RetractedPaper.objects.filter(
-                    doi__isnull=False,
-                    doi__gt=''
+                    original_paper_doi__isnull=False,
+                    original_paper_doi__gt=''
                 ).order_by('-retraction_date')[:limit]
 
             self.stdout.write(f'Processing {papers.count()} papers...')
@@ -367,7 +367,7 @@ class Command(BaseCommand):
 
     def _fetch_opencitations_only(self, fetcher, paper):
         """Fetch citations using only OpenCitations"""
-        doi = paper.doi
+        doi = paper.original_paper_doi
         if not doi:
             return 0, 0
 
