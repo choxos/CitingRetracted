@@ -1,6 +1,6 @@
 # 📊 Import Retraction Watch Data into PRCT Database
 
-## 🎯 **Three Ways to Update Your Database**
+## 🎯 **Four Ways to Update Your Database**
 
 ### **Option 1: Automated Pipeline (Recommended)**
 ```bash
@@ -10,6 +10,9 @@ python update_retraction_database.py
 # Test run without making changes
 python update_retraction_database.py --dry-run
 
+# Use CrossRef API for incremental updates (faster for recent data)
+python update_retraction_database.py --use-api --api-days 7
+
 # Custom installation path
 python update_retraction_database.py --prct-path /var/www/prct
 
@@ -17,7 +20,22 @@ python update_retraction_database.py --prct-path /var/www/prct
 python update_retraction_database.py --download-only
 ```
 
-### **Option 2: Using Existing Management Commands**
+### **Option 2: CrossRef REST API (Real-time Updates)**
+```bash
+# Fetch recent retractions via CrossRef API
+python fetch_crossref_retractions_api.py --recent-days 7 --email your-email@domain.com
+
+# Fetch specific number of retractions
+python fetch_crossref_retractions_api.py --rows 100 --email your-email@domain.com
+
+# Fetch all retractions from specific date
+python fetch_crossref_retractions_api.py --all --from-date 2024-01-01 --max-results 1000
+
+# Then import the generated CSV
+./venv/bin/python manage.py import_retraction_watch crossref_retractions_*.csv
+```
+
+### **Option 3: Using Existing Management Commands**
 ```bash
 # 1. Download data first
 ./download_retraction_watch.sh
@@ -33,7 +51,7 @@ export DJANGO_SETTINGS_MODULE=citing_retracted.production_settings
 ./venv/bin/python manage.py fetch_citations --limit 100
 ```
 
-### **Option 3: Manual Process**
+### **Option 4: Manual Process**
 ```bash
 # 1. Manual download - OFFICIAL CURRENT URL
 curl -L -o "retraction_watch_$(date +%Y%m%d).csv" \
@@ -135,14 +153,58 @@ OriginalPaperPubMedID, RetractionPubMedID, RetractionNature,
 Reason, Notes, Paywalled, OriginalPaperDate, RetractionDate
 ```
 
+## 🔄 **API vs Full Dataset: When to Use Which**
+
+### **CrossRef REST API (Option 2) - Best for:**
+- ✅ **Daily/incremental updates** - Only new retractions
+- ✅ **Real-time monitoring** - Latest retractions as they're published
+- ✅ **Smaller datasets** - Faster download and processing
+- ✅ **Live validation** - Cross-check against full dataset
+- ✅ **API reliability** - Direct from CrossRef's authoritative source
+
+**Example:** `https://api.crossref.org/v1/works?filter=update-type:retraction`
+
+### **Full CSV Dataset (Option 1) - Best for:**
+- ✅ **Initial database setup** - Complete historical data
+- ✅ **Monthly full refresh** - Ensure no missing records
+- ✅ **Bulk operations** - Processing thousands of records
+- ✅ **Offline processing** - When API is unavailable
+- ✅ **Complete metadata** - All available fields from Retraction Watch
+
+### **Recommended Combined Strategy:**
+```bash
+# 1. Monthly: Full dataset refresh
+python update_retraction_database.py
+
+# 2. Daily: Incremental API updates  
+python update_retraction_database.py --use-api --api-days 1
+
+# 3. Weekly: Recent API updates with citations
+python update_retraction_database.py --use-api --api-days 7
+```
+
 ## ⚙️ **Automated Updates**
 
-### **Set up Cron Job for Weekly Updates:**
+### **Set up Cron Jobs for Combined Strategy:**
 ```bash
 # Edit crontab
 crontab -e
 
-# Add weekly update (Sundays at 2 AM)
+# Add these lines for optimal update strategy:
+
+# Daily incremental updates via API (6 AM)
+0 6 * * * cd /var/www/prct && python update_retraction_database.py --use-api --api-days 1 >> logs/daily_update.log 2>&1
+
+# Weekly updates with citations via API (Sundays 2 AM)  
+0 2 * * 0 cd /var/www/prct && python update_retraction_database.py --use-api --api-days 7 >> logs/weekly_update.log 2>&1
+
+# Monthly full dataset refresh (1st of month, 1 AM)
+0 1 1 * * cd /var/www/prct && python update_retraction_database.py >> logs/monthly_update.log 2>&1
+```
+
+### **Alternative: Simple Weekly Updates:**
+```bash
+# For simpler setups, weekly full updates
 0 2 * * 0 cd /var/www/prct && python update_retraction_database.py >> logs/update.log 2>&1
 ```
 
@@ -258,7 +320,7 @@ sudo systemctl status postgresql
 # Test connection
 ./venv/bin/python manage.py dbshell
 ```
-
+  
 3. **CSV Format Issues:**
 ```bash
 # Check file encoding
@@ -270,7 +332,7 @@ head -1 retraction_watch_*.csv
 # Count lines
 wc -l retraction_watch_*.csv
 ```
-
+  
 4. **Memory Issues:**
 ```bash
 # Import in batches
@@ -280,9 +342,18 @@ wc -l retraction_watch_*.csv
 # Check memory usage
 free -h
 ```
+  
+5. **CrossRef API Issues:**
+```bash
+# Test API directly
+curl "https://api.crossref.org/v1/works?filter=update-type:retraction&rows=5"
 
+# Check with email parameter (polite usage)
+curl "https://api.crossref.org/v1/works?filter=update-type:retraction&rows=5&mailto=your-email@domain.com"
+```
+  
 ## 📈 **Performance Tips**
-
+  
 ### **Large Dataset Imports:**
 ```bash
 # Use batch processing
@@ -294,7 +365,7 @@ free -h
 # Monitor progress
 tail -f logs/django.log
 ```
-
+  
 ### **Citation Fetching Optimization:**
 ```bash
 # Fetch citations in small batches
@@ -303,25 +374,35 @@ tail -f logs/django.log
 # Use specific paper if needed
 ./venv/bin/python manage.py fetch_citations --paper-id RW12345
 ```
+  
+### **API Performance:**
+```bash
+# Use API for daily updates (faster than full download)
+python update_retraction_database.py --use-api --api-days 1
 
+# Combine with full monthly refresh for completeness
+```
+  
 ## ✅ **Success Indicators**
-
+  
 After successful import:
-
+  
 - ✅ **No import errors** in Django logs
 - ✅ **Record counts increased** appropriately  
 - ✅ **Analytics charts show new data**
 - ✅ **Recent retractions appear** in admin
 - ✅ **Citation fetching works** for new papers
 - ✅ **Database integrity maintained**
-
+- ✅ **API updates working** for incremental data
+  
 ## 🎯 **Next Steps**
-
+  
 1. **Deploy the tools** to your VPS
 2. **Run initial update** with `--dry-run` first
 3. **Execute real import** once verified
-4. **Set up automated updates** with cron/systemd
+4. **Set up automated updates** with combined API/full strategy
 5. **Monitor logs** for ongoing health
 6. **Check analytics** for data visualization
-
-Your PRCT database will stay current with the latest retraction data! 🚀 
+7. **Test CrossRef API** for incremental updates
+  
+Your PRCT database will stay current with the latest retraction data using both the comprehensive CSV dataset and real-time API updates! 🚀

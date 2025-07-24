@@ -264,7 +264,7 @@ class RetractionDatabaseUpdater:
                 old_file.unlink()
                 self.log(f"🗑️  Removed old file: {old_file.name}")
     
-    def run_full_update(self, dry_run=False, fetch_citations_limit=100):
+    def run_full_update(self, dry_run=False, fetch_citations_limit=100, use_api=False, api_days=30):
         """Run the complete update pipeline"""
         self.log("🚀 Starting Retraction Watch database update...")
         
@@ -273,7 +273,13 @@ class RetractionDatabaseUpdater:
             self.setup_django_environment()
             
             # 2. Download latest data
-            csv_file = self.download_retraction_watch_data()
+            if use_api:
+                csv_file = self.fetch_via_crossref_api(recent_days=api_days)
+                if not csv_file:
+                    self.log("⚠️  API fetch failed, falling back to full CSV download", "WARNING")
+                    csv_file = self.download_retraction_watch_data()
+            else:
+                csv_file = self.download_retraction_watch_data()
             
             # 3. Import into database
             if self.import_data_to_database(csv_file, dry_run=dry_run):
@@ -295,6 +301,41 @@ class RetractionDatabaseUpdater:
             self.log(f"❌ Database update failed: {e}", "ERROR")
             return False
 
+    def fetch_via_crossref_api(self, recent_days=30, email="prct@xeradb.com"):
+        """Fetch recent retractions via CrossRef API for incremental updates"""
+        self.log(f"🔍 Fetching recent retractions via CrossRef API (last {recent_days} days)...")
+        
+        try:
+            # Import the CrossRef API functionality
+            sys.path.append(str(self.prct_path))
+            from fetch_crossref_retractions_api import CrossRefRetractionsAPI
+            
+            api = CrossRefRetractionsAPI(email=email)
+            
+            # Fetch recent retractions
+            converted_data = api.fetch_recent_retractions(days_back=recent_days)
+            
+            if converted_data:
+                # Save to CSV file
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"crossref_retractions_{timestamp}.csv"
+                filepath = self.data_dir / filename
+                
+                csv_file = api.save_as_csv(converted_data, str(filepath))
+                if csv_file:
+                    self.log(f"✅ Fetched {len(converted_data)} retractions via API")
+                    return Path(csv_file)
+                    
+            self.log("❌ No recent retractions found via API")
+            return None
+            
+        except ImportError:
+            self.log("❌ CrossRef API module not available", "ERROR")
+            return None
+        except Exception as e:
+            self.log(f"❌ CrossRef API fetch failed: {e}", "ERROR")
+            return None
+
 
 def main():
     """Main function with command line interface"""
@@ -309,6 +350,10 @@ def main():
                        help='Limit citations to fetch (default: 100)')
     parser.add_argument('--download-only', action='store_true',
                        help='Only download data, do not import')
+    parser.add_argument('--use-api', action='store_true',
+                       help='Use CrossRef API to fetch recent retractions instead of full CSV download')
+    parser.add_argument('--api-days', type=int, default=30,
+                       help='Number of days to fetch via CrossRef API (default: 30)')
     
     args = parser.parse_args()
     
@@ -324,7 +369,9 @@ def main():
     else:
         success = updater.run_full_update(
             dry_run=args.dry_run, 
-            fetch_citations_limit=args.citations_limit
+            fetch_citations_limit=args.citations_limit,
+            use_api=args.use_api,
+            api_days=args.api_days
         )
         sys.exit(0 if success else 1)
 
