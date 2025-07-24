@@ -53,7 +53,11 @@ export DJANGO_SETTINGS_MODULE=citing_retracted.production_settings
 
 ### **Option 4: Manual Process**
 ```bash
-# 1. Manual download - OFFICIAL CURRENT URL
+# 1. Manual download - OFFICIAL GitLab URL (resumable with wget -c)
+wget -c -O "retraction_watch_$(date +%Y%m%d).csv" \
+  "https://gitlab.com/crossref/retraction-watch-data/-/raw/main/retraction_watch.csv?ref_type=heads&inline=false"
+
+# Alternative with curl (no resume capability)
 curl -L -o "retraction_watch_$(date +%Y%m%d).csv" \
   "https://gitlab.com/crossref/retraction-watch-data/-/raw/main/retraction_watch.csv?ref_type=heads&inline=false"
 

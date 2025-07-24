@@ -1,32 +1,31 @@
 # 📊 Getting Latest Retraction Watch Data
 
-## 🎯 **Official Sources**
+## 🎯 **Official Source**
 
-### **1. Retraction Watch Database (Current Official Source)**
+### **Retraction Watch Database (Official GitLab Repository)**
 - **GitLab Repository**: https://gitlab.com/crossref/retraction-watch-data/
 - **Direct CSV**: https://gitlab.com/crossref/retraction-watch-data/-/raw/main/retraction_watch.csv?ref_type=heads&inline=false
 - **Maintained by**: CrossRef in collaboration with Retraction Watch
-- **Format**: CSV with comprehensive retraction metadata
+- **Format**: CSV with comprehensive retraction metadata (~60MB, 65,000+ records)
 - **Update Frequency**: Regularly updated
+- **Resumable Downloads**: Use `wget -c` for large file downloads
 
-### **2. Legacy Sources**
-- **Old Website**: http://retractiondatabase.org/ (may be outdated)
-- **Direct CSV (Legacy)**: http://retractiondatabase.org/RetractionWatch.csv
-- **CrossRef API**: For DOI-based retraction data
-- **PubMed Retractions**: MEDLINE retraction notices
+### **Alternative Data Sources** 
+- **CrossRef REST API**: For real-time incremental updates
+- **PubMed Retractions**: MEDLINE retraction notices (research use)
 
 ## 🤖 **Automated Download Options**
 
 ### **Option 1: Simple Bash Script**
 ```bash
-# Run the provided download script
+# Run the automated script (uses wget -c)
 ./download_retraction_watch.sh
 ```
 
 ### **Option 2: Python Script (Advanced)**
 ```bash
-# Install dependencies first
-pip install pandas beautifulsoup4 requests
+# Install dependencies first (optional for HTML parsing)
+pip install pandas requests
 
 # Run the Python fetcher
 python fetch_retraction_watch_data.py
@@ -34,12 +33,12 @@ python fetch_retraction_watch_data.py
 
 ### **Option 3: Direct Download Commands**
 ```bash
-# Quick download with curl - OFFICIAL CURRENT URL
-curl -L -o "retraction_watch_$(date +%Y%m%d).csv" \
+# Recommended: wget with resume capability
+wget -c -O "retraction_watch_$(date +%Y%m%d).csv" \
   "https://gitlab.com/crossref/retraction-watch-data/-/raw/main/retraction_watch.csv?ref_type=heads&inline=false"
 
-# Or with wget
-wget -O "retraction_watch_$(date +%Y%m%d).csv" \
+# Alternative: curl (no resume)
+curl -L -o "retraction_watch_$(date +%Y%m%d).csv" \
   "https://gitlab.com/crossref/retraction-watch-data/-/raw/main/retraction_watch.csv?ref_type=heads&inline=false"
 ```
 

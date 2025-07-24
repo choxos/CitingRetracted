@@ -10,38 +10,34 @@ echo "================================================"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 FILENAME="retraction_watch_${TIMESTAMP}.csv"
 
-# Primary URLs to try
-URLS=(
-    "https://gitlab.com/crossref/retraction-watch-data/-/raw/main/retraction_watch.csv?ref_type=heads&inline=false"
-    "http://retractiondatabase.org/RetractionWatch.csv"
-    "https://api.crossref.org/works?filter=type:retraction&rows=1000&mailto=your-email@domain.com"
-    "http://retractiondatabase.org/download/"
-)
+# Primary URL - ONLY official source
+URL="https://gitlab.com/crossref/retraction-watch-data/-/raw/main/retraction_watch.csv?ref_type=heads&inline=false"
 
 # Function to download and validate CSV
 download_csv() {
     local url=$1
     local output_file=$2
     
-    echo "📡 Trying: $url"
+    echo "📡 Downloading from official GitLab source..."
+    echo "🔗 URL: $url"
     
-    # Download with curl
-    if curl -L -A "Mozilla/5.0 (compatible; PRCT-Bot/1.0)" \
-        --connect-timeout 30 \
-        --max-time 300 \
-        -o "$output_file" \
-        "$url" 2>/dev/null; then
+    # Download with wget -c (resumable download)
+    if wget -c -T 30 --progress=bar \
+        --user-agent="PRCT-DataBot/1.0" \
+        -O "$output_file" \
+        "$url" 2>&1; then
         
         # Check if file exists and has content
         if [[ -s "$output_file" ]]; then
             # Validate CSV by checking first line
             FIRST_LINE=$(head -n1 "$output_file")
-            if [[ "$FIRST_LINE" == *","* ]]; then
+            if [[ "$FIRST_LINE" == *"Record ID"* ]]; then
                 LINES=$(wc -l < "$output_file")
                 echo "✅ Downloaded: $output_file ($LINES lines)"
                 return 0
             else
-                echo "⚠️  File doesn't appear to be CSV format"
+                echo "⚠️  File doesn't appear to be valid Retraction Watch CSV"
+                echo "First line: $FIRST_LINE"
                 rm -f "$output_file"
             fi
         else
@@ -49,7 +45,7 @@ download_csv() {
             rm -f "$output_file"
         fi
     else
-        echo "❌ Curl failed"
+        echo "❌ wget failed"
         rm -f "$output_file"
     fi
     
@@ -57,24 +53,22 @@ download_csv() {
 }
 
 # Try each URL
-for url in "${URLS[@]}"; do
-    if download_csv "$url" "$FILENAME"; then
-        echo ""
-        echo "🎉 Success! Downloaded: $FILENAME"
-        echo "📊 Preview:"
-        head -n5 "$FILENAME" | cut -c1-100
-        echo ""
-        echo "📁 File ready for import into PRCT database"
-        exit 0
-    fi
-done
+if download_csv "$URL" "$FILENAME"; then
+    echo ""
+    echo "🎉 Success! Downloaded: $FILENAME"
+    echo "📊 Preview:"
+    head -n5 "$FILENAME" | cut -c1-100
+    echo ""
+    echo "📁 File ready for import into PRCT database"
+    exit 0
+else
+    echo ""
+    echo "❌ Could not download from any source"
+    echo "🔧 Manual alternatives:"
+    echo "   1. Visit: http://retractiondatabase.org/"
+    echo "   2. Register for free account if required"
+    echo "   3. Download CSV manually"
+    echo "   4. Check if site is temporarily down"
 
-echo ""
-echo "❌ Could not download from any source"
-echo "🔧 Manual alternatives:"
-echo "   1. Visit: http://retractiondatabase.org/"
-echo "   2. Register for free account if required"
-echo "   3. Download CSV manually"
-echo "   4. Check if site is temporarily down"
-
-exit 1 
+    exit 1
+fi 

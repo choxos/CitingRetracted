@@ -33,96 +33,62 @@ class RetractionDatabaseUpdater:
         """Download the latest Retraction Watch CSV data"""
         self.log("🔍 Downloading latest Retraction Watch data...")
         
-        urls = [
-            "https://gitlab.com/crossref/retraction-watch-data/-/raw/main/retraction_watch.csv?ref_type=heads&inline=false",
-            "http://retractiondatabase.org/RetractionWatch.csv",
-            "https://retractionwatch.com/retraction-watch-database/",
-        ]
+        # Official GitLab URL - only source to use
+        url = "https://gitlab.com/crossref/retraction-watch-data/-/raw/main/retraction_watch.csv?ref_type=heads&inline=false"
         
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"retraction_watch_{timestamp}.csv"
         filepath = self.data_dir / filename
         
-        for url in urls:
-            try:
-                self.log(f"📡 Trying URL: {url}")
-                
-                headers = {
-                    'User-Agent': 'Mozilla/5.0 (compatible; PRCT-UpdateBot/1.0)',
-                    'Accept': 'text/csv,text/html,application/xhtml+xml,*/*',
-                }
-                
-                response = requests.get(url, headers=headers, timeout=60, stream=True)
-                
-                if response.status_code == 200:
-                    content_type = response.headers.get('content-type', '').lower()
-                    
-                    if 'csv' in content_type or url.endswith('.csv'):
-                        # Direct CSV download
-                        with open(filepath, 'wb') as f:
-                            for chunk in response.iter_content(chunk_size=8192):
-                                f.write(chunk)
-                        
-                        # Validate the downloaded file
-                        if self.validate_csv_file(filepath):
-                            self.log(f"✅ Successfully downloaded: {filename}")
-                            return filepath
-                        else:
-                            self.log("❌ Downloaded file failed validation")
-                            filepath.unlink(missing_ok=True)
-                            
-                    else:
-                        self.log("📄 Got HTML page, checking for download links...")
-                        # Try to parse HTML for download links
-                        download_url = self.parse_download_page(response.text, url)
-                        if download_url:
-                            return self.download_from_url(download_url, filepath)
-                        
-                else:
-                    self.log(f"❌ HTTP {response.status_code} from {url}")
-                    
-            except Exception as e:
-                self.log(f"❌ Error downloading from {url}: {e}", "ERROR")
-                continue
-        
-        raise Exception("Could not download Retraction Watch data from any source")
+        # Try wget first (with resume capability), then fall back to requests
+        if self.download_with_wget(url, filepath):
+            return filepath
+        else:
+            self.log("⚠️  wget failed, trying with Python requests...", "WARNING")
+            return self.download_with_requests(url, filepath)
     
-    def parse_download_page(self, html_content, base_url):
-        """Parse HTML page to find CSV download links"""
+    def download_with_wget(self, url, filepath):
+        """Download using wget with resume capability"""
         try:
-            from bs4 import BeautifulSoup
-            import urllib.parse
+            self.log(f"📡 Using wget for download from: {url}")
             
-            soup = BeautifulSoup(html_content, 'html.parser')
+            result = subprocess.run([
+                'wget', '-c', '-T', '60', '--progress=bar',
+                '--user-agent=PRCT-UpdateBot/1.0',
+                '-O', str(filepath),
+                url
+            ], capture_output=True, text=True, timeout=300)
             
-            # Look for download links
-            selectors = [
-                'a[href*="download"]',
-                'a[href*=".csv"]',
-                'a[href*="export"]',
-                'a[href*="RetractionWatch"]'
-            ]
-            
-            for selector in selectors:
-                links = soup.select(selector)
-                for link in links:
-                    href = link.get('href')
-                    if href and ('.csv' in href.lower() or 'download' in href.lower()):
-                        full_url = urllib.parse.urljoin(base_url, href)
-                        self.log(f"🔗 Found download link: {full_url}")
-                        return full_url
-                        
-        except ImportError:
-            self.log("⚠️  BeautifulSoup not available for HTML parsing", "WARNING")
+            if result.returncode == 0 and self.validate_csv_file(filepath):
+                self.log(f"✅ Successfully downloaded with wget: {filepath.name}")
+                return True
+            else:
+                self.log(f"❌ wget failed: {result.stderr}")
+                filepath.unlink(missing_ok=True)
+                return False
+                
+        except subprocess.TimeoutExpired:
+            self.log("❌ wget download timed out", "ERROR")
+            filepath.unlink(missing_ok=True)
+            return False
+        except FileNotFoundError:
+            self.log("⚠️  wget not available, will use Python requests", "WARNING")
+            return False
         except Exception as e:
-            self.log(f"❌ Error parsing HTML: {e}", "ERROR")
-            
-        return None
+            self.log(f"❌ wget error: {e}", "ERROR")
+            filepath.unlink(missing_ok=True)
+            return False
     
-    def download_from_url(self, url, filepath):
-        """Download CSV from a specific URL"""
+    def download_with_requests(self, url, filepath):
+        """Download using Python requests as fallback"""
         try:
-            headers = {'User-Agent': 'Mozilla/5.0 (compatible; PRCT-UpdateBot/1.0)'}
+            self.log(f"📡 Using Python requests for download from: {url}")
+            
+            headers = {
+                'User-Agent': 'PRCT-UpdateBot/1.0',
+                'Accept': 'text/csv,application/octet-stream,*/*',
+            }
+            
             response = requests.get(url, headers=headers, timeout=120, stream=True)
             
             if response.status_code == 200:
@@ -131,15 +97,19 @@ class RetractionDatabaseUpdater:
                         f.write(chunk)
                 
                 if self.validate_csv_file(filepath):
-                    self.log(f"✅ Successfully downloaded from: {url}")
+                    self.log(f"✅ Successfully downloaded with requests: {filepath.name}")
                     return filepath
-                    
-            self.log(f"❌ Failed to download from {url}: HTTP {response.status_code}")
-            
+                else:
+                    self.log("❌ Downloaded file failed validation")
+                    filepath.unlink(missing_ok=True)
+            else:
+                self.log(f"❌ HTTP {response.status_code} from {url}")
+                
         except Exception as e:
-            self.log(f"❌ Error downloading from {url}: {e}", "ERROR")
-            
-        return None
+            self.log(f"❌ Error downloading with requests: {e}", "ERROR")
+            filepath.unlink(missing_ok=True)
+        
+        raise Exception("Could not download Retraction Watch data from official source")
     
     def validate_csv_file(self, filepath):
         """Validate that the downloaded file is a proper CSV"""
