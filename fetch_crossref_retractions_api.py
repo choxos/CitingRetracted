@@ -146,39 +146,47 @@ class CrossRefRetractionsAPI:
         for item in crossref_items:
             try:
                 # Extract basic information
-                title = item.get('title', [''])[0] if item.get('title') else ''
+                title = ''
+                if 'title' in item and item['title']:
+                    title = item['title'][0] if isinstance(item['title'], list) else str(item['title'])
+                    # Clean title - remove excessive whitespace and line breaks
+                    title = ' '.join(title.split())
                 
-                # Authors
+                # Authors - clean formatting
                 authors = []
                 if 'author' in item:
-                    for author in item['author']:
-                        given = author.get('given', '')
-                        family = author.get('family', '')
+                    for author in item['author'][:5]:  # Limit to first 5 authors
+                        given = author.get('given', '').strip()
+                        family = author.get('family', '').strip()
                         if given and family:
                             authors.append(f"{given} {family}")
                         elif family:
                             authors.append(family)
+                        elif given:
+                            authors.append(given)
                 
-                # Journal/Container
+                author_string = '; '.join(authors) if authors else ''
+                
+                # Journal/Container - clean formatting
                 container_title = ''
                 if 'container-title' in item and item['container-title']:
-                    container_title = item['container-title'][0]
+                    container_title = item['container-title'][0] if isinstance(item['container-title'], list) else str(item['container-title'])
+                    container_title = ' '.join(container_title.split())
                 
-                # Publisher
-                publisher = item.get('publisher', '')
+                # Publisher - clean formatting
+                publisher = ''
+                if 'publisher' in item:
+                    publisher = str(item['publisher']).strip()
+                    publisher = ' '.join(publisher.split())
                 
                 # DOI
-                doi = item.get('DOI', '')
+                doi = item.get('DOI', '').strip()
                 
-                # Publication date
+                # Publication date - standardized format
                 pub_date = ''
-                if 'published-print' in item:
-                    date_parts = item['published-print'].get('date-parts', [[]])
-                    if date_parts and len(date_parts[0]) >= 3:
-                        year, month, day = date_parts[0][:3]
-                        pub_date = f"{month}/{day}/{year}"
-                elif 'published-online' in item:
-                    date_parts = item['published-online'].get('date-parts', [[]])
+                date_source = item.get('published-print') or item.get('published-online') or item.get('created')
+                if date_source and 'date-parts' in date_source:
+                    date_parts = date_source['date-parts']
                     if date_parts and len(date_parts[0]) >= 3:
                         year, month, day = date_parts[0][:3]
                         pub_date = f"{month}/{day}/{year}"
@@ -190,46 +198,65 @@ class CrossRefRetractionsAPI:
                 if 'update-to' in item:
                     for update in item['update-to']:
                         if update.get('type') == 'retraction':
-                            retraction_doi = update.get('DOI', '')
-                            if 'updated' in update:
-                                date_parts = update['updated'].get('date-parts', [[]])
+                            retraction_doi = update.get('DOI', '').strip()
+                            if 'updated' in update and 'date-parts' in update['updated']:
+                                date_parts = update['updated']['date-parts']
                                 if date_parts and len(date_parts[0]) >= 3:
                                     year, month, day = date_parts[0][:3]
                                     retraction_date = f"{month}/{day}/{year}"
                 
-                # Subject classification
+                # Subject classification - clean formatting
                 subjects = []
-                if 'subject' in item:
-                    subjects = item['subject']
+                if 'subject' in item and item['subject']:
+                    # Take first 3 subjects and clean them
+                    for subject in item['subject'][:3]:
+                        clean_subject = ' '.join(str(subject).split())
+                        subjects.append(clean_subject)
                 
-                # Create record
+                subject_string = '; '.join(subjects) if subjects else ''
+                
+                # Create clean record ID
+                record_id = f"CR_{doi.replace('/', '_').replace('.', '_')}" if doi else f"CR_{len(converted) + 1:06d}"
+                
+                # Create record with cleaned data
                 record = {
-                    'Record ID': f"CR_{doi.replace('/', '_').replace('.', '_')}" if doi else f"CR_{len(converted)}",
-                    'Title': title,
-                    'Author': '; '.join(authors),
-                    'Journal': container_title,
-                    'Publisher': publisher,
+                    'Record ID': record_id,
+                    'Title': title[:500],  # Limit title length
+                    'Author': author_string[:300],  # Limit author string length
+                    'Journal': container_title[:200],  # Limit journal name length
+                    'Publisher': publisher[:100],  # Limit publisher name length
                     'Country': '',  # Not available in CrossRef API
                     'Institution': '',  # Would need to parse affiliations
-                    'ArticleType': item.get('type', '').title(),
-                    'Subject': '; '.join(subjects),
+                    'ArticleType': item.get('type', '').replace('-', ' ').title() if item.get('type') else '',
+                    'Subject': subject_string[:200],  # Limit subject string length
                     'OriginalPaperDOI': doi,
                     'RetractionDOI': retraction_doi,
                     'OriginalPaperDate': pub_date,
                     'RetractionDate': retraction_date,
-                    'Reason': 'Identified via CrossRef API',  # CrossRef doesn't provide detailed reasons
+                    'Reason': 'Identified via CrossRef API',  # Standardized reason
                     'RetractionNature': 'Retraction',
-                    'Paywalled': 'Unknown',
+                    'Paywalled': 'No',  # Default assumption for CrossRef data
                     'URLS': f"https://doi.org/{doi}" if doi else '',
-                    'OriginalPaperPubMedID': '',  # Not available in CrossRef
+                    'OriginalPaperPubMedID': '',  # Not typically available in CrossRef
                     'RetractionPubMedID': '',
                     'Notes': f"Fetched from CrossRef API on {datetime.now().strftime('%Y-%m-%d')}"
                 }
                 
+                # Final cleanup - ensure no None values or problematic characters
+                for key, value in record.items():
+                    if value is None:
+                        record[key] = ''
+                    elif isinstance(value, str):
+                        # Remove any remaining problematic characters
+                        record[key] = value.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+                        # Ensure no double quotes in the middle of strings
+                        if '"' in record[key] and not (record[key].startswith('"') and record[key].endswith('"')):
+                            record[key] = record[key].replace('"', "'")
+                
                 converted.append(record)
                 
             except Exception as e:
-                print(f"⚠️  Error converting item: {e}")
+                self.log(f"⚠️  Error converting item: {e}")
                 continue
         
         return converted
@@ -246,7 +273,7 @@ class CrossRefRetractionsAPI:
             self.log("❌ No data to save", "ERROR")
             return None
         
-        # Get all possible fieldnames
+        # Define exact fieldnames matching Retraction Watch format
         fieldnames = [
             'Record ID', 'Title', 'Subject', 'Institution', 'Journal', 'Publisher', 
             'Country', 'Author', 'URLS', 'ArticleType', 'RetractionDate', 
@@ -257,20 +284,77 @@ class CrossRefRetractionsAPI:
         
         try:
             with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
-                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                # Use comma delimiter explicitly and handle quoting properly
+                writer = csv.DictWriter(
+                    csvfile, 
+                    fieldnames=fieldnames,
+                    delimiter=',',
+                    quotechar='"',
+                    quoting=csv.QUOTE_MINIMAL
+                )
                 writer.writeheader()
                 
                 for record in retractions_data:
-                    # Ensure all fields are present
-                    row = {field: record.get(field, '') for field in fieldnames}
+                    # Ensure all fields are present and properly formatted
+                    row = {}
+                    for field in fieldnames:
+                        value = record.get(field, '')
+                        
+                        # Clean up the value - remove problematic characters
+                        if isinstance(value, str):
+                            # Remove newlines and carriage returns
+                            value = value.replace('\n', ' ').replace('\r', ' ')
+                            # Remove extra whitespace
+                            value = ' '.join(value.split())
+                            # Handle commas in content by ensuring proper quoting
+                            if ',' in value and not (value.startswith('"') and value.endswith('"')):
+                                value = f'"{value}"'
+                        
+                        row[field] = value
+                    
                     writer.writerow(row)
             
-            self.log(f"✅ Saved {len(retractions_data)} retractions to {filename}")
-            return filename
+            # Validate the generated CSV
+            if self.validate_generated_csv(filename):
+                self.log(f"✅ Saved {len(retractions_data)} retractions to {filename}")
+                return filename
+            else:
+                self.log(f"❌ Generated CSV failed validation", "ERROR")
+                return None
             
         except Exception as e:
             self.log(f"❌ Error saving CSV: {e}", "ERROR")
             return None
+    
+    def validate_generated_csv(self, filename):
+        """Validate that the generated CSV can be read properly"""
+        try:
+            import csv
+            with open(filename, 'r', encoding='utf-8') as f:
+                # Test that CSV can be parsed
+                sample = f.read(1024)
+                f.seek(0)
+                
+                sniffer = csv.Sniffer()
+                try:
+                    dialect = sniffer.sniff(sample)
+                    self.log(f"🔍 CSV validation: delimiter='{dialect.delimiter}', quote='{dialect.quotechar}'")
+                except:
+                    self.log("⚠️  CSV sniffer failed, but proceeding...", "WARNING")
+                
+                # Try reading first few rows
+                reader = csv.DictReader(f)
+                first_row = next(reader, None)
+                if first_row and 'Record ID' in first_row:
+                    self.log("✅ CSV validation passed")
+                    return True
+                else:
+                    self.log("❌ CSV validation failed - no Record ID found", "ERROR")
+                    return False
+                    
+        except Exception as e:
+            self.log(f"❌ CSV validation error: {e}", "ERROR")
+            return False
     
     def fetch_recent_retractions(self, days_back=7):
         """Fetch retractions from the last N days"""
