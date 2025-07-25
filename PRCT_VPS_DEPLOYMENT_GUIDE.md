@@ -123,7 +123,7 @@ SECURE_HSTS_PRELOAD = True
 # CSRF protection
 CSRF_TRUSTED_ORIGINS = [
     'https://prct.xeradb.com',
-    'https://www.prctxeradb.com',
+    'https://www.prct.xeradb.com',
     'http://91.99.161.136:8000'
 ]
 
@@ -285,10 +285,10 @@ python manage.py collectstatic --noinput --settings=citing_retracted.settings_pr
 
 ```bash
 # Run development server to test
-python manage.py runserver 0.0.0.0:8000 --settings=citing_retracted.settings_production
+python manage.py runserver 0.0.0.0:8002 --settings=citing_retracted.settings_production
 
 # Test in another terminal:
-curl http://localhost:8000/
+curl http://localhost:8002/
 
 # Stop the test server with Ctrl+C
 ```
@@ -543,7 +543,7 @@ python manage.py load_sample_data --papers 25 --citations-per-paper 12 --clear -
 sudo apt install certbot python3-certbot-nginx
 
 # Get SSL certificate
-sudo certbot --nginx -d your-domain.com -d www.your-domain.com
+sudo certbot --nginx -d prct.xeradb.com -d www.prct.xeradb.com
 
 # Test auto-renewal
 sudo certbot renew --dry-run
