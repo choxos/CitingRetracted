@@ -1,39 +1,37 @@
-{% extends 'base.html' %}
+{% extends 'prct_base.html' %}
 
-{% block title %}{{ paper.title|truncatechars:60 }} - Post-Retraction Citation Tracker (PRCT){% endblock %}
+{% block title %}{{ paper.title|truncatechars:60 }} - Post-Retraction Citation Tracker{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="xera-container">
     <!-- Paper Header -->
-    <div class="row">
-        <div class="col-12">
+    <div class="xera-card mb-4">
+        <div class="xera-card-body">
             <div class="d-flex justify-content-between align-items-start mb-3">
-                <div>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="{% url 'papers:home' %}">Home</a></li>
-                            <li class="breadcrumb-item"><a href="{% url 'papers:search' %}">Search</a></li>
-                            <li class="breadcrumb-item active">{{ paper.record_id }}</li>
-                        </ol>
-                    </nav>
-                </div>
-                <span class="{{ paper.retraction_badge_class }}">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'papers:home' %}">Home</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'papers:search' %}">Search</a></li>
+                        <li class="breadcrumb-item active">{{ paper.record_id }}</li>
+                    </ol>
+                </nav>
+                <span class="prct-retraction-badge retracted">
                     <i class="fas fa-ban"></i> Retracted Paper
                 </span>
             </div>
             
-            <h1 class="mb-3">{{ paper.title }}</h1>
+            <h1 class="prct-chart-title mb-0">{{ paper.title }}</h1>
         </div>
     </div>
     
     <!-- Paper Details -->
     <div class="row">
         <div class="col-lg-8">
-            <div class="card mb-4">
-                <div class="card-header">
+            <div class="xera-card mb-4">
+                <div class="xera-card-header">
                     <h4><i class="fas fa-info-circle"></i> Paper Information</h4>
                 </div>
-                <div class="card-body">
+                <div class="xera-card-body">
                     <div class="row mb-3">
                         <div class="col-md-3"><strong>Record ID:</strong></div>
                         <div class="col-md-9">{{ paper.record_id }}</div>
@@ -244,11 +242,11 @@
             </div>
             
             <!-- Retraction Details -->
-            <div class="card mb-4">
-                <div class="card-header">
+            <div class="xera-card mb-4">
+                <div class="xera-card-header">
                     <h4><i class="fas fa-exclamation-triangle"></i> Retraction Details</h4>
                 </div>
-                <div class="card-body">
+                <div class="xera-card-body">
                     {% if paper.reason %}
                     <div class="mb-3">
                         <h6>Retraction Reason{{ paper.reason_list|length|pluralize }}:</h6>
@@ -307,25 +305,25 @@
             
             <!-- Abstract -->
             {% if paper.abstract %}
-            <div class="card mb-4">
-                <div class="card-header">
+            <div class="xera-card mb-4">
+                <div class="xera-card-header">
                     <h4><i class="fas fa-file-alt"></i> Abstract</h4>
                 </div>
-                <div class="card-body">
+                <div class="xera-card-body">
                     <p>{{ paper.abstract }}</p>
                 </div>
             </div>
             {% endif %}
             
             <!-- Citations Section -->
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="xera-card">
+                <div class="xera-card-header d-flex justify-content-between align-items-center">
                     <h4><i class="fas fa-quote-right"></i> Citations ({{ citation_stats.total_citations }})</h4>
                     <button class="btn btn-sm btn-outline-primary" onclick="loadCitationChart()">
                         <i class="fas fa-chart-bar"></i> View Chart
                     </button>
                 </div>
-                <div class="card-body">
+                <div class="xera-card-body">
                     <!-- Citation Statistics -->
                     <div class="row mb-4">
                         <div class="col-md-3">
@@ -494,11 +492,11 @@
         <!-- Sidebar -->
         <div class="col-lg-4">
             <!-- Quick Stats -->
-            <div class="card mb-4">
-                <div class="card-header">
+            <div class="xera-card mb-4">
+                <div class="xera-card-header">
                     <h5><i class="fas fa-chart-line"></i> Quick Stats</h5>
                 </div>
-                <div class="card-body">
+                <div class="xera-card-body">
                     <div class="d-flex justify-content-between mb-2">
                         <span>Total Citations:</span>
                         <strong>{{ paper.citation_count }}</strong>
@@ -520,11 +518,11 @@
             
             <!-- Related Papers -->
             {% if related_papers %}
-            <div class="card mb-4">
-                <div class="card-header">
+            <div class="xera-card mb-4">
+                <div class="xera-card-header">
                     <h5><i class="fas fa-link"></i> Related Papers</h5>
                 </div>
-                <div class="card-body">
+                <div class="xera-card-body">
                     {% for related in related_papers %}
                     <div class="mb-3">
                         <h6>
@@ -543,11 +541,11 @@
             {% endif %}
             
             <!-- Actions -->
-            <div class="card">
-                <div class="card-header">
+            <div class="xera-card">
+                <div class="xera-card-header">
                     <h5><i class="fas fa-tools"></i> Actions</h5>
                 </div>
-                <div class="card-body">
+                <div class="xera-card-body">
                     <div class="d-grid gap-2">
                         <a href="{% url 'papers:search' %}?journal={{ paper.journal|urlencode }}" 
                            class="btn btn-outline-primary btn-sm">

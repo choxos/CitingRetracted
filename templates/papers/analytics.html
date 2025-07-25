@@ -336,62 +336,51 @@
         
         <!-- Trends Tab -->
         <div class="tab-pane fade" id="trends" role="tabpanel">
-            <div class="row mb-4">
-                <div class="col-12">
-                    <div class="chart-controls">
-                        <div class="filter-group">
-                            <label><strong>Time Range:</strong></label>
-                            <select class="form-select form-select-sm" id="timeRangeFilter" style="width: auto;">
-                                <option value="all">All Time</option>
-                                <option value="5y">Last 5 Years</option>
-                                <option value="3y">Last 3 Years</option>
-                                <option value="1y">Last Year</option>
-                            </select>
-                            <button class="btn btn-sm btn-primary" onclick="updateTrendCharts()">
-                                <i class="fas fa-filter"></i> Apply Filter
-                            </button>
-                        </div>
+            <!-- Time Range Controls -->
+            <div class="xera-card mb-4">
+                <div class="xera-card-body">
+                    <div class="filter-group">
+                        <label><strong>Time Range:</strong></label>
+                        <select class="xera-form-control xera-form-control-sm" id="timeRangeFilter" style="width: auto;">
+                            <option value="all">All Time</option>
+                            <option value="5y">Last 5 Years</option>
+                            <option value="3y">Last 3 Years</option>
+                            <option value="1y">Last Year</option>
+                        </select>
+                        <button class="xera-btn xera-btn-sm xera-btn-primary" onclick="updateTrendCharts()">
+                            <i class="fas fa-filter"></i> Apply Filter
+                        </button>
                     </div>
                 </div>
             </div>
             
+            <!-- Retraction Trends Chart -->
             <div class="row mb-5">
                 <div class="col-12 mb-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5><i class="fas fa-chart-line"></i> Retraction Trends Over Time</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="chart-container">
-                                <canvas id="retractionsTimelineChart"></canvas>
-                            </div>
+                    <div class="prct-chart-container">
+                        <h5 class="prct-chart-title"><i class="fas fa-chart-line"></i> Retraction Trends Over Time</h5>
+                        <div class="chart-container">
+                            <canvas id="retractionsTimelineChart"></canvas>
                         </div>
                     </div>
                 </div>
             </div>
             
+            <!-- Citation Comparison & Subject Distribution -->
             <div class="row mb-5">
                 <div class="col-lg-8 mb-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5><i class="fas fa-chart-area"></i> Citation Comparison: Before vs After Retraction</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="chart-container">
-                                <canvas id="citationComparisonChart"></canvas>
-                            </div>
+                    <div class="prct-chart-container">
+                        <h5 class="prct-chart-title"><i class="fas fa-chart-area"></i> Citation Comparison: Before vs After Retraction</h5>
+                        <div class="chart-container">
+                            <canvas id="citationComparisonChart"></canvas>
                         </div>
                     </div>
                 </div>
                 <div class="col-lg-4 mb-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5><i class="fas fa-chart-bar"></i> Subject Distribution</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="chart-container">
-                                <canvas id="subjectDistributionChart"></canvas>
-                            </div>
+                    <div class="prct-chart-container">
+                        <h5 class="prct-chart-title"><i class="fas fa-chart-bar"></i> Subject Distribution</h5>
+                        <div class="chart-container">
+                            <canvas id="subjectDistributionChart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -400,140 +389,111 @@
         
         <!-- Patterns Tab -->
         <div class="tab-pane fade" id="patterns" role="tabpanel">
+            <!-- Citation Heatmap & Timing Distribution -->
             <div class="row mb-5">
                 <div class="col-lg-8 mb-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5><i class="fas fa-th"></i> Citation Heatmap</h5>
-                            <small class="text-muted">Citations by month and time after retraction</small>
-                        </div>
-                        <div class="card-body">
-                            <div class="chart-container tall">
-                                <canvas id="citationHeatmapChart"></canvas>
-                            </div>
+                    <div class="prct-chart-container">
+                        <h5 class="prct-chart-title"><i class="fas fa-th"></i> Citation Heatmap</h5>
+                        <small class="text-muted">Citations by month and time after retraction</small>
+                        <div class="chart-container tall">
+                            <canvas id="citationHeatmapChart"></canvas>
                         </div>
                     </div>
                 </div>
                 <div class="col-lg-4 mb-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5><i class="fas fa-chart-line"></i> Citation Timing Distribution</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="chart-container">
-                                <canvas id="citationTimingChart"></canvas>
-                            </div>
+                    <div class="prct-chart-container">
+                        <h5 class="prct-chart-title"><i class="fas fa-chart-line"></i> Citation Timing Distribution</h5>
+                        <div class="chart-container">
+                            <canvas id="citationTimingChart"></canvas>
                         </div>
                     </div>
                 </div>
             </div>
             
+            <!-- Journal Impact & Subject Sunburst -->
             <div class="row mb-5">
                 <div class="col-lg-8 mb-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5><i class="fas fa-circle-notch"></i> Journal Impact Analysis</h5>
-                            <small class="text-muted">Bubble size represents average citations per paper</small>
-                        </div>
-                        <div class="card-body">
-                            <div class="chart-container tall">
-                                <canvas id="journalBubbleChart"></canvas>
-                            </div>
+                    <div class="prct-chart-container">
+                        <h5 class="prct-chart-title"><i class="fas fa-circle-notch"></i> Journal Impact Analysis</h5>
+                        <small class="text-muted">Bubble size represents average citations per paper</small>
+                        <div class="chart-container tall">
+                            <canvas id="journalBubbleChart"></canvas>
                         </div>
                     </div>
                 </div>
                 
                 <div class="col-lg-4 mb-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5><i class="fas fa-sun"></i> Subject Hierarchy Sunburst</h5>
-                            <small class="text-muted">Interactive hierarchy of broad subjects and specific fields</small>
-                        </div>
-                        <div class="card-body">
-                            <div class="chart-container">
-                                <div id="sunburstChart" style="height: 400px;"></div>
-                            </div>
+                    <div class="prct-chart-container">
+                        <h5 class="prct-chart-title"><i class="fas fa-sun"></i> Subject Hierarchy Sunburst</h5>
+                        <small class="text-muted">Interactive hierarchy of broad subjects and specific fields</small>
+                        <div class="chart-container">
+                            <div id="sunburstChart" style="height: 400px;"></div>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <!-- New Stratified Analytics Section -->
+            <!-- Geographic & Article Type Analysis -->
             <div class="row mb-5">
                 <div class="col-lg-6 mb-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5><i class="fas fa-globe"></i> Geographic Distribution</h5>
-                            <small class="text-muted">Retractions by country with open access rates</small>
-                        </div>
-                        <div class="card-body">
-                            <div class="chart-container">
-                                <canvas id="countryChart"></canvas>
-                            </div>
+                    <div class="prct-chart-container">
+                        <h5 class="prct-chart-title"><i class="fas fa-globe"></i> Geographic Distribution</h5>
+                        <small class="text-muted">Retractions by country with open access rates</small>
+                        <div class="chart-container">
+                            <canvas id="countryChart"></canvas>
                         </div>
                     </div>
                 </div>
                 <div class="col-lg-6 mb-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5><i class="fas fa-file-alt"></i> Article Type Analysis</h5>
-                            <small class="text-muted">Distribution by article type</small>
-                        </div>
-                        <div class="card-body">
-                            <div class="chart-container">
-                                <canvas id="articleTypeChart"></canvas>
-                            </div>
+                    <div class="prct-chart-container">
+                        <h5 class="prct-chart-title"><i class="fas fa-file-alt"></i> Article Type Analysis</h5>
+                        <small class="text-muted">Distribution by article type</small>
+                        <div class="chart-container">
+                            <canvas id="articleTypeChart"></canvas>
                         </div>
                     </div>
                 </div>
             </div>
             
+            <!-- Publisher & Open Access Analysis -->
             <div class="row mb-5">
                 <div class="col-lg-8 mb-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5><i class="fas fa-university"></i> Publisher Analysis</h5>
-                            <small class="text-muted">Top publishers with retraction issues</small>
-                        </div>
-                        <div class="card-body">
-                            <div class="chart-container">
-                                <canvas id="publisherChart"></canvas>
-                            </div>
+                    <div class="prct-chart-container">
+                        <h5 class="prct-chart-title"><i class="fas fa-university"></i> Publisher Analysis</h5>
+                        <small class="text-muted">Top publishers with retraction issues</small>
+                        <div class="chart-container">
+                            <canvas id="publisherChart"></canvas>
                         </div>
                     </div>
                 </div>
                 <div class="col-lg-4 mb-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5><i class="fas fa-unlock"></i> Open Access Analysis</h5>
-                            <small class="text-muted">Access status distribution</small>
+                    <div class="prct-chart-container">
+                        <h5 class="prct-chart-title"><i class="fas fa-unlock"></i> Open Access Analysis</h5>
+                        <small class="text-muted">Access status distribution</small>
+                        <div class="chart-container">
+                            <canvas id="openAccessChart"></canvas>
                         </div>
-                        <div class="card-body">
-                            <div class="chart-container">
-                                <canvas id="openAccessChart"></canvas>
-                            </div>
-                            <div class="mt-3">
-                                <div class="row text-center">
-                                    <div class="col-4">
-                                        <div class="text-success">
-                                            <i class="fas fa-unlock fa-2x"></i>
-                                            <div><strong>{{ access_analytics.open_access.count }}</strong></div>
-                                            <small>Open Access</small>
-                                        </div>
+                        <div class="mt-3">
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <div class="text-success">
+                                        <i class="fas fa-unlock fa-2x"></i>
+                                        <div><strong>{{ access_analytics.open_access.count }}</strong></div>
+                                        <small>Open Access</small>
                                     </div>
-                                    <div class="col-4">
-                                        <div class="text-warning">
-                                            <i class="fas fa-lock fa-2x"></i>
-                                            <div><strong>{{ access_analytics.paywalled.count }}</strong></div>
-                                            <small>Paywalled</small>
-                                        </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="text-warning">
+                                        <i class="fas fa-lock fa-2x"></i>
+                                        <div><strong>{{ access_analytics.paywalled.count }}</strong></div>
+                                        <small>Paywalled</small>
                                     </div>
-                                    <div class="col-4">
-                                        <div class="text-muted">
-                                            <i class="fas fa-question fa-2x"></i>
-                                            <div><strong>{{ access_analytics.unknown.count }}</strong></div>
-                                            <small>Unknown</small>
-                                        </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="text-muted">
+                                        <i class="fas fa-question fa-2x"></i>
+                                        <div><strong>{{ access_analytics.unknown.count }}</strong></div>
+                                        <small>Unknown</small>
                                     </div>
                                 </div>
                             </div>
@@ -660,32 +620,30 @@
         
         <!-- Network Tab -->
         <div class="tab-pane fade" id="network" role="tabpanel">
-            <div class="row mb-4">
-                <div class="col-12">
-                    <div class="chart-controls">
-                        <div class="filter-group">
-                            <label><strong>Network View:</strong></label>
-                            <select class="form-select form-select-sm" id="networkTypeFilter" style="width: auto;">
-                                <option value="journals">Journal Relationships</option>
-                                <option value="subjects">Subject Areas</option>
-                                <option value="combined">Combined View</option>
-                            </select>
-                            <button class="btn btn-sm btn-primary" onclick="updateNetworkChart()">
-                                <i class="fas fa-project-diagram"></i> Update Network
-                            </button>
-                        </div>
+            <!-- Network Controls -->
+            <div class="xera-card mb-4">
+                <div class="xera-card-body">
+                    <div class="filter-group">
+                        <label><strong>Network View:</strong></label>
+                        <select class="xera-form-control xera-form-control-sm" id="networkTypeFilter" style="width: auto;">
+                            <option value="journals">Journal Relationships</option>
+                            <option value="subjects">Subject Areas</option>
+                            <option value="combined">Combined View</option>
+                        </select>
+                        <button class="xera-btn xera-btn-sm xera-btn-primary" onclick="updateNetworkChart()">
+                            <i class="fas fa-project-diagram"></i> Update Network
+                        </button>
                     </div>
                 </div>
             </div>
             
+            <!-- Interactive Network Visualization -->
             <div class="row">
                 <div class="col-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5><i class="fas fa-project-diagram"></i> Interactive Network Analysis</h5>
-                            <small class="text-muted">Click and drag nodes to explore relationships</small>
-                        </div>
-                        <div class="card-body position-relative">
+                    <div class="prct-chart-container">
+                        <h5 class="prct-chart-title"><i class="fas fa-project-diagram"></i> Interactive Network Analysis</h5>
+                        <small class="text-muted">Click and drag nodes to explore relationships</small>
+                        <div class="position-relative">
                             <div id="networkVisualization" style="height: 600px; border: 1px solid #dee2e6; border-radius: 8px;"></div>
                             <div id="networkTooltip" class="network-tooltip" style="display: none;"></div>
                         </div>
