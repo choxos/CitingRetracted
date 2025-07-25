@@ -80,10 +80,11 @@ import os
 DEBUG = False
 
 ALLOWED_HOSTS = [
-    'your-domain.com',
-    'www.your-domain.com', 
-    'your_vps_ip',
-    'localhost'
+    'prct.xeradb.com',
+    'www.prctxeradb.com', 
+    '91.99.161.136',
+    'localhost',
+    '127.0.0.1'
 ]
 
 # Database configuration
@@ -91,7 +92,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'prct_production',
-        'USER': 'your_postgres_user',
+        'USER': 'prct_user',
         'PASSWORD': os.environ.get('DATABASE_PASSWORD'),
         'HOST': 'localhost',
         'PORT': '5432',
@@ -107,16 +108,16 @@ MEDIA_ROOT = '/var/www/prct/media/'
 MEDIA_URL = '/media/'
 
 # Security settings
-SECURE_SSL_REDIRECT = False  # Set to True if using HTTPS
+SECURE_SSL_REDIRECT = True  # Set to True if using HTTPS
 SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
 # CSRF protection
 CSRF_TRUSTED_ORIGINS = [
-    'https://your-domain.com',
-    'https://www.your-domain.com',
-    'http://your_vps_ip:8000'
+    'https://prct.xeradb.com',
+    'https://www.prctxeradb.com',
+    'http://91.99.161.136:8000'
 ]
 
 # Performance
@@ -152,8 +153,8 @@ nano ~/.bashrc
 
 # Add these lines at the end:
 export DJANGO_SETTINGS_MODULE=citing_retracted.settings_production
-export SECRET_KEY='your-super-secret-key-here'
-export DATABASE_PASSWORD='your-postgres-password'
+export SECRET_KEY='2QU5738Q%jW+R46#yd=ir8G5i02XSLi5_t7qpeiblUKY9X6N5V'
+export DATABASE_PASSWORD='Choxos102030'
 
 # Reload environment
 source ~/.bashrc
@@ -187,7 +188,18 @@ pip freeze > requirements.txt
 
 ## 🔧 Step 5: Django Configuration
 
-### 5.1 Run Database Migrations
+### 5.1 Create Required Directories
+
+```bash
+# Create static files and log directories
+sudo mkdir -p /var/www/prct/static
+sudo mkdir -p /var/www/prct/media
+sudo mkdir -p /var/log/prct
+sudo chown -R $USER:$USER /var/www/prct
+sudo chown -R $USER:$USER /var/log/prct
+```
+
+### 5.2 Run Database Migrations
 
 ```bash
 # Test database connection
@@ -201,19 +213,14 @@ python manage.py migrate --settings=citing_retracted.settings_production
 python manage.py showmigrations --settings=citing_retracted.settings_production
 ```
 
-### 5.2 Collect Static Files
+### 5.3 Collect Static Files
 
 ```bash
-# Create static files directory
-sudo mkdir -p /var/www/prct/static
-sudo mkdir -p /var/www/prct/media
-sudo chown -R $USER:$USER /var/www/prct
-
 # Collect static files (XeraDB theme files)
 python manage.py collectstatic --noinput --settings=citing_retracted.settings_production
 ```
 
-### 5.3 Test Application
+### 5.4 Test Application
 
 ```bash
 # Run development server to test
