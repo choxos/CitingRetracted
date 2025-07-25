@@ -76,13 +76,27 @@
                 <a href="{% url 'papers:analytics' %}" class="xera-nav-link {% if 'analytics' in request.resolver_match.url_name %}active{% endif %}">
                     <i class="fas fa-chart-bar me-1"></i>Analytics
                 </a>
-                <a href="/admin/" class="xera-nav-link" target="_blank">
-                    <i class="fas fa-cog me-1"></i>Admin
-                </a>
                 <a href="/api/" class="xera-nav-link" target="_blank">
                     <i class="fas fa-code me-1"></i>API
                 </a>
             </nav>
+            
+            <!-- Header Search Form -->
+            <div class="xera-header-search">
+                <form method="get" action="{% url 'papers:search' %}" class="xera-search-form">
+                    <div class="xera-search-input-group">
+                        <input type="text" 
+                               name="q" 
+                               class="xera-search-input" 
+                               placeholder="Search papers..." 
+                               value="{{ request.GET.q|default:'' }}"
+                               aria-label="Search papers">
+                        <button type="submit" class="xera-search-btn" aria-label="Search">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </header>
 

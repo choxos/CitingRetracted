@@ -205,6 +205,62 @@ body {
   background: rgba(255, 255, 255, 0.2);
 }
 
+/* Header Search Form */
+.xera-header-search {
+  margin-left: auto;
+}
+
+.xera-search-form {
+  margin: 0;
+}
+
+.xera-search-input-group {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--xera-radius-lg);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: var(--xera-transition);
+}
+
+.xera-search-input-group:focus-within {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+}
+
+.xera-search-input {
+  background: transparent;
+  border: none;
+  color: white;
+  padding: var(--xera-space-2) var(--xera-space-3);
+  font-size: 0.875rem;
+  width: 280px;
+  outline: none;
+}
+
+.xera-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.xera-search-btn {
+  background: transparent;
+  border: none;
+  color: white;
+  padding: var(--xera-space-2) var(--xera-space-3);
+  cursor: pointer;
+  transition: var(--xera-transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.xera-search-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
 /* =============================================================================
    CONTENT AREAS
    ============================================================================= */
