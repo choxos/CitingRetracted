@@ -17,6 +17,26 @@ lxml>=4.9.0
 pytz>=2023.3
 python-dotenv>=1.0.0
 psycopg2-binary>=2.9.0
+
+# Performance optimization packages
+django-redis>=5.4.0
+django-compressor>=4.4
+django-debug-toolbar>=4.2.0
+django-cachalot>=2.6.1
+hiredis>=2.2.3
+
+# Static file optimization
+brotli>=1.1.0
+csscompressor>=0.9.5
+jsmin>=3.0.1
+
+# Database optimization
+django-db-connection-pool[postgresql]>=1.2.4
+
+# Monitoring and profiling
+django-silk>=5.0.4
+newrelic>=9.2.0
+
 # Enhanced charting and data visualization
 chart-studio>=1.1.0
 kaleido>=0.2.1 
