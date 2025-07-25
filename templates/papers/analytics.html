@@ -17,6 +17,7 @@
     border-radius: var(--xera-radius-lg);
     padding: 1.5rem;
     box-shadow: var(--xera-shadow-md);
+    overflow: hidden; /* Prevent charts from overflowing */
 }
 
 .chart-container.tall {
@@ -25,6 +26,32 @@
 
 .chart-container.short {
     height: 300px;
+}
+
+/* Ensure all chart elements stay within bounds */
+.chart-container canvas,
+.chart-container svg,
+.chart-container div {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+/* Sunburst chart specific sizing */
+#sunburstChart {
+    width: 100%;
+    height: 320px;
+    overflow: hidden;
+}
+
+/* World map responsive sizing */
+#worldMap {
+    max-width: 100%;
+    overflow: hidden;
+}
+
+#plotlyWorldMap {
+    max-width: 100%;
+    overflow: hidden;
 }
 
 .interactive-legend {
@@ -395,7 +422,7 @@
                     <div class="prct-chart-container">
                         <h5 class="prct-chart-title"><i class="fas fa-th"></i> Citation Heatmap</h5>
                         <small class="text-muted">Citations by month and time after retraction</small>
-                        <div class="chart-container tall">
+                        <div class="chart-container">
                             <canvas id="citationHeatmapChart"></canvas>
                         </div>
                     </div>
@@ -427,7 +454,7 @@
                         <h5 class="prct-chart-title"><i class="fas fa-sun"></i> Subject Hierarchy Sunburst</h5>
                         <small class="text-muted">Interactive hierarchy of broad subjects and specific fields</small>
                         <div class="chart-container">
-                            <div id="sunburstChart" style="height: 400px;"></div>
+                            <div id="sunburstChart"></div>
                         </div>
                     </div>
                 </div>
@@ -435,7 +462,7 @@
             
             <!-- Geographic & Article Type Analysis -->
             <div class="row mb-5">
-                <div class="col-lg-6 mb-4">
+                <div class="col-lg-8 mb-4">
                     <div class="prct-chart-container">
                         <h5 class="prct-chart-title"><i class="fas fa-globe"></i> Geographic Distribution</h5>
                         <small class="text-muted">Retractions by country with open access rates</small>
@@ -444,7 +471,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-6 mb-4">
+                <div class="col-lg-4 mb-4">
                     <div class="prct-chart-container">
                         <h5 class="prct-chart-title"><i class="fas fa-file-alt"></i> Article Type Analysis</h5>
                         <small class="text-muted">Distribution by article type</small>
@@ -1265,23 +1292,17 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
     const worldMapContainer = document.getElementById('countryChart').parentElement;
     const worldMapDiv = document.createElement('div');
     worldMapDiv.id = 'worldMap';
-    worldMapDiv.style.height = '600px';
-    worldMapDiv.style.marginBottom = '30px';
-    worldMapDiv.style.padding = '20px';
+    worldMapDiv.style.height = '400px';
+    worldMapDiv.style.marginBottom = '20px';
+    worldMapDiv.style.padding = '15px';
     worldMapDiv.style.backgroundColor = '#f8f9fa';
     worldMapDiv.style.borderRadius = '8px';
     worldMapContainer.insertBefore(worldMapDiv, document.getElementById('countryChart'));
     
-    // Create title
-    const worldMapTitle = document.createElement('h5');
-    worldMapTitle.innerHTML = '<i class="fas fa-globe"></i> World Retraction Choropleth Map';
-    worldMapTitle.style.marginBottom = '15px';
-    worldMapDiv.appendChild(worldMapTitle);
-    
-    // Create Plotly map container
+    // Create Plotly map container (no separate title needed)
     const plotlyMapContainer = document.createElement('div');
     plotlyMapContainer.id = 'plotlyWorldMap';
-    plotlyMapContainer.style.height = '500px';
+    plotlyMapContainer.style.height = '360px';
     plotlyMapContainer.style.width = '100%';
     worldMapDiv.appendChild(plotlyMapContainer);
     
@@ -1723,14 +1744,19 @@ function initializeSunburstChart(data) {
     // Clear any existing chart
     d3.select("#sunburstChart").selectAll("*").remove();
     
-    const width = 400;
-    const height = 400;
-    const radius = Math.min(width, height) / 2;
+    // Get container dimensions to make it responsive
+    const container = document.getElementById('sunburstChart');
+    const containerRect = container.getBoundingClientRect();
+    const width = Math.min(containerRect.width || 350, 350);
+    const height = Math.min(containerRect.height || 350, 350);
+    const radius = Math.min(width, height) / 2 - 10;
     
     const svg = d3.select("#sunburstChart")
         .append("svg")
         .attr("width", width)
         .attr("height", height)
+        .attr("viewBox", `0 0 ${width} ${height}`)
+        .attr("preserveAspectRatio", "xMidYMid meet")
         .append("g")
         .attr("transform", `translate(${width / 2},${height / 2})`);
     
