@@ -75,9 +75,13 @@ Add the following content:
 ```python
 from .settings import *
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Production settings
-DEBUG = False
+DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
 ALLOWED_HOSTS = [
     'prct.xeradb.com',
@@ -93,11 +97,14 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'prct_production',
         'USER': 'prct_user',
-        'PASSWORD': os.environ.get('DATABASE_PASSWORD'),
+        'PASSWORD': os.getenv('DATABASE_PASSWORD'),
         'HOST': 'localhost',
         'PORT': '5432',
     }
 }
+
+# Security settings
+SECRET_KEY = os.getenv('SECRET_KEY')
 
 # Static files
 STATIC_ROOT = '/var/www/prct/static/'
@@ -124,22 +131,42 @@ CSRF_TRUSTED_ORIGINS = [
 USE_TZ = True
 TIME_ZONE = 'UTC'
 
-# Logging
+# Simplified logging (logs to both console and file)
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
     'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple'
+        },
         'file': {
             'level': 'INFO',
             'class': 'logging.FileHandler',
             'filename': '/var/log/prct/django.log',
+            'formatter': 'verbose'
         },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
     },
     'loggers': {
         'django': {
-            'handlers': ['file'],
+            'handlers': ['console', 'file'],
             'level': 'INFO',
-            'propagate': True,
+            'propagate': False,
         },
     },
 }
@@ -148,16 +175,50 @@ LOGGING = {
 ### 3.3 Set Environment Variables
 
 ```bash
-# Create environment file
-nano ~/.bashrc
+# Create .env file in your project root
+nano .env
+```
 
-# Add these lines at the end:
-export DJANGO_SETTINGS_MODULE=citing_retracted.settings_production
-export SECRET_KEY='2QU5738Q%jW+R46#yd=ir8G5i02XSLi5_t7qpeiblUKY9X6N5V'
-export DATABASE_PASSWORD='Choxos102030'
+**Copy and paste this .env template, updating the values as needed:**
 
-# Reload environment
-source ~/.bashrc
+```env
+# Django Settings
+DJANGO_SETTINGS_MODULE=citing_retracted.settings_production
+DEBUG=False
+
+# Security - IMPORTANT: Generate a new secret key for production!
+SECRET_KEY=2QU5738Q%jW+R46#yd=ir8G5i02XSLi5_t7qpeiblUKY9X6N5V
+
+# Database
+DATABASE_PASSWORD=Ahmad102030
+
+# Production URLs (update with your actual domain/IP)
+ALLOWED_HOSTS=prct.xeradb.com,www.prctxeradb.com,91.99.161.136,localhost,127.0.0.1
+
+# SSL/Security (set to False if not using HTTPS yet)
+SECURE_SSL_REDIRECT=True
+
+# CSRF Origins (update with your actual domains)
+CSRF_TRUSTED_ORIGINS=https://prct.xeradb.com,https://www.prctxeradb.com
+```
+
+**Secure the .env file:**
+
+```bash
+# Secure the .env file (only owner can read/write)
+chmod 600 .env
+
+# Verify permissions
+ls -la .env
+# Should show: -rw------- 1 xeradb xeradb
+
+# IMPORTANT: Never commit .env to git
+echo ".env" >> .gitignore
+echo "*.env" >> .gitignore
+
+# Verify .env is ignored
+git status
+# .env should not appear in untracked files
 ```
 
 ## 🐍 Step 4: Python Environment Setup
@@ -175,8 +236,8 @@ source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# Install production-specific packages
-pip install gunicorn psycopg2-binary
+# Install production-specific packages and python-dotenv
+pip install gunicorn psycopg2-binary python-dotenv
 ```
 
 ### 4.2 Update Requirements (if needed)
@@ -252,8 +313,8 @@ max_requests = 1000
 max_requests_jitter = 100
 timeout = 30
 keepalive = 5
-user = "your_username"
-group = "your_username"
+user = "xeradb"
+group = "xeradb"
 tmp_upload_dir = None
 errorlog = "/var/log/prct/gunicorn_error.log"
 accesslog = "/var/log/prct/gunicorn_access.log"
@@ -298,15 +359,13 @@ After=network.target
 
 [Service]
 Type=notify
-User=your_username
-Group=your_username
+User=xeradb
+Group=xeradb
 RuntimeDirectory=prct
-WorkingDirectory=/path/to/your/prct
-Environment="DJANGO_SETTINGS_MODULE=citing_retracted.settings_production"
-Environment="SECRET_KEY=your-super-secret-key-here"
-Environment="DATABASE_PASSWORD=your-postgres-password"
-ExecStart=/path/to/your/prct/venv/bin/gunicorn \
-    --config /path/to/your/prct/gunicorn_config.py \
+WorkingDirectory=/var/www/prct
+EnvironmentFile=/var/www/prct/.env
+ExecStart=/var/www/prct/venv/bin/gunicorn \
+    --config /var/www/prct/gunicorn_config.py \
     citing_retracted.wsgi:application
 ExecReload=/bin/kill -s HUP $MAINPID
 Restart=on-failure
