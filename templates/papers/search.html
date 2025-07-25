@@ -191,159 +191,160 @@
     </div>
     
     <!-- Search Results -->
-    <div class="xera-card mb-4">
-        <div class="xera-card-header">
-            <h3>Search Results</h3>
-            <div class="d-flex align-items-center">
-                <span class="text-muted me-3">
-                    {{ papers|length }} of {{ paginator.count }} papers
-                </span>
-                <div class="btn-group" role="group">
-                    <a href="{% url 'papers:export_search' %}?{{ request.GET.urlencode }}&format=csv" 
-                       class="btn btn-outline-success btn-sm" 
-                       title="Export current search results to CSV">
-                        <i class="fas fa-file-csv"></i> CSV
-                    </a>
-                    <a href="{% url 'papers:export_search' %}?{{ request.GET.urlencode }}&format=excel" 
-                       class="btn btn-outline-primary btn-sm" 
-                       title="Export current search results to Excel">
-                        <i class="fas fa-file-excel"></i> Excel
-                    </a>
+    {% if papers %}
+        <div class="xera-card mb-4">
+            <div class="xera-card-header">
+                <h3>Search Results</h3>
+                <div class="d-flex align-items-center">
+                    <span class="text-muted me-3">
+                        {{ papers|length }} of {{ paginator.count }} papers
+                    </span>
+                    <div class="btn-group" role="group">
+                        <a href="{% url 'papers:export_search' %}?{{ request.GET.urlencode }}&format=csv" 
+                           class="btn btn-outline-success btn-sm" 
+                           title="Export current search results to CSV">
+                            <i class="fas fa-file-csv"></i> CSV
+                        </a>
+                        <a href="{% url 'papers:export_search' %}?{{ request.GET.urlencode }}&format=excel" 
+                           class="btn btn-outline-primary btn-sm" 
+                           title="Export current search results to Excel">
+                            <i class="fas fa-file-excel"></i> Excel
+                        </a>
+                    </div>
                 </div>
             </div>
-        </div>
         
         {% for paper in papers %}
         <div class="xera-card paper-card">
             <div class="xera-card-body">
                 <div class="row">
                     <div class="col-lg-8">
-                        <h5 class="card-title">
+                        <h5>
                             <a href="{{ paper.get_absolute_url }}" class="text-decoration-none">
-                                {{ paper.title }}
+                                {{ paper.title|truncatechars:120 }}
                             </a>
                         </h5>
                         
-                        <div class="mb-2">
-                            <span class="text-muted">
+                        {% if paper.author_list %}
+                        <div class="text-muted mb-2">
+                            <small>
                                 <i class="fas fa-user"></i>
-                                {% if paper.author_list %}
-                                    {% for author in paper.author_list %}
-                                        <a href="{% url 'papers:search' %}?author={{ author|urlencode }}" 
-                                           class="text-decoration-none text-muted"
-                                           title="Find other papers by {{ author }}">
-                                            {{ author }}
-                                            <i class="fas fa-search fa-sm ms-1"></i>
-                                        </a>{% if not forloop.last %}, {% endif %}
-                                    {% endfor %}
-                                {% else %}
-                                    Unknown Author
+                                {% for author in paper.author_list|slice:":3" %}
+                                    <a href="{% url 'papers:search' %}?author={{ author|urlencode }}" 
+                                       class="text-decoration-none text-muted"
+                                       title="Find papers by {{ author }}">
+                                        {{ author|truncatechars:30 }}
+                                    </a>{% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                                {% if paper.author_list|length > 3 %}
+                                    <span class="text-muted"> et al.</span>
                                 {% endif %}
-                            </span>
+                            </small>
                         </div>
+                        {% endif %}
                         
-                        <div class="mb-2">
-                            <span class="text-muted">
+                        <div class="text-muted mb-2">
+                            <small>
                                 <i class="fas fa-journal-whills"></i>
                                 {% if paper.journal %}
                                     <a href="{% url 'papers:search' %}?journal={{ paper.journal|urlencode }}" 
                                        class="text-decoration-none text-muted"
-                                       title="Find other papers in this journal">
-                                        {{ paper.journal }}
-                                        <i class="fas fa-search fa-sm ms-1"></i>
+                                       title="Find papers in {{ paper.journal }}">
+                                        {{ paper.journal|truncatechars:60 }}
                                     </a>
                                 {% else %}
                                     Unknown Journal
                                 {% endif %}
-                            </span>
-                            {% if paper.publisher %}
-                            <span class="text-muted ms-2">
-                                (<a href="{% url 'papers:search' %}?publisher={{ paper.publisher|urlencode }}" 
-                                    class="text-decoration-none text-muted"
-                                    title="Find other papers by this publisher">
-                                    {{ paper.publisher }}
-                                    <i class="fas fa-search fa-sm ms-1"></i>
-                                </a>)
-                            </span>
-                            {% endif %}
-                            {% if paper.article_type %}
-                            <a href="{% url 'papers:search' %}?q={{ paper.article_type|urlencode }}" 
-                               class="text-decoration-none"
-                               title="Find other papers of this type">
-                                <span class="badge bg-info ms-2 clickable-badge">
-                                    {{ paper.article_type }}
-                                    <i class="fas fa-search fa-sm ms-1"></i>
-                                </span>
-                            </a>
-                            {% endif %}
+                                
+                                {% if paper.publisher %}
+                                    <span class="text-muted">
+                                        (<a href="{% url 'papers:search' %}?publisher={{ paper.publisher|urlencode }}" 
+                                            class="text-decoration-none text-muted"
+                                            title="Find papers by {{ paper.publisher }}">
+                                            {{ paper.publisher|truncatechars:30 }}
+                                        </a>)
+                                    </span>
+                                {% endif %}
+                            </small>
                         </div>
                         
-                        {% if paper.formatted_reasons %}
-                        <div class="card-text">
-                            <strong>Retraction Reasons:</strong>
-                            <div class="reason-badges mt-2">
-                                {% for reason in paper.individual_reasons %}
-                                    <a href="{% url 'papers:search' %}?reason={{ reason|urlencode }}" class="reason-badge">
-                                        {{ reason|truncatechars:30 }}
+                        {% if paper.formatted_subjects %}
+                        <div class="mb-2">
+                            <small>
+                                <i class="fas fa-tag text-muted"></i>
+                                {% for subject in paper.subject_list|slice:":3" %}
+                                    <a href="{% url 'papers:search' %}?subject={{ subject|urlencode }}" 
+                                       class="text-decoration-none">
+                                        <span class="badge bg-light text-dark">{{ subject|truncatechars:30 }}</span>
                                     </a>
                                 {% endfor %}
-                            </div>
+                                {% if paper.subject_list|length > 3 %}
+                                    <span class="badge bg-secondary">+{{ paper.subject_list|length|add:"-3" }} more</span>
+                                {% endif %}
+                            </small>
                         </div>
                         {% endif %}
                         
-                        {% if paper.subject_list %}
-                        <p class="card-text">
-                            <small class="text-muted">
-                                <i class="fas fa-tag"></i>
-                                
-                                <!-- Show broad categories first -->
-                                {% if paper.broad_subject_categories %}
-                                    <span class="text-muted me-1">Broad:</span>
-                                    {% for broad_category in paper.broad_subject_categories %}
-                                        <a href="{% url 'papers:search' %}?broad_subject={{ broad_category|urlencode }}" 
-                                           class="text-decoration-none"
-                                           title="Find other papers in this broad category">
-                                            <span class="badge bg-primary me-1 mb-1 clickable-badge">
-                                                {{ broad_category|truncatechars:20 }}
-                                                <i class="fas fa-search fa-sm ms-1"></i>
-                                            </span>
-                                        </a>
-                                    {% endfor %}
-                                    <br/>
-                                {% endif %}
-                                
-                                <!-- Show specific fields -->
-                                <span class="text-muted me-1">Fields:</span>
-                                {% for subject in paper.subject_list %}
-                                    <a href="{% url 'papers:search' %}?subject={{ subject|urlencode }}" 
-                                       class="text-decoration-none"
-                                       title="Find other papers in this specific field">
-                                        <span class="badge bg-secondary me-1 mb-1 clickable-badge">
-                                            {{ subject|truncatechars:25 }}
-                                            <i class="fas fa-search fa-sm ms-1"></i>
-                                        </span>
+                        {% if paper.formatted_reasons %}
+                        <div class="mb-2">
+                            <small>
+                                <i class="fas fa-exclamation-triangle text-danger"></i>
+                                {% for reason in paper.reason_list|slice:":2" %}
+                                    <a href="{% url 'papers:search' %}?reason={{ reason|urlencode }}" 
+                                       class="text-decoration-none">
+                                        <span class="reason-badge">{{ reason|truncatechars:40 }}</span>
                                     </a>
                                 {% endfor %}
+                                {% if paper.reason_list|length > 2 %}
+                                    <span class="badge bg-warning text-dark">+{{ paper.reason_list|length|add:"-2" }} more</span>
+                                {% endif %}
                             </small>
-                        </p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if paper.countries_list %}
+                        <div class="mb-2">
+                            <small>
+                                <i class="fas fa-globe text-muted"></i>
+                                {% for country in paper.countries_list|slice:":3" %}
+                                    <a href="{% url 'papers:search' %}?country={{ country|urlencode }}" 
+                                       class="text-decoration-none">
+                                        <span class="badge bg-info text-white">{{ country }}</span>
+                                    </a>
+                                {% endfor %}
+                                {% if paper.countries_list|length > 3 %}
+                                    <span class="badge bg-secondary">+{{ paper.countries_list|length|add:"-3" }} more</span>
+                                {% endif %}
+                            </small>
+                        </div>
                         {% endif %}
                     </div>
                     
-                    <div class="col-lg-4 text-end">
-                        <div class="mb-2">
-                            <span class="{{ paper.retraction_badge_class }}">
-                                {{ paper.retraction_nature_display }}
-                            </span>
-                        </div>
-                        
-                        <div class="mb-2">
-                            <span class="citation-count">
-                                {{ paper.citation_count }} citations
-                            </span>
+                    <div class="col-lg-4">
+                        <div class="text-end">
+                            <div class="mb-2">
+                                <span class="citation-count">{{ paper.citation_count }} citations</span>
+                                {% if paper.post_retraction_citations > 0 %}
+                                    <br><span class="badge bg-danger">{{ paper.post_retraction_citations }} post-retraction</span>
+                                {% endif %}
+                            </div>
+                            
                             {% if paper.is_open_access %}
-                                <span class="badge bg-success ms-2">
-                                    <i class="fas fa-unlock"></i> Open Access
-                                </span>
+                            <div class="mb-2">
+                                <span class="badge bg-success">Open Access</span>
+                            </div>
+                            {% endif %}
+                            
+                            {% if paper.original_paper_doi %}
+                            <div class="mb-2">
+                                <small>
+                                    <a href="https://doi.org/{{ paper.original_paper_doi }}" 
+                                       target="_blank" 
+                                       class="text-decoration-none">
+                                        <i class="fas fa-external-link-alt"></i> DOI
+                                    </a>
+                                </small>
+                            </div>
                             {% endif %}
                         </div>
                         
@@ -404,7 +405,7 @@
             </ul>
         </nav>
         {% endif %}
-        
+        </div>
     {% elif search_query %}
         <div class="alert alert-warning">
             <i class="fas fa-exclamation-triangle"></i>
