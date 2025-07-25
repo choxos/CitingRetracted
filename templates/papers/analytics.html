@@ -1,14 +1,22 @@
-{% extends 'base.html' %}
+{% extends 'prct_base.html' %}
 {% load static %}
 
-{% block title %}Analytics - PRCT{% endblock %}
+{% block title %}Analytics - Post-Retraction Citation Tracker{% endblock %}
 
 {% block extra_css %}
 <style>
+/* ===============================================
+   PRCT ANALYTICS CHART STYLES - PRESERVE ALL!
+   =============================================== */
+
 .chart-container {
     position: relative;
     height: 400px;
     margin: 20px 0;
+    background: white;
+    border-radius: var(--xera-radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--xera-shadow-md);
 }
 
 .chart-container.tall {
@@ -47,6 +55,7 @@
     opacity: 0.5;
 }
 
+/* Enhanced PRCT Stat Cards */
 .stat-card {
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     border: none;
@@ -166,14 +175,21 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="row">
-        <div class="col-12">
-            <h1><i class="fas fa-chart-bar"></i> Advanced Analytics Dashboard</h1>
-            <p class="text-muted">Interactive visualization of retracted papers and citation patterns with advanced filtering and drill-down capabilities.</p>
-            
-            <!-- Real-time Update Controls -->
-            <div class="row mb-3">
+<div class="xera-container-fluid">
+    <!-- PRCT Analytics Header -->
+    <div class="xera-card mb-4">
+        <div class="xera-card-header">
+            <h1 class="prct-chart-title">
+                <i class="fas fa-chart-bar"></i> Advanced Analytics Dashboard
+            </h1>
+            <p class="text-muted mb-0">Interactive visualization of retracted papers and citation patterns with advanced filtering and drill-down capabilities.</p>
+        </div>
+    </div>
+    
+    <!-- Real-time Update Controls -->
+    <div class="xera-card mb-4">
+        <div class="xera-card-body">
+            <div class="row">
                 <div class="col-md-6">
                     <div class="d-flex align-items-center gap-3">
                         <div class="form-check form-switch">
@@ -182,13 +198,13 @@
                                 <i class="fas fa-sync-alt"></i> Auto-refresh
                             </label>
                         </div>
-                        <select class="form-select form-select-sm" id="refreshInterval" style="width: auto;" disabled>
+                        <select class="xera-form-control xera-form-control-sm" id="refreshInterval" style="width: auto;" disabled>
                             <option value="30000">30 seconds</option>
                             <option value="60000" selected>1 minute</option>
                             <option value="300000">5 minutes</option>
                             <option value="600000">10 minutes</option>
                         </select>
-                        <button class="btn btn-sm btn-outline-primary" id="manualRefresh">
+                        <button class="xera-btn xera-btn-sm xera-btn-outline-primary" id="manualRefresh">
                             <i class="fas fa-refresh"></i> Refresh Now
                         </button>
                     </div>
@@ -196,8 +212,8 @@
                 <div class="col-md-6 text-end">
                     <div class="d-flex align-items-center justify-content-end gap-2">
                         <small class="text-muted">Last updated:</small>
-                        <span id="lastUpdated" class="badge bg-secondary">{{ "now"|date:"M d, Y H:i" }}</span>
-                        <div id="updateStatus" class="badge bg-success" style="display: none;">
+                        <span id="lastUpdated" class="xera-badge xera-badge-secondary">{{ "now"|date:"M d, Y H:i" }}</span>
+                        <div id="updateStatus" class="xera-badge xera-badge-success" style="display: none;">
                             <i class="fas fa-check"></i> Updated
                         </div>
                         <div id="updateLoading" class="spinner-border spinner-border-sm text-primary" style="display: none;" role="status">
@@ -209,29 +225,33 @@
         </div>
     </div>
     
-    <!-- Dashboard Navigation Tabs -->
-    <ul class="nav nav-pills dashboard-tabs" id="analyticsTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="overview-tab" data-bs-toggle="pill" data-bs-target="#overview" type="button" role="tab">
-                <i class="fas fa-tachometer-alt"></i> Overview
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="trends-tab" data-bs-toggle="pill" data-bs-target="#trends" type="button" role="tab">
-                <i class="fas fa-chart-line"></i> Trends
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="patterns-tab" data-bs-toggle="pill" data-bs-target="#patterns" type="button" role="tab">
-                <i class="fas fa-search"></i> Patterns
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="network-tab" data-bs-toggle="pill" data-bs-target="#network" type="button" role="tab">
-                <i class="fas fa-project-diagram"></i> Network
-            </button>
-        </li>
-    </ul>
+    <!-- PRCT Analytics Navigation Tabs -->
+    <div class="xera-card mb-4">
+        <div class="xera-card-header p-0">
+            <ul class="nav nav-pills dashboard-tabs xera-nav-tabs" id="analyticsTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="overview-tab" data-bs-toggle="pill" data-bs-target="#overview" type="button" role="tab">
+                        <i class="fas fa-tachometer-alt"></i> Overview
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="trends-tab" data-bs-toggle="pill" data-bs-target="#trends" type="button" role="tab">
+                        <i class="fas fa-chart-line"></i> Trends
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="patterns-tab" data-bs-toggle="pill" data-bs-target="#patterns" type="button" role="tab">
+                        <i class="fas fa-search"></i> Patterns
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="network-tab" data-bs-toggle="pill" data-bs-target="#network" type="button" role="tab">
+                        <i class="fas fa-project-diagram"></i> Network
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </div>
 
     <div class="tab-content" id="analyticsTabContent">
         
@@ -240,53 +260,45 @@
             <!-- Summary Statistics -->
             <div class="row mb-5">
                 <div class="col-md-3 mb-4">
-                    <div class="card stat-card h-100 text-center">
-                        <div class="card-body">
-                            <i class="fas fa-ban fa-3x text-danger mb-3"></i>
-                            <h3 class="card-title">{{ stats.total_papers|floatformat:0 }}</h3>
-                            <p class="card-text">Total Retracted Papers</p>
-                            <div class="progress mt-2" style="height: 6px;">
-                                <div class="progress-bar bg-danger" role="progressbar" style="width: 100%"></div>
-                            </div>
+                    <div class="prct-stat-card h-100 text-center">
+                        <i class="fas fa-ban fa-3x text-danger mb-3"></i>
+                        <h3 class="prct-stat-number">{{ stats.total_papers|floatformat:0 }}</h3>
+                        <p class="prct-stat-label">Total Retracted Papers</p>
+                        <div class="progress mt-2" style="height: 6px;">
+                            <div class="progress-bar bg-danger" role="progressbar" style="width: 100%"></div>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-3 mb-4">
-                    <div class="card stat-card h-100 text-center">
-                        <div class="card-body">
-                            <i class="fas fa-quote-right fa-3x text-warning mb-3"></i>
-                            <h3 class="card-title">{{ stats.total_citations|floatformat:0 }}</h3>
-                            <p class="card-text">Total Citations</p>
-                            <small class="text-muted">
-                                <strong>Mean:</strong> {{ stats.avg_citations_per_paper|floatformat:1 }} (SD: {{ stats.stdev_citations_per_paper|floatformat:1 }})<br>
-                                <strong>Median:</strong> {{ stats.median_citations_per_paper|floatformat:1 }} (Q1: {{ stats.q1_citations_per_paper|floatformat:1 }}, Q3: {{ stats.q3_citations_per_paper|floatformat:1 }})
-                                {% if stats.avg_citations_per_paper > stats.median_citations_per_paper|add:1 %}
-                                    <br><span class="text-info"><i class="fas fa-info-circle"></i> Skewed distribution</span>
-                                {% endif %}
-                            </small>
+                    <div class="prct-stat-card h-100 text-center">
+                        <i class="fas fa-quote-right fa-3x text-warning mb-3"></i>
+                        <h3 class="prct-stat-number">{{ stats.total_citations|floatformat:0 }}</h3>
+                        <p class="prct-stat-label">Total Citations</p>
+                        <small class="text-muted">
+                            <strong>Mean:</strong> {{ stats.avg_citations_per_paper|floatformat:1 }} (SD: {{ stats.stdev_citations_per_paper|floatformat:1 }})<br>
+                            <strong>Median:</strong> {{ stats.median_citations_per_paper|floatformat:1 }} (Q1: {{ stats.q1_citations_per_paper|floatformat:1 }}, Q3: {{ stats.q3_citations_per_paper|floatformat:1 }})
+                            {% if stats.avg_citations_per_paper > stats.median_citations_per_paper|add:1 %}
+                                <br><span class="text-info"><i class="fas fa-info-circle"></i> Skewed distribution</span>
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-4">
+                    <div class="prct-stat-card h-100 text-center">
+                        <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                        <h3 class="prct-stat-number">{{ stats.post_retraction_citations|floatformat:0 }}</h3>
+                        <p class="prct-stat-label">Post-Retraction Citations</p>
+                        <div class="mt-2">
+                            <span class="prct-retraction-badge retracted">{{ stats.post_retraction_percentage|floatformat:1 }}% of total</span>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-3 mb-4">
-                    <div class="card stat-card h-100 text-center">
-                        <div class="card-body">
-                            <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
-                            <h3 class="card-title">{{ stats.post_retraction_citations|floatformat:0 }}</h3>
-                            <p class="card-text">Post-Retraction Citations</p>
-                            <div class="mt-2">
-                                <span class="badge bg-danger">{{ stats.post_retraction_percentage|floatformat:1 }}% of total</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3 mb-4">
-                    <div class="card stat-card h-100 text-center">
-                        <div class="card-body">
-                            <i class="fas fa-clock fa-3x text-success mb-3"></i>
-                            <h3 class="card-title">{{ stats.recent_retractions|floatformat:0 }}</h3>
-                            <p class="card-text">Recent Retractions</p>
-                            <small class="text-muted">Last 12 months</small>
-                        </div>
+                    <div class="prct-stat-card h-100 text-center">
+                        <i class="fas fa-clock fa-3x text-success mb-3"></i>
+                        <h3 class="prct-stat-number">{{ stats.recent_retractions|floatformat:0 }}</h3>
+                        <p class="prct-stat-label">Recent Retractions</p>
+                        <small class="text-muted">Last 12 months</small>
                     </div>
                 </div>
             </div>
@@ -294,34 +306,28 @@
             <!-- Quick Charts Row -->
             <div class="row mb-5">
                 <div class="col-lg-6 mb-4">
-                    <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5><i class="fas fa-chart-pie"></i> Citation Patterns</h5>
-                            <button class="btn btn-sm btn-outline-primary" onclick="refreshChart('citationPatternsChart')">
+                    <div class="prct-chart-container">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="prct-chart-title"><i class="fas fa-chart-pie"></i> Citation Patterns</h5>
+                            <button class="xera-btn xera-btn-sm xera-btn-outline-primary" onclick="refreshChart('citationPatternsChart')">
                                 <i class="fas fa-sync-alt"></i>
                             </button>
                         </div>
-                        <div class="card-body">
-                            <div class="chart-container short">
-                                <canvas id="citationPatternsChart"></canvas>
-                            </div>
-                            <div class="mt-3 text-center">
-                                <span class="badge bg-danger fs-6">
-                                    {{ citation_patterns.post_retraction_percentage|floatformat:1 }}% post-retraction
-                                </span>
-                            </div>
+                        <div class="chart-container short">
+                            <canvas id="citationPatternsChart"></canvas>
+                        </div>
+                        <div class="mt-3 text-center">
+                            <span class="prct-retraction-badge retracted fs-6">
+                                {{ citation_patterns.post_retraction_percentage|floatformat:1 }}% post-retraction
+                            </span>
                         </div>
                     </div>
                 </div>
                 <div class="col-lg-6 mb-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5><i class="fas fa-clock"></i> Post-Retraction Timeline</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="chart-container short">
-                                <canvas id="postRetractionTimelineChart"></canvas>
-                            </div>
+                    <div class="prct-chart-container">
+                        <h5 class="prct-chart-title"><i class="fas fa-clock"></i> Post-Retraction Timeline</h5>
+                        <div class="chart-container short">
+                            <canvas id="postRetractionTimelineChart"></canvas>
                         </div>
                     </div>
                 </div>
