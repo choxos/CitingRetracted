@@ -32,6 +32,10 @@ DATABASES = {
 # Security settings
 SECRET_KEY = os.getenv('SECRET_KEY')
 
+# Port Configuration
+PRCT_PORT = int(os.getenv('PRCT_PORT', '8001'))
+PRCT_HOST = os.getenv('PRCT_HOST', '127.0.0.1')
+
 # Static files configuration for production
 STATIC_URL = '/static/'
 STATIC_ROOT = '/var/www/prct/static/'
