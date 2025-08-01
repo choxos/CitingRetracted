@@ -667,7 +667,39 @@ class AnalyticsView(View):
         # Get analytics data efficiently
         context.update(self._get_analytics_data())
         
+        # Ensure all data is JSON-safe
+        context = self._make_json_safe(context)
+        
         return context
+    
+    def _make_json_safe(self, data):
+        """Ensure all data is JSON-serializable and safe for template rendering"""
+        import json
+        from datetime import date, datetime
+        
+        def json_serializer(obj):
+            """Custom JSON serializer for datetime objects"""
+            if isinstance(obj, (datetime, date)):
+                return obj.isoformat()
+            return str(obj)
+        
+        # Convert data to JSON and back to ensure it's properly serialized
+        json_safe_data = {}
+        for key, value in data.items():
+            try:
+                # Test JSON serialization
+                json_str = json.dumps(value, default=json_serializer)
+                json_safe_data[key] = json.loads(json_str)
+            except (TypeError, ValueError) as e:
+                # If serialization fails, provide a safe fallback
+                if isinstance(value, list):
+                    json_safe_data[key] = []
+                elif isinstance(value, dict):
+                    json_safe_data[key] = {}
+                else:
+                    json_safe_data[key] = None
+                    
+        return json_safe_data
     
     def _get_basic_stats(self):
         """Get basic statistics in efficient bulk queries"""
