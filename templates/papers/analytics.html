@@ -329,7 +329,7 @@
             
             <!-- Separate Trend Analysis Charts -->
             <div class="row mb-5">
-                <div class="col-lg-6 mb-4">
+                <div class="col-12 mb-4">
                     <div class="prct-chart-container">
                         <h5 class="prct-chart-title"><i class="fas fa-calendar-times"></i> Retractions by Year</h5>
                         <small class="text-muted">When papers were retracted</small>
@@ -338,7 +338,10 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-6 mb-4">
+            </div>
+            
+            <div class="row mb-5">
+                <div class="col-12 mb-4">
                     <div class="prct-chart-container">
                         <h5 class="prct-chart-title"><i class="fas fa-chart-bar"></i> Citation Analysis by Year</h5>
                         <small class="text-muted">Total citations vs post-retraction citations (when citations occurred)</small>
@@ -799,7 +802,7 @@ function initializeOverviewCharts() {
 
 // NEW: Separate retraction trends and citation analysis charts
 // Chart 1: Retractions by Year (when papers were retracted)
-const retractionTrendsData = {{ retraction_trends_by_year }};
+const retractionTrendsData = {{ retraction_trends_by_year|safe }};
 console.log('Retraction Trends Data:', retractionTrendsData);
 
 if (retractionTrendsData.length > 0) {
@@ -859,7 +862,7 @@ if (retractionTrendsData.length > 0) {
 }
 
 // Chart 2: Citation Analysis by Year (when citations occurred)
-const citationAnalysisData = {{ citation_analysis_by_year }};
+const citationAnalysisData = {{ citation_analysis_by_year|safe }};
 console.log('Citation Analysis Data:', citationAnalysisData);
 
 if (citationAnalysisData.length > 0) {
