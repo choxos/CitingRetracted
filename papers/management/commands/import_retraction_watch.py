@@ -148,12 +148,10 @@ class Command(BaseCommand):
             records_failed = 0
 
             with open(csv_file, 'r', encoding='utf-8', errors='replace') as file:
-                # Try to detect delimiter
-                sample = file.read(1024)
-                file.seek(0)
-                sniffer = csv.Sniffer()
-                delimiter = sniffer.sniff(sample).delimiter
-
+                # Retraction Watch CSV files are always comma-delimited
+                # Don't rely on sniffer as it can incorrectly detect other characters
+                delimiter = ','
+                
                 reader = csv.DictReader(file, delimiter=delimiter)
                 
                 for row in reader:
