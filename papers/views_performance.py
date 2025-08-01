@@ -66,28 +66,41 @@ class PerformanceAnalyticsView(View):
             
             # Calculate additional statistics (SD, Median, Quartiles)
             from django.db import connection
-            with connection.cursor() as cursor:
-                # Get citation statistics with percentiles and standard deviation
-                cursor.execute("""
-                    SELECT 
-                        AVG(citation_count) as mean_citations,
-                        STDDEV(citation_count) as std_citations,
-                        PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY citation_count) as q1_citations,
-                        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY citation_count) as median_citations,
-                        PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY citation_count) as q3_citations
-                    FROM papers_retractedpaper 
-                    WHERE citation_count IS NOT NULL
-                """)
+            from django.db.models import StdDev, Variance
+            
+            # Use Django ORM for database compatibility instead of raw SQL
+            citation_stats_detailed = RetractedPaper.objects.exclude(
+                citation_count__isnull=True
+            ).aggregate(
+                mean_citations=Avg('citation_count'),
+                std_citations=StdDev('citation_count'),
+                variance_citations=Variance('citation_count')
+            )
+            
+            # Get percentiles using a compatible approach
+            citation_counts = list(RetractedPaper.objects.exclude(
+                citation_count__isnull=True
+            ).values_list('citation_count', flat=True).order_by('citation_count'))
+            
+            if citation_counts:
+                n = len(citation_counts)
+                q1_index = int(n * 0.25)
+                median_index = int(n * 0.5) 
+                q3_index = int(n * 0.75)
                 
-                row = cursor.fetchone()
-                if row:
-                    basic_stats.update({
-                        'mean_citations': float(row[0]) if row[0] else 0,
-                        'std_citations': float(row[1]) if row[1] else 0,
-                        'q1_citations': float(row[2]) if row[2] else 0,
-                        'median_citations': float(row[3]) if row[3] else 0,
-                        'q3_citations': float(row[4]) if row[4] else 0
-                    })
+                basic_stats.update({
+                    'mean_citations': float(citation_stats_detailed['mean_citations']) if citation_stats_detailed['mean_citations'] else 0,
+                    'std_citations': float(citation_stats_detailed['std_citations']) if citation_stats_detailed['std_citations'] else 0,
+                    'q1_citations': float(citation_counts[q1_index]) if q1_index < len(citation_counts) else 0,
+                    'median_citations': float(citation_counts[median_index]) if median_index < len(citation_counts) else 0,
+                    'q3_citations': float(citation_counts[q3_index]) if q3_index < len(citation_counts) else 0,
+                    'total_papers_with_citations': n
+                })
+            else:
+                basic_stats.update({
+                    'mean_citations': 0, 'std_citations': 0, 'q1_citations': 0,
+                    'median_citations': 0, 'q3_citations': 0, 'total_papers_with_citations': 0
+                })
             
             # Citation statistics in one query
             citation_stats = Citation.objects.aggregate(
