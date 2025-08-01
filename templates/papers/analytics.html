@@ -1036,7 +1036,7 @@ console.log('Retraction Years Sample:', retractionYearsData.slice(0, 3));
     );
     
     // Subject distribution donut
-    const subjectData = {{ subject_donut_data|safe_json }};
+    const subjectData = {{ subject_donut_data }};
     console.log('Subject Data:', subjectData);
     
     const subjectDistributionData = {
@@ -1067,7 +1067,7 @@ console.log('Retraction Years Sample:', retractionYearsData.slice(0, 3));
 
 function initializePatternCharts() {
     // Citation timing distribution
-    const timingData = {{ citation_timing_distribution|safe_json }};
+    const timingData = {{ citation_timing_distribution }};
     console.log('Timing Data:', timingData);
     
     const citationTimingData = {
@@ -1119,7 +1119,7 @@ function initializePatternCharts() {
     );
     
     // Journal bubble chart
-    const journalBubbleData = {{ journal_bubble_data|safe_json }};
+    const journalBubbleData = {{ journal_bubble_data }};
     console.log('Journal Bubble Data:', journalBubbleData);
     
     const bubbleChartData = {
@@ -1181,7 +1181,7 @@ function initializePatternCharts() {
     );
     
     // Citation Heatmap Chart - Custom implementation using HTML table
-    const heatmapData = {{ citation_heatmap|safe_json }};
+    const heatmapData = {{ citation_heatmap }};
     console.log('Heatmap Data:', heatmapData);
     
     if (heatmapData && heatmapData.length > 0) {
@@ -1426,7 +1426,7 @@ function initializePatternCharts() {
 }
 
 // Initialize sunburst chart
-const sunburstData = {{ sunburst_data|safe_json }};
+const sunburstData = {{ sunburst_data }};
 if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
     initializeSunburstChart(sunburstData);
 } else {
@@ -1434,8 +1434,8 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
 }
     
     // Country analytics chart  
-    const countryData = {{ country_analytics|safe_json }};
-    const worldMapData = {{ world_map_data|safe_json }};
+    const countryData = {{ country_analytics }};
+    const worldMapData = {{ world_map_data }};
     
     // Create Plotly choropleth world map
     const worldMapContainer = document.getElementById('countryChart').parentElement;
@@ -1560,7 +1560,7 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
     }
     
     // Publisher Chart
-    const publisherData = {{ publisher_data|safe_json }};
+    const publisherData = {{ publisher_data }};
     console.log('Publisher Data:', publisherData);
     
     if (publisherData.length > 0) {
@@ -1607,7 +1607,7 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
     }
     
     // Open Access Chart
-    const accessData = {{ access_analytics|safe_json }};
+    const accessData = {{ access_analytics }};
     console.log('Access Analytics Data:', accessData);
     
     if (accessData.open_access) {
@@ -1651,7 +1651,7 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
 }
 
 function initializeNetworkVisualization() {
-    const networkData = {{ network_data|safe_json }};
+    const networkData = {{ network_data }};
     
     // Clear any existing visualization
     d3.select("#networkVisualization").selectAll("*").remove();
@@ -1808,7 +1808,7 @@ function updateTrendCharts() {
 
 function updateNetworkChart() {
     const networkType = document.getElementById('networkTypeFilter').value;
-    const networkData = {{ network_data|safe_json }};
+    const networkData = {{ network_data }};
     
     // Filter nodes and links based on network type
     let filteredNodes = [];
