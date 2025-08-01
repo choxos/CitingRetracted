@@ -632,9 +632,10 @@
                     <div class="filter-group">
                         <label><strong>Network View:</strong></label>
                         <select class="xera-form-control xera-form-control-sm" id="networkTypeFilter" style="width: auto;">
-                            <option value="journals">Journal Relationships</option>
-                            <option value="subjects">Subject Areas</option>
-                            <option value="combined">Combined View</option>
+                            <option value="combined">Complete Network</option>
+                            <option value="subjects">Subject Areas Focus</option>
+                            <option value="countries">Countries Focus</option>
+                            <option value="journals">Journals Focus</option>
                         </select>
                         <button class="xera-btn xera-btn-sm xera-btn-primary" onclick="updateNetworkChart()">
                             <i class="fas fa-project-diagram"></i> Update Network
@@ -1479,13 +1480,16 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
             if (zmax - zmin < 0.1) {
                 zmax = zmin + 1;
             }
+            
+            // Use a more pronounced color scale for log values
             colorscale = [
-                [0, '#f0f0f0'],      // Light gray for null/zero values
-                [0.2, '#fee5d9'],
-                [0.4, '#fcbba1'],
-                [0.6, '#fc9272'],
-                [0.8, '#fb6a4a'],
-                [1, '#de2d26']
+                [0, '#f8f9fa'],      // Very light gray for null/zero values
+                [0.1, '#fee5d9'],    // Light peach
+                [0.3, '#fcbba1'],    // Light coral
+                [0.5, '#fc9272'],    // Medium coral
+                [0.7, '#fb6a4a'],    // Orange-red
+                [0.9, '#de2d26'],    // Strong red
+                [1, '#a50f15']       // Dark red
             ];
             console.log('Log scale settings:', { zmin, zmax, validCount: validValues.length });
         } else {
@@ -1516,11 +1520,21 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
             colorscale: colorscale,
             zmin: zmin,
             zmax: zmax,
+            showscale: true,
             colorbar: {
                 title: colorbarTitle,
                 titleside: 'right'
             }
         }];
+        
+        console.log('Choropleth data details:', {
+            locations: choroplethData[0].locations,
+            z_values: choroplethData[0].z,
+            z_min: choroplethData[0].zmin,
+            z_max: choroplethData[0].zmax,
+            scale: scale,
+            colorscale_length: choroplethData[0].colorscale.length
+        });
         
         console.log('Generated choropleth data successfully for', scale, 'scale');
         return choroplethData;
@@ -1528,8 +1542,36 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
     
     // Function to update the choropleth map
     function updateChoroplethMap(scale = 'linear') {
-        const newData = generateChoroplethData(scale);
-        Plotly.react('plotlyWorldMap', newData, choroplethLayout, config);
+        console.log('Updating choropleth map to scale:', scale);
+        try {
+            const newData = generateChoroplethData(scale);
+            console.log('New data generated:', newData);
+            
+            // Force a complete re-render instead of just updating
+            Plotly.newPlot('plotlyWorldMap', newData, choroplethLayout, config)
+                .then(() => {
+                    console.log('Map successfully re-rendered with scale:', scale);
+                })
+                .catch((error) => {
+                    console.error('Error rendering map with scale', scale, ':', error);
+                    // Fallback to linear scale if log scale fails
+                    if (scale === 'log') {
+                        console.log('Falling back to linear scale due to error');
+                        updateChoroplethMap('linear');
+                        // Reset the radio button to linear
+                        document.getElementById('scaleLinear').checked = true;
+                    }
+                });
+        } catch (error) {
+            console.error('Error in updateChoroplethMap:', error);
+            // Fallback to linear scale
+            if (scale === 'log') {
+                console.log('Falling back to linear scale due to error');
+                updateChoroplethMap('linear');
+                // Reset the radio button to linear
+                document.getElementById('scaleLinear').checked = true;
+            }
+        }
     }
     
     const choroplethLayout = {
@@ -1725,9 +1767,10 @@ function initializeNetworkVisualization() {
     const networkData = {{ network_data|safe }};
     
     // Debug network data structure
-    console.log('Network Data Structure:', networkData);
+    console.log('New Network Data Structure:', networkData);
     console.log('Nodes:', networkData.nodes ? networkData.nodes.length : 0);
     console.log('Links:', networkData.links ? networkData.links.length : 0);
+    console.log('Design info:', networkData.design);
     
     if (!networkData || !networkData.nodes || !networkData.links) {
         console.error('Invalid network data structure');
@@ -1746,17 +1789,45 @@ function initializeNetworkVisualization() {
         .attr("width", width)
         .attr("height", height);
     
-    // Create container for all network elements FIRST
+    // Create container for all network elements
     const container = svg.append("g");
     
-    // Add zoom behavior AFTER container is defined
+    // Add zoom behavior
     const zoom = d3.zoom()
-        .scaleExtent([0.1, 10])
+        .scaleExtent([0.3, 5])
         .on("zoom", function(event) {
             container.attr("transform", event.transform);
         });
     
     svg.call(zoom);
+    
+    // Add network legend
+    const legend = svg.append("g")
+        .attr("class", "network-legend")
+        .attr("transform", "translate(10, 10)");
+    
+    const legendData = [
+        { type: 'subject', color: networkData.design.color_scheme.subjects, label: 'Subject Areas', size: 8 },
+        { type: 'country', color: networkData.design.color_scheme.countries, label: 'Countries', size: 6 },
+        { type: 'journal', color: networkData.design.color_scheme.journals, label: 'Journals', size: 4 }
+    ];
+    
+    legendData.forEach((item, i) => {
+        const legendItem = legend.append("g")
+            .attr("transform", `translate(0, ${i * 25})`);
+        
+        legendItem.append("circle")
+            .attr("r", item.size)
+            .attr("fill", item.color)
+            .attr("cx", 10);
+        
+        legendItem.append("text")
+            .attr("x", 25)
+            .attr("y", 5)
+            .text(item.label)
+            .style("font-size", "12px")
+            .style("fill", "#333");
+    });
     
     // Add zoom controls
     const controls = d3.select("#networkVisualization")
@@ -1787,85 +1858,160 @@ function initializeNetworkVisualization() {
             svg.transition().call(zoom.transform, d3.zoomIdentity);
         });
     
-    // Create force simulation
+    // Create layered force simulation for beautiful layout
     const simulation = d3.forceSimulation(networkData.nodes)
-        .force("link", d3.forceLink(networkData.links).id(d => d.id))
-        .force("charge", d3.forceManyBody().strength(-300))
+        .force("link", d3.forceLink(networkData.links).id(d => d.id).distance(d => {
+            // Variable link distances based on connection type
+            if (d.connection_type === 'primary') return 80;      // Subject-Country: closer
+            if (d.connection_type === 'secondary') return 100;   // Country-Journal: medium
+            if (d.connection_type === 'specialized') return 120; // Subject-Journal: further
+            return 100;
+        }))
+        .force("charge", d3.forceManyBody().strength(d => {
+            // Different repulsion based on node type
+            if (d.type === 'subject') return -800;   // Subjects repel more (spread out)
+            if (d.type === 'country') return -400;   // Countries medium repulsion
+            if (d.type === 'journal') return -200;   // Journals less repulsion
+            return -300;
+        }))
         .force("center", d3.forceCenter(width / 2, height / 2))
-        .force("collision", d3.forceCollide().radius(d => Math.max(8, (d.size || 10) / 2) + 2));
+        .force("collision", d3.forceCollide().radius(d => d.size + 5))
+        .force("radial", d3.forceRadial(d => {
+            // Create layered radial positioning
+            if (d.type === 'subject') return 100;    // Subjects in center
+            if (d.type === 'country') return 200;    // Countries in middle ring
+            if (d.type === 'journal') return 300;    // Journals in outer ring
+            return 250;
+        }, width / 2, height / 2).strength(0.1));
     
-    // Create links
+    // Create links with different styles
     const link = container.append("g")
         .selectAll("line")
         .data(networkData.links)
         .enter()
         .append("line")
-        .attr("stroke", d => d.color || "#999")
-        .attr("stroke-opacity", 0.6)
-        .attr("stroke-width", d => Math.max(1, d.strength || 2));
+        .attr("stroke", d => {
+            if (d.connection_type === 'primary') return networkData.design.color_scheme.primary_links;
+            if (d.connection_type === 'secondary') return networkData.design.color_scheme.secondary_links;
+            if (d.connection_type === 'specialized') return networkData.design.color_scheme.specialized_links;
+            return "#999";
+        })
+        .attr("stroke-opacity", 0.7)
+        .attr("stroke-width", d => d.weight || 2)
+        .attr("stroke-dasharray", d => {
+            // Different line styles for different connection types
+            if (d.connection_type === 'specialized') return "5,5"; // Dashed for specialized
+            return null; // Solid for others
+        });
     
-    // Create nodes with proper color mapping based on backend data structure
+    // Create nodes with layered styling
     const node = container.append("g")
         .selectAll("circle")
         .data(networkData.nodes)
         .enter()
         .append("circle")
-        .attr("r", d => Math.max(8, (d.size || 10) / 2))
+        .attr("r", d => d.size)
         .attr("fill", d => {
-            // Map backend 'group' to colors
-            if (d.group === 'retracted') return '#dc2626'; // Red for retracted papers
-            if (d.group === 'citing') return '#10b981';    // Green for citing papers
-            return '#6b7280'; // Gray fallback
+            if (d.type === 'subject') return networkData.design.color_scheme.subjects;
+            if (d.type === 'country') return networkData.design.color_scheme.countries;
+            if (d.type === 'journal') return networkData.design.color_scheme.journals;
+            return "#6b7280";
         })
+        .attr("stroke", "#fff")
+        .attr("stroke-width", 2)
         .style("cursor", "pointer")
         .call(d3.drag()
             .on("start", dragstarted)
             .on("drag", dragged)
             .on("end", dragended));
     
-    // Create labels using backend data structure
+    // Create labels with smart positioning
     const label = container.append("g")
         .selectAll("text")
         .data(networkData.nodes)
         .enter()
         .append("text")
-        .text(d => (d.title || d.name || 'Unknown').substring(0, 15) + '...')
-        .attr("font-size", "10px")
-        .attr("dx", 15)
+        .text(d => d.name)
+        .attr("font-size", d => {
+            if (d.type === 'subject') return "12px";
+            if (d.type === 'country') return "10px";
+            if (d.type === 'journal') return "8px";
+            return "9px";
+        })
+        .attr("font-weight", d => d.type === 'subject' ? "bold" : "normal")
+        .attr("dx", d => d.size + 8)
         .attr("dy", 4)
         .style("pointer-events", "none")
-        .style("fill", "#333");
+        .style("fill", "#333")
+        .style("text-shadow", "1px 1px 0px white, -1px -1px 0px white, 1px -1px 0px white, -1px 1px 0px white");
     
-    // Enhanced tooltip functionality using backend data structure
+    // Enhanced tooltip functionality
     node.on("mouseover", function(event, d) {
         const tooltip = document.getElementById("networkTooltip") || createNetworkTooltip();
         tooltip.style.display = "block";
         tooltip.style.left = (event.pageX + 10) + "px";
         tooltip.style.top = (event.pageY - 10) + "px";
         
-        let tooltipContent = `<strong>${d.title || d.name || 'Unknown'}</strong><br>`;
-        if (d.group === 'retracted') {
-            tooltipContent += `Type: Retracted Paper<br>`;
-            tooltipContent += `Journal: ${d.journal || 'Unknown'}<br>`;
-            tooltipContent += `Citations: ${d.citations || 0}<br>`;
-            tooltipContent += `Post-retraction: ${d.post_citations || 0}<br>`;
-            tooltipContent += `Retracted: ${d.retraction_year || 'Unknown'}`;
-        } else if (d.group === 'citing') {
-            tooltipContent += `Type: Citing Paper<br>`;
-            tooltipContent += `Journal: ${d.journal || 'Unknown'}<br>`;
-            tooltipContent += `Citations: ${d.citations || 0}<br>`;
-            if (d.citation_type) {
-                tooltipContent += `Citation Type: ${d.citation_type.replace('_', ' ')}<br>`;
-            }
-            tooltipContent += `Published: ${d.pub_year || 'Unknown'}`;
+        let tooltipContent = `<strong>${d.full_name || d.name}</strong><br>`;
+        tooltipContent += `<span style="color: ${d.type === 'subject' ? networkData.design.color_scheme.subjects : 
+                                                d.type === 'country' ? networkData.design.color_scheme.countries :
+                                                networkData.design.color_scheme.journals}">● ${d.type.toUpperCase()}</span><br>`;
+        
+        if (d.type === 'subject') {
+            tooltipContent += `Papers: ${d.paper_count}<br>`;
+            tooltipContent += `Connected Countries: ${d.connected_countries}<br>`;
+            tooltipContent += `Connected Journals: ${d.connected_journals}<br>`;
+            tooltipContent += `<em>Central research area</em>`;
+        } else if (d.type === 'country') {
+            tooltipContent += `Papers: ${d.paper_count}<br>`;
+            tooltipContent += `Connected Subjects: ${d.connected_subjects}<br>`;
+            tooltipContent += `<em>Geographic research hub</em>`;
+        } else if (d.type === 'journal') {
+            tooltipContent += `Papers: ${d.paper_count}<br>`;
+            tooltipContent += `Post-retraction Citations: ${d.post_retraction_citations}<br>`;
+            tooltipContent += `Connected Subjects: ${d.connected_subjects}<br>`;
+            tooltipContent += `Connected Countries: ${d.connected_countries}<br>`;
+            tooltipContent += `<em>Publication venue</em>`;
         }
         
         tooltip.innerHTML = tooltipContent;
+        
+        // Highlight connected nodes and links
+        highlightConnections(d);
     })
     .on("mouseout", function() {
         const tooltip = document.getElementById("networkTooltip");
         if (tooltip) tooltip.style.display = "none";
+        
+        // Reset all styling
+        node.style("opacity", 1);
+        link.style("opacity", 0.7);
+        label.style("opacity", 1);
     });
+    
+    function highlightConnections(selectedNode) {
+        // Fade out all nodes and links
+        node.style("opacity", 0.3);
+        link.style("opacity", 0.1);
+        label.style("opacity", 0.3);
+        
+        // Highlight the selected node
+        node.filter(d => d.id === selectedNode.id).style("opacity", 1);
+        label.filter(d => d.id === selectedNode.id).style("opacity", 1);
+        
+        // Find and highlight connected nodes and links
+        const connectedNodeIds = new Set();
+        link.filter(d => d.source.id === selectedNode.id || d.target.id === selectedNode.id)
+            .style("opacity", 1)
+            .each(d => {
+                connectedNodeIds.add(d.source.id);
+                connectedNodeIds.add(d.target.id);
+            });
+        
+        // Highlight connected nodes
+        node.filter(d => connectedNodeIds.has(d.id)).style("opacity", 1);
+        label.filter(d => connectedNodeIds.has(d.id)).style("opacity", 1);
+    }
     
     // Create tooltip element if it doesn't exist
     function createNetworkTooltip() {
@@ -1873,14 +2019,16 @@ function initializeNetworkVisualization() {
         tooltip.id = "networkTooltip";
         tooltip.style.cssText = `
             position: absolute;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.9);
             color: white;
-            padding: 8px;
-            border-radius: 4px;
+            padding: 12px;
+            border-radius: 6px;
             font-size: 12px;
             pointer-events: none;
             z-index: 1000;
             display: none;
+            max-width: 250px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
         `;
         document.body.appendChild(tooltip);
         return tooltip;
@@ -1920,18 +2068,9 @@ function initializeNetworkVisualization() {
         d.fx = null;
         d.fy = null;
     }
-}
-
-// Utility functions
-function refreshChart(chartId) {
-    if (chartInstances[chartId]) {
-        chartInstances[chartId].update('active');
-    }
-}
-
-function updateTrendCharts() {
-    // Implement filter functionality here
-    console.log('Updating trend charts with filters...');
+    
+    console.log(`Beautiful network initialized with ${networkData.nodes.length} nodes and ${networkData.links.length} links`);
+    console.log(`Network composition: ${networkData.metadata.subjects} subjects, ${networkData.metadata.countries} countries, ${networkData.metadata.journals} journals`);
 }
 
 function updateNetworkChart() {
@@ -1939,7 +2078,7 @@ function updateNetworkChart() {
     const networkData = {{ network_data|safe }};
     
     // Debug the network data structure
-    console.log('Network data for filter:', networkType, networkData);
+    console.log('Network filter request:', networkType, 'with data:', networkData.metadata);
     
     if (!networkData || !networkData.nodes || !networkData.links) {
         console.error('Invalid network data structure for filtering');
@@ -1947,70 +2086,101 @@ function updateNetworkChart() {
         return;
     }
     
-    // Filter nodes and links based on network type
+    // Filter nodes and links based on network type for focused views
     let filteredNodes = [];
     let filteredLinks = [];
+    let layoutConfig = {};
     
     switch(networkType) {
-        case 'journals':
-            // Filter for journal-related nodes and links
+        case 'subjects':
+            // Focus on subject areas and their immediate connections
             filteredNodes = networkData.nodes.filter(node => 
-                node.type === 'journal' || node.type === 'country'
+                node.type === 'subject' || 
+                (node.type === 'country' && node.connected_subjects > 0) ||
+                (node.type === 'journal' && node.connected_subjects > 2)
             );
             filteredLinks = networkData.links.filter(link => 
-                link.type === 'journal-country' && 
-                filteredNodes.some(n => n.id === link.source) &&
-                filteredNodes.some(n => n.id === link.target)
+                (link.connection_type === 'primary' || link.connection_type === 'specialized') &&
+                filteredNodes.some(n => n.id === link.source || (link.source.id && n.id === link.source.id)) &&
+                filteredNodes.some(n => n.id === link.target || (link.target.id && n.id === link.target.id))
             );
+            layoutConfig = {
+                centerForce: 150,
+                radialStrength: 0.3,
+                description: 'Subject-focused view showing research areas and their connections'
+            };
             break;
             
-        case 'subjects':
-            // Filter for subject-related nodes and links
+        case 'countries':
+            // Focus on countries and their publication patterns
             filteredNodes = networkData.nodes.filter(node => 
-                node.type === 'subject' || node.type === 'journal'
+                node.type === 'country' || 
+                (node.type === 'subject' && node.connected_countries > 1) ||
+                (node.type === 'journal' && node.connected_countries > 1)
             );
             filteredLinks = networkData.links.filter(link => 
-                link.type === 'subject-journal' &&
-                filteredNodes.some(n => n.id === link.source) &&
-                filteredNodes.some(n => n.id === link.target)
+                (link.connection_type === 'primary' || link.connection_type === 'secondary') &&
+                filteredNodes.some(n => n.id === link.source || (link.source.id && n.id === link.source.id)) &&
+                filteredNodes.some(n => n.id === link.target || (link.target.id && n.id === link.target.id))
             );
+            layoutConfig = {
+                centerForce: 120,
+                radialStrength: 0.2,
+                description: 'Country-focused view showing geographic research patterns'
+            };
+            break;
+            
+        case 'journals':
+            // Focus on journals and their specializations
+            filteredNodes = networkData.nodes.filter(node => 
+                node.type === 'journal' || 
+                (node.type === 'country' && node.connected_subjects > 0) ||
+                (node.type === 'subject' && node.connected_journals > 2)
+            );
+            filteredLinks = networkData.links.filter(link => 
+                (link.connection_type === 'secondary' || link.connection_type === 'specialized') &&
+                filteredNodes.some(n => n.id === link.source || (link.source.id && n.id === link.source.id)) &&
+                filteredNodes.some(n => n.id === link.target || (link.target.id && n.id === link.target.id))
+            );
+            layoutConfig = {
+                centerForce: 100,
+                radialStrength: 0.1,
+                description: 'Journal-focused view showing publication venues and specializations'
+            };
             break;
             
         case 'combined':
         default:
-            // For combined view, use all nodes and links but prioritize main retracted/citing structure
-            if (networkData.nodes.some(n => n.group === 'retracted' || n.group === 'citing')) {
-                // Use retracted/citing paper structure
-                filteredNodes = networkData.nodes.filter(node => 
-                    node.group === 'retracted' || node.group === 'citing'
-                );
-                filteredLinks = networkData.links.filter(link => 
-                    filteredNodes.some(n => n.id === link.source) &&
-                    filteredNodes.some(n => n.id === link.target)
-                );
-            } else {
-                // Use all available nodes and links
-                filteredNodes = networkData.nodes;
-                filteredLinks = networkData.links;
-            }
+            // Show all relationships for complete picture
+            filteredNodes = networkData.nodes;
+            filteredLinks = networkData.links;
+            layoutConfig = {
+                centerForce: 200,
+                radialStrength: 0.15,
+                description: 'Complete view showing all relationships between subjects, countries, and journals'
+            };
             break;
     }
     
     console.log(`Filtered data for ${networkType}:`, {
         nodes: filteredNodes.length,
         links: filteredLinks.length,
-        nodeTypes: [...new Set(filteredNodes.map(n => n.type || n.group))],
-        linkTypes: [...new Set(filteredLinks.map(l => l.type))]
+        nodeTypes: [...new Set(filteredNodes.map(n => n.type))],
+        linkTypes: [...new Set(filteredLinks.map(l => l.connection_type))]
     });
     
-    // If no data available for this view, show message
-    if (filteredNodes.length === 0) {
+    // If no meaningful data for this view, show message
+    if (filteredNodes.length < 3) {
         document.getElementById("networkVisualization").innerHTML = 
-            `<p class="text-center text-muted">No ${networkType} relationship data available</p>`;
+            `<div class="text-center text-muted p-4">
+                <h6>Insufficient ${networkType} data</h6>
+                <p>${layoutConfig.description || 'No meaningful relationships found for this view.'}</p>
+                <small>Try switching to "Combined" view for all relationships.</small>
+            </div>`;
         return;
     }
     
-    // Clear and reinitialize the network visualization
+    // Clear and reinitialize with filtered data
     d3.select("#networkVisualization").selectAll("*").remove();
     
     const width = document.getElementById("networkVisualization").clientWidth;
@@ -2021,12 +2191,30 @@ function updateNetworkChart() {
         .attr("width", width)
         .attr("height", height);
     
-    // Create container for all network elements
+    // Add view description
+    svg.append("text")
+        .attr("x", width / 2)
+        .attr("y", 20)
+        .attr("text-anchor", "middle")
+        .style("font-size", "14px")
+        .style("font-weight", "bold")
+        .style("fill", "#333")
+        .text(`${networkType.charAt(0).toUpperCase() + networkType.slice(1)} Network View`);
+    
+    svg.append("text")
+        .attr("x", width / 2)
+        .attr("y", 35)
+        .attr("text-anchor", "middle")
+        .style("font-size", "11px")
+        .style("fill", "#666")
+        .text(layoutConfig.description);
+    
+    // Create container
     const container = svg.append("g");
     
     // Add zoom behavior
     const zoom = d3.zoom()
-        .scaleExtent([0.1, 10])
+        .scaleExtent([0.3, 5])
         .on("zoom", function(event) {
             container.attr("transform", event.transform);
         });
@@ -2037,111 +2225,120 @@ function updateNetworkChart() {
     const controls = d3.select("#networkVisualization")
         .append("div")
         .style("position", "absolute")
-        .style("top", "10px")
+        .style("top", "50px")
         .style("right", "10px")
         .style("z-index", "1000");
     
     controls.append("button")
-        .text("Zoom In")
-        .attr("class", "btn btn-sm btn-outline-primary me-1")
-        .on("click", function() {
-            svg.transition().call(zoom.scaleBy, 1.5);
-        });
-    
-    controls.append("button")
-        .text("Zoom Out")
-        .attr("class", "btn btn-sm btn-outline-primary me-1")
-        .on("click", function() {
-            svg.transition().call(zoom.scaleBy, 1 / 1.5);
-        });
-    
-    controls.append("button")
-        .text("Reset")
+        .text("Reset View")
         .attr("class", "btn btn-sm btn-outline-secondary")
         .on("click", function() {
             svg.transition().call(zoom.transform, d3.zoomIdentity);
         });
     
+    // Create focused simulation for filtered view
     const simulation = d3.forceSimulation(filteredNodes)
-        .force("link", d3.forceLink(filteredLinks).id(d => d.id))
-        .force("charge", d3.forceManyBody().strength(-300))
-        .force("center", d3.forceCenter(width / 2, height / 2))
-        .force("collision", d3.forceCollide().radius(d => Math.max(8, (d.size || 10) / 2) + 2));
+        .force("link", d3.forceLink(filteredLinks).id(d => d.id).distance(d => {
+            if (d.connection_type === 'primary') return 60;
+            if (d.connection_type === 'secondary') return 80;
+            if (d.connection_type === 'specialized') return 100;
+            return 70;
+        }))
+        .force("charge", d3.forceManyBody().strength(d => {
+            const baseStrength = networkType === 'combined' ? -400 : -600;
+            if (d.type === 'subject') return baseStrength * 1.5;
+            if (d.type === 'country') return baseStrength;
+            if (d.type === 'journal') return baseStrength * 0.7;
+            return baseStrength;
+        }))
+        .force("center", d3.forceCenter(width / 2, height / 2 + 30))
+        .force("collision", d3.forceCollide().radius(d => d.size + 3));
     
+    // Create enhanced links
     const link = container.append("g")
         .selectAll("line")
         .data(filteredLinks)
         .enter()
         .append("line")
-        .attr("stroke", d => d.color || "#999")
-        .attr("stroke-opacity", 0.6)
-        .attr("stroke-width", d => Math.max(1, (d.strength || d.value || 2) / 2));
+        .attr("stroke", d => {
+            if (d.connection_type === 'primary') return networkData.design.color_scheme.primary_links;
+            if (d.connection_type === 'secondary') return networkData.design.color_scheme.secondary_links;
+            if (d.connection_type === 'specialized') return networkData.design.color_scheme.specialized_links;
+            return "#999";
+        })
+        .attr("stroke-opacity", 0.8)
+        .attr("stroke-width", d => Math.max(1, (d.weight || 2) * 1.2))
+        .attr("stroke-dasharray", d => {
+            if (d.connection_type === 'specialized') return "3,3";
+            return null;
+        });
     
+    // Create enhanced nodes
     const node = container.append("g")
         .selectAll("circle")
         .data(filteredNodes)
         .enter()
         .append("circle")
-        .attr("r", d => Math.max(8, (d.size || 10) / 2))
+        .attr("r", d => d.size * 1.1) // Slightly larger for focused view
         .attr("fill", d => {
-            // Handle both group-based and type-based coloring
-            if (d.group === 'retracted') return '#dc2626'; // Red for retracted papers
-            if (d.group === 'citing') return '#10b981';    // Green for citing papers
-            if (d.type === 'journal') return '#007bff';    // Blue for journals
-            if (d.type === 'country') return '#28a745';    // Green for countries
-            if (d.type === 'subject') return '#ffc107';    // Yellow for subjects
-            return '#6b7280'; // Gray fallback
+            if (d.type === 'subject') return networkData.design.color_scheme.subjects;
+            if (d.type === 'country') return networkData.design.color_scheme.countries;
+            if (d.type === 'journal') return networkData.design.color_scheme.journals;
+            return "#6b7280";
         })
+        .attr("stroke", "#fff")
+        .attr("stroke-width", 2)
         .style("cursor", "pointer")
         .call(d3.drag()
             .on("start", dragstarted)
             .on("drag", dragged)
             .on("end", dragended));
     
+    // Create enhanced labels
     const label = container.append("g")
         .selectAll("text")
         .data(filteredNodes)
         .enter()
         .append("text")
-        .text(d => (d.title || d.name || d.full_name || 'Unknown').substring(0, 15) + '...')
-        .attr("font-size", "10px")
-        .attr("dx", 15)
+        .text(d => d.name)
+        .attr("font-size", d => {
+            const baseSize = networkType === 'combined' ? 1 : 1.3;
+            if (d.type === 'subject') return `${Math.round(12 * baseSize)}px`;
+            if (d.type === 'country') return `${Math.round(10 * baseSize)}px`;
+            if (d.type === 'journal') return `${Math.round(8 * baseSize)}px`;
+            return "9px";
+        })
+        .attr("font-weight", d => d.type === 'subject' ? "bold" : "normal")
+        .attr("dx", d => d.size + 10)
         .attr("dy", 4)
         .style("pointer-events", "none")
-        .style("fill", "#333");
+        .style("fill", "#333")
+        .style("text-shadow", "1px 1px 0px white, -1px -1px 0px white, 1px -1px 0px white, -1px 1px 0px white");
     
-    // Enhanced tooltip functionality
+    // Add enhanced tooltip functionality (same as before but for filtered data)
     node.on("mouseover", function(event, d) {
+        // ... (same tooltip code as in initializeNetworkVisualization)
         const tooltip = document.getElementById("networkTooltip") || createNetworkTooltip();
         tooltip.style.display = "block";
         tooltip.style.left = (event.pageX + 10) + "px";
         tooltip.style.top = (event.pageY - 10) + "px";
         
-        let tooltipContent = `<strong>${d.title || d.name || d.full_name || 'Unknown'}</strong><br>`;
+        let tooltipContent = `<strong>${d.full_name || d.name}</strong><br>`;
+        tooltipContent += `<span style="color: ${d.type === 'subject' ? networkData.design.color_scheme.subjects : 
+                                                d.type === 'country' ? networkData.design.color_scheme.countries :
+                                                networkData.design.color_scheme.journals}">● ${d.type.toUpperCase()}</span><br>`;
         
-        if (d.group === 'retracted') {
-            tooltipContent += `Type: Retracted Paper<br>`;
-            tooltipContent += `Journal: ${d.journal || 'Unknown'}<br>`;
-            tooltipContent += `Citations: ${d.citations || 0}<br>`;
-            tooltipContent += `Post-retraction: ${d.post_citations || 0}<br>`;
-            tooltipContent += `Retracted: ${d.retraction_year || 'Unknown'}`;
-        } else if (d.group === 'citing') {
-            tooltipContent += `Type: Citing Paper<br>`;
-            tooltipContent += `Journal: ${d.journal || 'Unknown'}<br>`;
-            tooltipContent += `Citations: ${d.citations || 0}<br>`;
-            if (d.citation_type) {
-                tooltipContent += `Citation Type: ${d.citation_type.replace('_', ' ')}<br>`;
-            }
-            tooltipContent += `Published: ${d.pub_year || 'Unknown'}`;
-        } else if (d.type) {
-            tooltipContent += `Type: ${d.type}<br>`;
-            if (d.retraction_count) {
-                tooltipContent += `Retractions: ${d.retraction_count}<br>`;
-            }
-            if (d.post_retraction_citations) {
-                tooltipContent += `Post-retraction citations: ${d.post_retraction_citations}<br>`;
-            }
-            tooltipContent += `Size: ${d.size || 'N/A'}`;
+        if (d.type === 'subject') {
+            tooltipContent += `Papers: ${d.paper_count}<br>`;
+            tooltipContent += `Connected Countries: ${d.connected_countries}<br>`;
+            tooltipContent += `Connected Journals: ${d.connected_journals}`;
+        } else if (d.type === 'country') {
+            tooltipContent += `Papers: ${d.paper_count}<br>`;
+            tooltipContent += `Connected Subjects: ${d.connected_subjects}`;
+        } else if (d.type === 'journal') {
+            tooltipContent += `Papers: ${d.paper_count}<br>`;
+            tooltipContent += `Post-retraction Citations: ${d.post_retraction_citations}<br>`;
+            tooltipContent += `Connected Subjects: ${d.connected_subjects}`;
         }
         
         tooltip.innerHTML = tooltipContent;
@@ -2151,25 +2348,30 @@ function updateNetworkChart() {
         if (tooltip) tooltip.style.display = "none";
     });
     
-    // Create tooltip element if it doesn't exist
     function createNetworkTooltip() {
-        const tooltip = document.createElement("div");
-        tooltip.id = "networkTooltip";
-        tooltip.style.cssText = `
-            position: absolute;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            pointer-events: none;
-            z-index: 1000;
-            display: none;
-        `;
-        document.body.appendChild(tooltip);
+        let tooltip = document.getElementById("networkTooltip");
+        if (!tooltip) {
+            tooltip = document.createElement("div");
+            tooltip.id = "networkTooltip";
+            tooltip.style.cssText = `
+                position: absolute;
+                background: rgba(0, 0, 0, 0.9);
+                color: white;
+                padding: 12px;
+                border-radius: 6px;
+                font-size: 12px;
+                pointer-events: none;
+                z-index: 1000;
+                display: none;
+                max-width: 250px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            `;
+            document.body.appendChild(tooltip);
+        }
         return tooltip;
     }
     
+    // Simulation tick
     simulation.on("tick", () => {
         link
             .attr("x1", d => d.source.x)
@@ -2186,6 +2388,7 @@ function updateNetworkChart() {
             .attr("y", d => d.y);
     });
     
+    // Drag functions
     function dragstarted(event, d) {
         if (!event.active) simulation.alphaTarget(0.3).restart();
         d.fx = d.x;
@@ -2203,8 +2406,113 @@ function updateNetworkChart() {
         d.fy = null;
     }
     
-    console.log(`Network updated: ${networkType} view with ${filteredNodes.length} nodes and ${filteredLinks.length} links`);
+    console.log(`${networkType} network updated with ${filteredNodes.length} nodes and ${filteredLinks.length} links`);
 }
+
+// Utility functions
+function refreshChart(chartId) {
+    if (chartInstances[chartId]) {
+        chartInstances[chartId].update('active');
+    }
+}
+
+function updateTrendCharts() {
+    // Implement filter functionality here
+    console.log('Updating trend charts with filters...');
+}
+
+// Add loading indicators
+function showLoading(elementId) {
+    document.getElementById(elementId).innerHTML = '<div class="chart-loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+}
+
+// Responsive chart handling
+window.addEventListener('resize', function() {
+    Object.values(chartInstances).forEach(chart => {
+        if (chart) chart.resize();
+    });
+});
+
+// Real-time update functionality
+let autoRefreshTimer = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-refresh toggle
+    const autoRefreshToggle = document.getElementById('autoRefreshToggle');
+    const refreshInterval = document.getElementById('refreshInterval');
+    const manualRefresh = document.getElementById('manualRefresh');
+    const lastUpdated = document.getElementById('lastUpdated');
+    const updateStatus = document.getElementById('updateStatus');
+    const updateLoading = document.getElementById('updateLoading');
+    
+    // Enable/disable interval selector based on toggle
+    autoRefreshToggle.addEventListener('change', function() {
+        refreshInterval.disabled = !this.checked;
+        
+        if (this.checked) {
+            startAutoRefresh();
+        } else {
+            stopAutoRefresh();
+        }
+    });
+    
+    // Update interval when changed
+    refreshInterval.addEventListener('change', function() {
+        if (autoRefreshToggle.checked) {
+            stopAutoRefresh();
+            startAutoRefresh();
+        }
+    });
+    
+    // Manual refresh button
+    manualRefresh.addEventListener('click', function() {
+        refreshAnalytics();
+    });
+    
+    function startAutoRefresh() {
+        const interval = parseInt(refreshInterval.value);
+        autoRefreshTimer = setInterval(refreshAnalytics, interval);
+        console.log('Auto-refresh started:', interval + 'ms');
+    }
+    
+    function stopAutoRefresh() {
+        if (autoRefreshTimer) {
+            clearInterval(autoRefreshTimer);
+            autoRefreshTimer = null;
+            console.log('Auto-refresh stopped');
+        }
+    }
+    
+    function refreshAnalytics() {
+        // Show loading indicator
+        updateLoading.style.display = 'inline-block';
+        updateStatus.style.display = 'none';
+        
+        // Reload the page to get fresh data
+        setTimeout(function() {
+            window.location.reload();
+        }, 500);
+    }
+    
+    // Show temporary success indicator when page loads
+    function showUpdateSuccess() {
+        updateLoading.style.display = 'none';
+        updateStatus.style.display = 'inline-block';
+        lastUpdated.textContent = new Date().toLocaleString();
+        
+        setTimeout(function() {
+            updateStatus.style.display = 'none';
+        }, 3000);
+    }
+    
+    // Check if page was refreshed automatically
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('auto_refreshed') === 'true') {
+        showUpdateSuccess();
+        // Remove the parameter from URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+});
 
 function initializeSunburstChart(data) {
     // Clear any existing chart
@@ -2339,98 +2647,5 @@ function initializeSunburstChart(data) {
     
     console.log('Sunburst chart initialized with', data.children.length, 'broad categories');
 }
-
-// Add loading indicators
-function showLoading(elementId) {
-    document.getElementById(elementId).innerHTML = '<div class="chart-loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
-}
-
-// Responsive chart handling
-window.addEventListener('resize', function() {
-    Object.values(chartInstances).forEach(chart => {
-        if (chart) chart.resize();
-    });
-});
-
-// Real-time update functionality
-let autoRefreshTimer = null;
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Auto-refresh toggle
-    const autoRefreshToggle = document.getElementById('autoRefreshToggle');
-    const refreshInterval = document.getElementById('refreshInterval');
-    const manualRefresh = document.getElementById('manualRefresh');
-    const lastUpdated = document.getElementById('lastUpdated');
-    const updateStatus = document.getElementById('updateStatus');
-    const updateLoading = document.getElementById('updateLoading');
-    
-    // Enable/disable interval selector based on toggle
-    autoRefreshToggle.addEventListener('change', function() {
-        refreshInterval.disabled = !this.checked;
-        
-        if (this.checked) {
-            startAutoRefresh();
-        } else {
-            stopAutoRefresh();
-        }
-    });
-    
-    // Update interval when changed
-    refreshInterval.addEventListener('change', function() {
-        if (autoRefreshToggle.checked) {
-            stopAutoRefresh();
-            startAutoRefresh();
-        }
-    });
-    
-    // Manual refresh button
-    manualRefresh.addEventListener('click', function() {
-        refreshAnalytics();
-    });
-    
-    function startAutoRefresh() {
-        const interval = parseInt(refreshInterval.value);
-        autoRefreshTimer = setInterval(refreshAnalytics, interval);
-        console.log('Auto-refresh started:', interval + 'ms');
-    }
-    
-    function stopAutoRefresh() {
-        if (autoRefreshTimer) {
-            clearInterval(autoRefreshTimer);
-            autoRefreshTimer = null;
-            console.log('Auto-refresh stopped');
-        }
-    }
-    
-    function refreshAnalytics() {
-        // Show loading indicator
-        updateLoading.style.display = 'inline-block';
-        updateStatus.style.display = 'none';
-        
-        // Reload the page to get fresh data
-        setTimeout(function() {
-            window.location.reload();
-        }, 500);
-    }
-    
-    // Show temporary success indicator when page loads
-    function showUpdateSuccess() {
-        updateLoading.style.display = 'none';
-        updateStatus.style.display = 'inline-block';
-        lastUpdated.textContent = new Date().toLocaleString();
-        
-        setTimeout(function() {
-            updateStatus.style.display = 'none';
-        }, 3000);
-    }
-    
-    // Check if page was refreshed automatically
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('auto_refreshed') === 'true') {
-        showUpdateSuccess();
-        // Remove the parameter from URL
-        window.history.replaceState({}, document.title, window.location.pathname);
-    }
-});
 </script>
 {% endblock %} 

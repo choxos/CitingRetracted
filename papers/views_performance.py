@@ -532,119 +532,185 @@ class PerformanceAnalyticsView(View):
             #                 'strength': 3
             #             })
             
-            network_data = {
-                'nodes': network_nodes,
-                'links': network_links,
-                'metadata': {
-                    'total_nodes': len(network_nodes),
-                    'total_links': len(network_links),
-                    'retracted_papers': len([n for n in network_nodes if n['group'] == 'retracted']),
-                    'citing_papers': len([n for n in network_nodes if n['group'] == 'citing']),
-                    'post_retraction_links': len([l for l in network_links if l['type'] == 'post_retraction'])
-                }
-            }
+            # REDESIGNED NETWORK: Beautiful Subject-Country-Journal Relationships
+            network_nodes = []
+            network_links = []
             
-            # Add journal/country/subject network nodes for filtering support
-            # Add top journals as nodes
+            # Get top subjects as the central organizing principle
+            top_subjects = list(RetractedPaper.objects.values('subject').annotate(
+                paper_count=Count('id'),
+                country_count=Count('country', distinct=True),
+                journal_count=Count('journal', distinct=True)
+            ).filter(
+                subject__isnull=False
+            ).exclude(
+                subject__exact=''
+            ).order_by('-paper_count')[:8])
+            
+            # Get top countries
+            top_countries = list(RetractedPaper.objects.values('country').annotate(
+                paper_count=Count('id'),
+                subject_count=Count('subject', distinct=True)
+            ).filter(
+                country__isnull=False
+            ).exclude(
+                country__exact=''
+            ).order_by('-paper_count')[:12])
+            
+            # Get top journals 
             top_journals = list(RetractedPaper.objects.values('journal').annotate(
-                count=Count('id'),
+                paper_count=Count('id'),
+                subject_count=Count('subject', distinct=True),
+                country_count=Count('country', distinct=True),
                 post_retraction_citations=Count('citations', filter=Q(citations__days_after_retraction__gt=0))
-            ).filter(journal__isnull=False).exclude(journal__exact='').order_by('-count')[:10])
+            ).filter(
+                journal__isnull=False
+            ).exclude(
+                journal__exact=''
+            ).order_by('-paper_count')[:15])
             
-            for i, journal in enumerate(top_journals):
-                network_data['nodes'].append({
-                    'id': f"journal_{i}",
-                    'name': journal['journal'][:20] + '...' if len(journal['journal']) > 20 else journal['journal'],
-                    'type': 'journal',
-                    'size': max(8, min(30, journal['count'] / 5)),
-                    'full_name': journal['journal'],
-                    'retraction_count': journal['count'],
-                    'post_retraction_citations': journal['post_retraction_citations']
+            logger.info(f"Network components: {len(top_subjects)} subjects, {len(top_countries)} countries, {len(top_journals)} journals")
+            
+            # Create SUBJECT nodes (largest, central)
+            for i, subject in enumerate(top_subjects):
+                subject_name = subject['subject'][:30] + ('...' if len(subject['subject']) > 30 else '')
+                network_nodes.append({
+                    'id': f"subject_{i}",
+                    'name': subject_name,
+                    'full_name': subject['subject'],
+                    'type': 'subject',
+                    'size': max(20, min(50, subject['paper_count'] / 10)),  # Larger base size
+                    'paper_count': subject['paper_count'],
+                    'connected_countries': subject['country_count'],
+                    'connected_journals': subject['journal_count'],
+                    'layer': 'core'  # Core layer for subjects
                 })
             
-            # Add country nodes
-            top_countries = list(RetractedPaper.objects.values('country').annotate(
-                count=Count('id')
-            ).filter(country__isnull=False).exclude(country__exact='').order_by('-count')[:8])
-            
+            # Create COUNTRY nodes (medium size, intermediate)
             for i, country in enumerate(top_countries):
                 country_name = country['country'].split(';')[0].strip() if ';' in country['country'] else country['country']
-                network_data['nodes'].append({
+                country_display = country_name[:20] + ('...' if len(country_name) > 20 else '')
+                network_nodes.append({
                     'id': f"country_{i}",
-                    'name': country_name[:15] + '...' if len(country_name) > 15 else country_name,
-                    'type': 'country',
-                    'size': max(8, min(25, country['count'] / 10)),
+                    'name': country_display,
                     'full_name': country_name,
-                    'retraction_count': country['count']
+                    'type': 'country',
+                    'size': max(12, min(35, country['paper_count'] / 20)),
+                    'paper_count': country['paper_count'],
+                    'connected_subjects': country['subject_count'],
+                    'layer': 'intermediate'  # Intermediate layer
                 })
             
-            # Add subject nodes
-            top_subjects = list(RetractedPaper.objects.values('subject').annotate(
-                count=Count('id')
-            ).filter(subject__isnull=False).exclude(subject__exact='').order_by('-count')[:6])
-            
-            for i, subject in enumerate(top_subjects):
-                network_data['nodes'].append({
-                    'id': f"subject_{i}",
-                    'name': subject['subject'][:15] + '...' if len(subject['subject']) > 15 else subject['subject'],
-                    'type': 'subject',
-                    'size': max(8, min(20, subject['count'] / 20)),
-                    'full_name': subject['subject'],
-                    'retraction_count': subject['count']
+            # Create JOURNAL nodes (smaller, outer)
+            for i, journal in enumerate(top_journals):
+                journal_name = journal['journal'][:25] + ('...' if len(journal['journal']) > 25 else '')
+                network_nodes.append({
+                    'id': f"journal_{i}",
+                    'name': journal_name,
+                    'full_name': journal['journal'],
+                    'type': 'journal',
+                    'size': max(8, min(25, journal['paper_count'] / 30)),
+                    'paper_count': journal['paper_count'],
+                    'post_retraction_citations': journal['post_retraction_citations'],
+                    'connected_subjects': journal['subject_count'],
+                    'connected_countries': journal['country_count'],
+                    'layer': 'outer'  # Outer layer
                 })
             
-            # Create links between journals and countries
-            journal_country_links = list(RetractedPaper.objects.values('journal', 'country').annotate(
-                count=Count('id')
+            # Create SUBJECT-COUNTRY connections (strong connections)
+            subject_country_links = list(RetractedPaper.objects.values('subject', 'country').annotate(
+                collaboration_strength=Count('id')
             ).filter(
-                journal__in=[j['journal'] for j in top_journals],
+                subject__in=[s['subject'] for s in top_subjects],
                 country__in=[c['country'] for c in top_countries],
-                count__gte=2
-            )[:15])
+                collaboration_strength__gte=3  # Minimum 3 papers for meaningful connection
+            ).order_by('-collaboration_strength')[:25])
             
-            for link in journal_country_links:
-                journal_idx = next((i for i, j in enumerate(top_journals) if j['journal'] == link['journal']), None)
+            for link in subject_country_links:
+                subject_idx = next((i for i, s in enumerate(top_subjects) if s['subject'] == link['subject']), None)
                 country_idx = next((i for i, c in enumerate(top_countries) if c['country'] == link['country']), None)
                 
-                if journal_idx is not None and country_idx is not None:
-                    network_data['links'].append({
-                        'source': f"journal_{journal_idx}",
+                if subject_idx is not None and country_idx is not None:
+                    network_links.append({
+                        'source': f"subject_{subject_idx}",
                         'target': f"country_{country_idx}",
-                        'value': link['count'],
-                        'type': 'journal-country',
-                        'strength': link['count']
+                        'strength': link['collaboration_strength'],
+                        'type': 'subject-country',
+                        'connection_type': 'primary',
+                        'weight': min(8, max(2, link['collaboration_strength'] / 5))
                     })
             
-            # Create links between subjects and journals
+            # Create COUNTRY-JOURNAL connections (medium connections)  
+            country_journal_links = list(RetractedPaper.objects.values('country', 'journal').annotate(
+                publication_strength=Count('id')
+            ).filter(
+                country__in=[c['country'] for c in top_countries],
+                journal__in=[j['journal'] for j in top_journals],
+                publication_strength__gte=2  # Minimum 2 papers
+            ).order_by('-publication_strength')[:30])
+            
+            for link in country_journal_links:
+                country_idx = next((i for i, c in enumerate(top_countries) if c['country'] == link['country']), None)
+                journal_idx = next((i for i, j in enumerate(top_journals) if j['journal'] == link['journal']), None)
+                
+                if country_idx is not None and journal_idx is not None:
+                    network_links.append({
+                        'source': f"country_{country_idx}",
+                        'target': f"journal_{journal_idx}",
+                        'strength': link['publication_strength'],
+                        'type': 'country-journal',
+                        'connection_type': 'secondary',
+                        'weight': min(6, max(1, link['publication_strength'] / 8))
+                    })
+            
+            # Create SUBJECT-JOURNAL direct connections (specialized connections)
             subject_journal_links = list(RetractedPaper.objects.values('subject', 'journal').annotate(
-                count=Count('id')
+                specialization_strength=Count('id')
             ).filter(
                 subject__in=[s['subject'] for s in top_subjects],
                 journal__in=[j['journal'] for j in top_journals],
-                count__gte=2
-            )[:12])
+                specialization_strength__gte=5  # Higher threshold for direct subject-journal
+            ).order_by('-specialization_strength')[:20])
             
             for link in subject_journal_links:
                 subject_idx = next((i for i, s in enumerate(top_subjects) if s['subject'] == link['subject']), None)
                 journal_idx = next((i for i, j in enumerate(top_journals) if j['journal'] == link['journal']), None)
                 
                 if subject_idx is not None and journal_idx is not None:
-                    network_data['links'].append({
+                    network_links.append({
                         'source': f"subject_{subject_idx}",
                         'target': f"journal_{journal_idx}",
-                        'value': link['count'],
+                        'strength': link['specialization_strength'],
                         'type': 'subject-journal',
-                        'strength': link['count']
+                        'connection_type': 'specialized',
+                        'weight': min(5, max(1, link['specialization_strength'] / 10))
                     })
             
-            # Update metadata
-            network_data['metadata'].update({
-                'total_nodes': len(network_data['nodes']),
-                'total_links': len(network_data['links']),
-                'journal_nodes': len([n for n in network_data['nodes'] if n.get('type') == 'journal']),
-                'country_nodes': len([n for n in network_data['nodes'] if n.get('type') == 'country']),
-                'subject_nodes': len([n for n in network_data['nodes'] if n.get('type') == 'subject'])
-            })
+            network_data = {
+                'nodes': network_nodes,
+                'links': network_links,
+                'metadata': {
+                    'total_nodes': len(network_nodes),
+                    'total_links': len(network_links),
+                    'subjects': len([n for n in network_nodes if n['type'] == 'subject']),
+                    'countries': len([n for n in network_nodes if n['type'] == 'country']),
+                    'journals': len([n for n in network_nodes if n['type'] == 'journal']),
+                    'primary_connections': len([l for l in network_links if l['connection_type'] == 'primary']),
+                    'secondary_connections': len([l for l in network_links if l['connection_type'] == 'secondary']),
+                    'specialized_connections': len([l for l in network_links if l['connection_type'] == 'specialized'])
+                },
+                'design': {
+                    'layout_type': 'force_directed_layered',
+                    'color_scheme': {
+                        'subjects': '#8b5cf6',      # Purple for subjects (core)
+                        'countries': '#10b981',     # Green for countries (intermediate) 
+                        'journals': '#f59e0b',      # Orange for journals (outer)
+                        'primary_links': '#6366f1',    # Blue for subject-country
+                        'secondary_links': '#14b8a6',  # Teal for country-journal
+                        'specialized_links': '#f97316' # Orange for subject-journal
+                    }
+                }
+            }
             
             logger.info(f"Network: {len(network_nodes)} nodes, {len(network_links)} links")
             logger.info(f"Network breakdown: {network_data['metadata']['retracted_papers']} retracted, {network_data['metadata']['citing_papers']} citing papers")
