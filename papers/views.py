@@ -1409,6 +1409,47 @@ class AnalyticsView(View):
         missing_data['retraction_comparison'] = retraction_comparison
         logger.info(f"Final retraction_comparison: {retraction_comparison[:3]}")
         
+        # NEW: Separate data for retraction trends by retraction year
+        retraction_trends_by_year = RetractedPaper.objects.filter(
+            retraction_date__isnull=False
+        ).annotate(
+            year=TruncYear('retraction_date')
+        ).values('year').annotate(
+            count=Count('id')
+        ).order_by('year')
+        
+        missing_data['retraction_trends_by_year'] = [
+            {
+                'year': item['year'].year if item['year'] else 'Unknown',
+                'count': item['count']
+            }
+            for item in retraction_trends_by_year
+        ]
+        
+        # NEW: Separate data for citation analysis by citation year  
+        citation_analysis_by_year = Citation.objects.filter(
+            citing_paper__publication_date__isnull=False
+        ).annotate(
+            year=TruncYear('citing_paper__publication_date')
+        ).values('year').annotate(
+            total_citations=Count('id'),
+            post_retraction_citations=Count('id', filter=Q(days_after_retraction__gt=0)),
+            pre_retraction_citations=Count('id', filter=Q(days_after_retraction__lt=0))
+        ).order_by('year')
+        
+        missing_data['citation_analysis_by_year'] = [
+            {
+                'year': item['year'].year if item['year'] else 'Unknown',
+                'total_citations': item['total_citations'],
+                'post_retraction_citations': item['post_retraction_citations'],
+                'pre_retraction_citations': item['pre_retraction_citations']
+            }
+            for item in citation_analysis_by_year
+        ]
+        
+        logger.info(f"Retraction trends years: {len(missing_data['retraction_trends_by_year'])}")
+        logger.info(f"Citation analysis years: {len(missing_data['citation_analysis_by_year'])}")
+        
         # Subject donut data for distribution chart
         subjects = RetractedPaper.objects.values('subject').annotate(
             count=Count('id')

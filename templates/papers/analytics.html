@@ -327,14 +327,23 @@
                 </div>
             </div>
             
-            <!-- Retraction Trends Over Time -->
+            <!-- Separate Trend Analysis Charts -->
             <div class="row mb-5">
-                <div class="col-12 mb-4">
+                <div class="col-lg-6 mb-4">
                     <div class="prct-chart-container">
-                        <h5 class="prct-chart-title"><i class="fas fa-chart-line"></i> Retraction Trends Over Time</h5>
-                        <small class="text-muted">Combined view of retractions and their post-retraction citation impact</small>
+                        <h5 class="prct-chart-title"><i class="fas fa-calendar-times"></i> Retractions by Year</h5>
+                        <small class="text-muted">When papers were retracted</small>
                         <div class="chart-container">
                             <canvas id="retractionsTimelineChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6 mb-4">
+                    <div class="prct-chart-container">
+                        <h5 class="prct-chart-title"><i class="fas fa-chart-bar"></i> Citation Analysis by Year</h5>
+                        <small class="text-muted">Total citations vs post-retraction citations (when citations occurred)</small>
+                        <div class="chart-container">
+                            <canvas id="citationAnalysisChart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -788,171 +797,157 @@ function initializeOverviewCharts() {
     );
 }
 
-// Retraction trends over time - now initialized in overview
-// This code runs immediately since the chart is in the overview tab
-const retractionYearsData = {{ retraction_years }};
-console.log('Retraction Years Data:', retractionYearsData);
-console.log('Retraction Years Length:', retractionYearsData.length);
-console.log('Retraction Years Sample:', retractionYearsData.slice(0, 3));
+// NEW: Separate retraction trends and citation analysis charts
+// Chart 1: Retractions by Year (when papers were retracted)
+const retractionTrendsData = {{ retraction_trends_by_year }};
+console.log('Retraction Trends Data:', retractionTrendsData);
+
+if (retractionTrendsData.length > 0) {
+    const retractionTrendsChartData = {
+        labels: retractionTrendsData.map(item => item.year),
+        datasets: [{
+            label: 'Papers Retracted',
+            data: retractionTrendsData.map(item => item.count),
+            borderColor: 'rgba(220, 53, 69, 1)',
+            backgroundColor: 'rgba(220, 53, 69, 0.6)',
+            borderWidth: 2,
+            fill: false,
+            tension: 0.4
+        }]
+    };
     
-    // Combined trends chart showing both retractions and post-retraction citations
-    const combinedTrendsData = {{ combined_trends }};
-    console.log('Combined Trends Data:', combinedTrendsData);
-    
-    if (combinedTrendsData.length > 0) {
-        const combinedTimelineData = {
-            labels: combinedTrendsData.map(item => item.year),
-            datasets: [
-                {
-                    label: 'Papers Retracted',
-                    data: combinedTrendsData.map(item => item.retraction_count),
-                    borderColor: 'rgba(220, 53, 69, 1)',
-                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
-                    tension: 0.4,
-                    fill: false,
-                    yAxisID: 'y'
-                },
-                {
-                    label: 'Post-Retraction Citations',
-                    data: combinedTrendsData.map(item => item.post_retraction_citations),
-                    borderColor: 'rgba(255, 193, 7, 1)',
-                    backgroundColor: 'rgba(255, 193, 7, 0.1)',
-                    tension: 0.4,
-                    fill: false,
-                    yAxisID: 'y1'
-                }
-            ]
-        };
-        
-        chartInstances.retractionsTimeline = new Chart(
-            document.getElementById('retractionsTimelineChart'),
-            {
-                type: 'line',
-                data: combinedTimelineData,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
-                    scales: {
-                        x: {
+    chartInstances.retractionsTimeline = new Chart(
+        document.getElementById('retractionsTimelineChart'),
+        {
+            type: 'line',
+            data: retractionTrendsChartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
                             display: true,
-                            title: {
-                                display: true,
-                                text: 'Year'
-                            }
-                        },
-                        y: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            title: {
-                                display: true,
-                                text: 'Papers Retracted',
-                                color: 'rgba(220, 53, 69, 1)'
-                            },
-                            beginAtZero: true,
-                        },
-                        y1: {
-                            type: 'linear',
-                            display: true,
-                            position: 'right',
-                            title: {
-                                display: true,
-                                text: 'Post-Retraction Citations',
-                                color: 'rgba(255, 193, 7, 1)'
-                            },
-                            beginAtZero: true,
-                            grid: {
-                                drawOnChartArea: false,
-                            },
-                        },
-                    },
-                                         plugins: {
-                         legend: {
-                             display: true,
-                             position: 'top'
-                         },
-                         tooltip: {
-                             mode: 'index',
-                             intersect: false,
-                             callbacks: {
-                                 title: function(context) {
-                                     return 'Year: ' + context[0].label;
-                                 },
-                                 label: function(context) {
-                                     const value = context.raw;
-                                     if (context.datasetIndex === 0) {
-                                         return 'Papers Retracted: ' + value.toLocaleString();
-                                     } else {
-                                         return 'Post-Retraction Citations: ' + value.toLocaleString();
-                                     }
-                                 },
-                                 footer: function(context) {
-                                     const retractions = context[0].raw;
-                                     const citations = context.length > 1 ? context[1].raw : 0;
-                                     if (retractions > 0 && citations > 0) {
-                                         const ratio = (citations / retractions).toFixed(1);
-                                         return `Average citations per retracted paper: ${ratio}`;
-                                     }
-                                     return '';
-                                 }
-                             }
-                         }
-                     },
-                     elements: {
-                         point: {
-                             radius: 3,
-                             hoverRadius: 6,
-                             backgroundColor: function(context) {
-                                 return context.dataset.borderColor;
-                             }
-                         }
-                     }
-                }
-            }
-        );
-    } else if (retractionYearsData.length > 0) {
-        // Fallback to simple retraction chart if combined data not available
-        const retractionsTimelineData = {
-            labels: retractionYearsData.map(item => item.year),
-            datasets: [{
-                label: 'Retractions',
-                data: retractionYearsData.map(item => item.count),
-                borderColor: 'rgba(220, 53, 69, 1)',
-                backgroundColor: 'rgba(220, 53, 69, 0.1)',
-                tension: 0.4,
-                fill: true
-            }]
-        };
-        
-        chartInstances.retractionsTimeline = new Chart(
-            document.getElementById('retractionsTimelineChart'),
-            {
-                type: 'line',
-                data: retractionsTimelineData,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true
+                            text: 'Retraction Year'
                         }
                     },
-                    plugins: {
-                        legend: {
-                            display: false
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Retractions'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.parsed.y} papers retracted in ${context.label}`;
+                            }
                         }
                     }
                 }
             }
-        );
-    } else {
-        console.log('No retraction timeline data available - chart not created');
-        document.getElementById('retractionsTimelineChart').innerHTML = '<div style="text-align: center; padding: 50px; color: #666; background: #f8f9fa; border-radius: 5px;">No retraction timeline data available</div>';
-    }
+        }
+    );
+} else {
+    document.getElementById('retractionsTimelineChart').innerHTML = '<div style="text-align: center; padding: 50px; color: #666; background: #f8f9fa; border-radius: 5px;">No retraction trend data available</div>';
+}
+
+// Chart 2: Citation Analysis by Year (when citations occurred)
+const citationAnalysisData = {{ citation_analysis_by_year }};
+console.log('Citation Analysis Data:', citationAnalysisData);
+
+if (citationAnalysisData.length > 0) {
+    const citationAnalysisChartData = {
+        labels: citationAnalysisData.map(item => item.year),
+        datasets: [
+            {
+                label: 'Total Citations',
+                data: citationAnalysisData.map(item => item.total_citations),
+                borderColor: 'rgba(54, 162, 235, 1)',
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderWidth: 2,
+                fill: false,
+                tension: 0.4
+            },
+            {
+                label: 'Post-Retraction Citations',
+                data: citationAnalysisData.map(item => item.post_retraction_citations),
+                borderColor: 'rgba(255, 99, 132, 1)',
+                backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                borderWidth: 2,
+                fill: false,
+                tension: 0.4
+            }
+        ]
+    };
+    
+    chartInstances.citationAnalysis = new Chart(
+        document.getElementById('citationAnalysisChart'),
+        {
+            type: 'line',
+            data: citationAnalysisChartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Citation Year'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Citations'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            title: function(context) {
+                                return 'Citation Year: ' + context[0].label;
+                            },
+                            label: function(context) {
+                                const value = context.raw;
+                                return context.dataset.label + ': ' + value.toLocaleString();
+                            },
+                            footer: function(context) {
+                                const totalCitations = context.find(c => c.datasetIndex === 0)?.raw || 0;
+                                const postRetractionCitations = context.find(c => c.datasetIndex === 1)?.raw || 0;
+                                if (totalCitations > 0) {
+                                    const percentage = ((postRetractionCitations / totalCitations) * 100).toFixed(1);
+                                    return `Post-retraction: ${percentage}% of total citations`;
+                                }
+                                return '';
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    );
+} else {
+    document.getElementById('citationAnalysisChart').innerHTML = '<div style="text-align: center; padding: 50px; color: #666; background: #f8f9fa; border-radius: 5px;">No citation analysis data available</div>';
+}
     
     // Citation comparison chart
     const comparisonData = {{ retraction_comparison }};
