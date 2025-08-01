@@ -1359,17 +1359,17 @@ class AnalyticsView(View):
         import logging
         logger = logging.getLogger(__name__)
         
-        # Group citations by citation year (publication year of citing papers), not retraction year
+        # Group citations by citation year (extract from publication_date, not publication_year)
         retraction_years = Citation.objects.filter(
-            citing_paper__publication_year__isnull=False
+            citing_paper__publication_date__isnull=False
         ).annotate(
-            year=F('citing_paper__publication_year')
+            year=TruncYear('citing_paper__publication_date')
         ).values('year').annotate(
             retracted_count=Count('retracted_paper', distinct=True),
             pre_retraction_citations=Count('id', filter=Q(days_after_retraction__lt=0)),
             post_retraction_citations=Count('id', filter=Q(days_after_retraction__gt=0)),
             same_day_citations=Count('id', filter=Q(days_after_retraction=0))
-        ).order_by('year')[:15]
+        ).order_by('year')
         
         logger.info(f"Retraction years query count: {retraction_years.count()}")
         logger.info(f"Sample retraction years data: {list(retraction_years[:3])}")
@@ -1392,7 +1392,7 @@ class AnalyticsView(View):
         else:
             # Use the corrected data that groups by citation year (not retraction year)
             for item in retraction_years:
-                year_value = item['year']
+                year_value = item['year'].year if item['year'] else 'Unknown'
                 pre_count = item['pre_retraction_citations'] or 0
                 post_count = item['post_retraction_citations'] or 0
                 same_count = item['same_day_citations'] or 0
