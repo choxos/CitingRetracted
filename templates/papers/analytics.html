@@ -840,44 +840,60 @@ function initializeTrendCharts() {
     // Retraction trends over time
     const retractionYearsData = {{ retraction_years|safe }} || [];
     console.log('Retraction Years Data:', retractionYearsData);
+    console.log('Retraction Years Length:', retractionYearsData.length);
+    console.log('Retraction Years Sample:', retractionYearsData.slice(0, 3));
     
-    const retractionsTimelineData = {
-        labels: retractionYearsData.map(item => item.year),
-        datasets: [{
-            label: 'Retractions',
-            data: retractionYearsData.map(item => item.count),
-            borderColor: 'rgba(220, 53, 69, 1)',
-            backgroundColor: 'rgba(220, 53, 69, 0.1)',
-            tension: 0.4,
-            fill: true
-        }]
-    };
-    
-    chartInstances.retractionsTimeline = new Chart(
-        document.getElementById('retractionsTimelineChart'),
-        {
-            type: 'line',
-            data: retractionsTimelineData,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
+    if (retractionYearsData.length > 0) {
+        const retractionsTimelineData = {
+            labels: retractionYearsData.map(item => item.year),
+            datasets: [{
+                label: 'Retractions',
+                data: retractionYearsData.map(item => item.count),
+                borderColor: 'rgba(220, 53, 69, 1)',
+                backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        };
+        
+        chartInstances.retractionsTimeline = new Chart(
+            document.getElementById('retractionsTimelineChart'),
+            {
+                type: 'line',
+                data: retractionsTimelineData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
                     }
                 }
             }
-        }
-    );
+        );
+    } else {
+        console.log('No retraction years data available - chart not created');
+        document.getElementById('retractionsTimelineChart').innerHTML = '<div style="text-align: center; padding: 50px; color: #666; background: #f8f9fa; border-radius: 5px;">No retraction timeline data available</div>';
+    }
     
     // Citation comparison chart
     const comparisonData = {{ retraction_comparison|safe }} || [];
     console.log('Comparison Data:', comparisonData);
+    console.log('Comparison Data Length:', comparisonData.length);
+    console.log('Comparison Data Sample:', comparisonData.slice(0, 3));
+    console.log('Comparison Data Fields:', comparisonData.length > 0 ? Object.keys(comparisonData[0]) : 'No data');
+    console.log('Comparison Data Values:', comparisonData.map(item => ({
+        year: item.year,
+        pre: item.pre_retraction,
+        post: item.post_retraction,
+        type: typeof item.pre_retraction
+    })));
     
     const citationComparisonData = {
         labels: comparisonData.map(item => item.year || 'Unknown'),
@@ -898,6 +914,11 @@ function initializeTrendCharts() {
             }
         ]
     };
+    
+    console.log('Final Citation Comparison Chart Data:', citationComparisonData);
+    console.log('Chart Labels:', citationComparisonData.labels);
+    console.log('Pre-retraction data values:', citationComparisonData.datasets[0].data);
+    console.log('Post-retraction data values:', citationComparisonData.datasets[1].data);
     
     chartInstances.citationComparison = new Chart(
         document.getElementById('citationComparisonChart'),
