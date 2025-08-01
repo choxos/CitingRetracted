@@ -445,7 +445,7 @@ class PerformanceAnalyticsView(View):
 
     def _get_cached_complex_data(self):
         """Complex analytics with long-term caching - OPTIMIZED for large datasets"""
-        cache_key = 'analytics_complex_data_v8_fixed_charts'
+        cache_key = 'analytics_complex_data_v9_expanded_geography'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
@@ -482,7 +482,7 @@ class PerformanceAnalyticsView(View):
                 'journal', 'retraction_count'
             ))
             
-            # OPTIMIZATION 4: Simplified country analysis  
+            # OPTIMIZATION 4: Expanded country analysis for better geographic distribution
             country_data = list(RetractedPaper.objects.filter(
                 retraction_nature__iexact='Retraction'
             ).exclude(
@@ -491,7 +491,7 @@ class PerformanceAnalyticsView(View):
                 country__exact=''
             ).values('country').annotate(
                 count=Count('id')
-            ).order_by('-count')[:10].values_list('country', 'count'))  # Reduced to top 10
+            ).order_by('-count')[:25].values_list('country', 'count'))  # Top 25 for better world coverage
             
             # OPTIMIZATION 5: Simplified timing distribution (single query)
             timing_data = Citation.objects.filter(
@@ -522,15 +522,22 @@ class PerformanceAnalyticsView(View):
                     'data': month_data
                 })
             
-            # OPTIMIZATION 7: Simplified world map (top countries only)
+            # OPTIMIZATION 7: Enhanced world map (expanded geographic coverage)
             world_map_data = []
             country_iso_mapping = {
                 'United States': 'USA', 'China': 'CHN', 'India': 'IND', 'Germany': 'DEU',
                 'United Kingdom': 'GBR', 'Japan': 'JPN', 'France': 'FRA', 'Canada': 'CAN',
-                'Australia': 'AUS', 'Brazil': 'BRA', 'Italy': 'ITA', 'Spain': 'ESP'
+                'Australia': 'AUS', 'Brazil': 'BRA', 'Italy': 'ITA', 'Spain': 'ESP',
+                'South Korea': 'KOR', 'Netherlands': 'NLD', 'Sweden': 'SWE', 'Switzerland': 'CHE',
+                'Belgium': 'BEL', 'Austria': 'AUT', 'Poland': 'POL', 'Russia': 'RUS',
+                'Turkey': 'TUR', 'Iran': 'IRN', 'Israel': 'ISR', 'Mexico': 'MEX',
+                'Argentina': 'ARG', 'South Africa': 'ZAF', 'Nigeria': 'NGA', 'Egypt': 'EGY',
+                'Saudi Arabia': 'SAU', 'Norway': 'NOR', 'Denmark': 'DNK', 'Finland': 'FIN',
+                'Thailand': 'THA', 'Singapore': 'SGP', 'Malaysia': 'MYS', 'Indonesia': 'IDN',
+                'Philippines': 'PHL', 'Taiwan': 'TWN', 'Pakistan': 'PAK', 'Bangladesh': 'BGD'
             }
             
-            for item in country_data[:6]:  # Only top 6 countries
+            for item in country_data[:15]:  # Top 15 countries for better world coverage
                 country_name = item[0]
                 retraction_count = item[1]
                 iso_code = country_iso_mapping.get(country_name, '')
