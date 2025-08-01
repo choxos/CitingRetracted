@@ -1874,7 +1874,7 @@ function initializeNetworkVisualization() {
             if (d.type === 'journal') return -200;   // Journals less repulsion
             return -300;
         }))
-        .force("center", d3.forceCenter(width / 2, height / 2))
+        .force("center", d3.forceCenter(width / 2, height / 2 + 40))
         .force("collision", d3.forceCollide().radius(d => d.size + 5))
         .force("radial", d3.forceRadial(d => {
             // Create layered radial positioning
@@ -2093,71 +2093,80 @@ function updateNetworkChart() {
     
     switch(networkType) {
         case 'subjects':
-            // Focus on subject areas and their immediate connections
-            filteredNodes = networkData.nodes.filter(node => 
-                node.type === 'subject' || 
-                (node.type === 'country' && node.connected_subjects > 0) ||
-                (node.type === 'journal' && node.connected_subjects > 2)
-            );
+            // Focus ONLY on subjects and their strongest connections
+            filteredNodes = networkData.nodes.filter(node => {
+                if (node.type === 'subject') return true;
+                // Only include countries/journals with strong subject connections
+                if (node.type === 'country') return (node.connected_subjects || 0) >= 3;
+                if (node.type === 'journal') return (node.connected_subjects || 0) >= 5;
+                return false;
+            });
             filteredLinks = networkData.links.filter(link => 
                 (link.connection_type === 'primary' || link.connection_type === 'specialized') &&
+                link.strength >= 8 && // Only strong connections
                 filteredNodes.some(n => n.id === link.source || (link.source.id && n.id === link.source.id)) &&
                 filteredNodes.some(n => n.id === link.target || (link.target.id && n.id === link.target.id))
             );
             layoutConfig = {
                 centerForce: 150,
                 radialStrength: 0.3,
-                description: 'Subject-focused view showing research areas and their connections'
+                description: 'Research areas and their strongest academic connections'
             };
             break;
             
         case 'countries':
-            // Focus on countries and their publication patterns
-            filteredNodes = networkData.nodes.filter(node => 
-                node.type === 'country' || 
-                (node.type === 'subject' && node.connected_countries > 1) ||
-                (node.type === 'journal' && node.connected_countries > 1)
-            );
+            // Focus ONLY on countries and geographic research patterns
+            filteredNodes = networkData.nodes.filter(node => {
+                if (node.type === 'country') return true;
+                // Only include subjects/journals strongly tied to geography
+                if (node.type === 'subject') return (node.connected_countries || 0) >= 4;
+                if (node.type === 'journal') return (node.connected_countries || 0) >= 3;
+                return false;
+            });
             filteredLinks = networkData.links.filter(link => 
                 (link.connection_type === 'primary' || link.connection_type === 'secondary') &&
+                link.strength >= 6 && // Medium-strong connections
                 filteredNodes.some(n => n.id === link.source || (link.source.id && n.id === link.source.id)) &&
                 filteredNodes.some(n => n.id === link.target || (link.target.id && n.id === link.target.id))
             );
             layoutConfig = {
                 centerForce: 120,
                 radialStrength: 0.2,
-                description: 'Country-focused view showing geographic research patterns'
+                description: 'Geographic research hubs and international collaboration patterns'
             };
             break;
             
         case 'journals':
-            // Focus on journals and their specializations
-            filteredNodes = networkData.nodes.filter(node => 
-                node.type === 'journal' || 
-                (node.type === 'country' && node.connected_subjects > 0) ||
-                (node.type === 'subject' && node.connected_journals > 2)
-            );
+            // Focus ONLY on journals and publication specialization
+            filteredNodes = networkData.nodes.filter(node => {
+                if (node.type === 'journal') return true;
+                // Only include subjects/countries with significant journal presence
+                if (node.type === 'subject') return (node.connected_journals || 0) >= 4;
+                if (node.type === 'country') return (node.paper_count || 0) >= 100; // High-volume countries
+                return false;
+            });
             filteredLinks = networkData.links.filter(link => 
                 (link.connection_type === 'secondary' || link.connection_type === 'specialized') &&
+                link.strength >= 5 && // Meaningful publication relationships
                 filteredNodes.some(n => n.id === link.source || (link.source.id && n.id === link.source.id)) &&
                 filteredNodes.some(n => n.id === link.target || (link.target.id && n.id === link.target.id))
             );
             layoutConfig = {
                 centerForce: 100,
                 radialStrength: 0.1,
-                description: 'Journal-focused view showing publication venues and specializations'
+                description: 'Publication venues and their research specializations'
             };
             break;
             
         case 'combined':
         default:
-            // Show all relationships for complete picture
+            // Show the complete network with all relationships
             filteredNodes = networkData.nodes;
             filteredLinks = networkData.links;
             layoutConfig = {
                 centerForce: 200,
                 radialStrength: 0.15,
-                description: 'Complete view showing all relationships between subjects, countries, and journals'
+                description: 'Complete research ecosystem: all subjects, countries, and journals'
             };
             break;
     }
@@ -2173,9 +2182,19 @@ function updateNetworkChart() {
     if (filteredNodes.length < 3) {
         document.getElementById("networkVisualization").innerHTML = 
             `<div class="text-center text-muted p-4">
-                <h6>Insufficient ${networkType} data</h6>
-                <p>${layoutConfig.description || 'No meaningful relationships found for this view.'}</p>
-                <small>Try switching to "Combined" view for all relationships.</small>
+                <h6><i class="fas fa-info-circle"></i> Limited ${networkType} data</h6>
+                <p>${layoutConfig.description || 'No strong relationships found for this focused view.'}</p>
+                <div class="mt-3">
+                    <small class="text-info">
+                        <strong>💡 Try:</strong> Switch to "Complete Network" to see all relationships,<br>
+                        or choose a different focus that might have more connections in your dataset.
+                    </small>
+                </div>
+                <div class="mt-2">
+                    <button class="btn btn-sm btn-primary" onclick="document.getElementById('networkTypeFilter').value='combined'; updateNetworkChart();">
+                        <i class="fas fa-eye"></i> View Complete Network
+                    </button>
+                </div>
             </div>`;
         return;
     }
@@ -2191,15 +2210,15 @@ function updateNetworkChart() {
         .attr("width", width)
         .attr("height", height);
     
-    // Add view description
+    // Add view description with stats
     svg.append("text")
         .attr("x", width / 2)
         .attr("y", 20)
         .attr("text-anchor", "middle")
-        .style("font-size", "14px")
+        .style("font-size", "16px")
         .style("font-weight", "bold")
         .style("fill", "#333")
-        .text(`${networkType.charAt(0).toUpperCase() + networkType.slice(1)} Network View`);
+        .text(`${networkType.charAt(0).toUpperCase() + networkType.slice(1)} Network`);
     
     svg.append("text")
         .attr("x", width / 2)
@@ -2208,6 +2227,15 @@ function updateNetworkChart() {
         .style("font-size", "11px")
         .style("fill", "#666")
         .text(layoutConfig.description);
+        
+    // Add network stats
+    svg.append("text")
+        .attr("x", width / 2)
+        .attr("y", 50)
+        .attr("text-anchor", "middle")
+        .style("font-size", "10px")
+        .style("fill", "#888")
+        .text(`${filteredNodes.length} nodes • ${filteredLinks.length} connections`);
     
     // Create container
     const container = svg.append("g");
