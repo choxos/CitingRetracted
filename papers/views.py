@@ -1228,61 +1228,81 @@ class AnalyticsView(View):
         chart_data.setdefault('publisher_data', [])
         chart_data.setdefault('access_analytics', {'open_access': {'count': 0}, 'paywalled': {'count': 0}, 'unknown': {'count': 0}})
         
-        # Create combined retraction trends and post-retraction citation timeline
-        # Use the real historical data instead of artificial recent years
-        if chart_data.get('retraction_comparison'):
-            # Extract retraction counts and post-retraction citations for combined chart
-            combined_timeline = []
-            for item in chart_data['retraction_comparison']:
-                combined_timeline.append({
-                    'year': item['year'],
-                    'retraction_count': 1,  # Each year entry represents papers retracted
-                    'post_retraction_citations': item['post_retraction']
+        # Create full retraction trends dataset using ALL papers in database
+        # Get retraction counts by year from all available date fields
+        retraction_timeline = {}
+        
+        # Try original_paper_date first (if available)
+        original_paper_years = RetractedPaper.objects.filter(
+            original_paper_date__isnull=False
+        ).annotate(
+            year=TruncYear('original_paper_date')
+        ).values('year').annotate(
+            count=Count('id')
+        ).order_by('year')
+        
+        for item in original_paper_years:
+            year = item['year'].year if item['year'] else 'Unknown'
+            if isinstance(year, int):
+                retraction_timeline[year] = retraction_timeline.get(year, 0) + item['count']
+        
+        # Also try retraction_date 
+        retraction_date_years = RetractedPaper.objects.filter(
+            retraction_date__isnull=False
+        ).annotate(
+            year=TruncYear('retraction_date')
+        ).values('year').annotate(
+            count=Count('id')
+        ).order_by('year')
+        
+        for item in retraction_date_years:
+            year = item['year'].year if item['year'] else 'Unknown'
+            if isinstance(year, int):
+                retraction_timeline[year] = retraction_timeline.get(year, 0) + item['count']
+        
+        # Create complete timeline with all years
+        if retraction_timeline:
+            min_year = min(retraction_timeline.keys())
+            max_year = max(retraction_timeline.keys())
+            
+            # Fill complete year range
+            chart_data['retraction_years'] = []
+            for year in range(min_year, max_year + 1):
+                chart_data['retraction_years'].append({
+                    'year': year,
+                    'count': retraction_timeline.get(year, 0)
                 })
-            
-            # Aggregate by year to get total retractions per year
-            year_aggregates = {}
-            for item in combined_timeline:
+        
+        # Create combined trends using citation data where available
+        if chart_data.get('retraction_comparison'):
+            # Create citation timeline
+            citation_timeline = {}
+            for item in chart_data['retraction_comparison']:
                 year = item['year']
-                if year not in year_aggregates:
-                    year_aggregates[year] = {
-                        'year': year,
-                        'retraction_count': 0,
-                        'post_retraction_citations': 0
-                    }
-                year_aggregates[year]['retraction_count'] += item['retraction_count']
-                year_aggregates[year]['post_retraction_citations'] += item['post_retraction_citations']
+                citation_timeline[year] = item['post_retraction']
             
-            # Fill in missing years with zero values for complete timeline
-            if year_aggregates:
-                min_year = min(year_aggregates.keys())
-                max_year = max(year_aggregates.keys())
+            # Combine retraction and citation data
+            if retraction_timeline:
+                min_year = min(retraction_timeline.keys())
+                max_year = max(retraction_timeline.keys())
                 
-                # Create entry for every year in the range
-                complete_timeline = []
+                chart_data['combined_trends'] = []
                 for year in range(min_year, max_year + 1):
-                    if year in year_aggregates:
-                        complete_timeline.append(year_aggregates[year])
-                    else:
-                        # Fill missing years with zero values
-                        complete_timeline.append({
-                            'year': year,
-                            'retraction_count': 0,
-                            'post_retraction_citations': 0
-                        })
-                
-                chart_data['combined_trends'] = complete_timeline
+                    chart_data['combined_trends'].append({
+                        'year': year,
+                        'retraction_count': retraction_timeline.get(year, 0),
+                        'post_retraction_citations': citation_timeline.get(year, 0)
+                    })
             else:
-                chart_data['combined_trends'] = sorted(year_aggregates.values(), key=lambda x: x['year'])
-            
-            # Also use this data for retraction_years to show full historical span
-            chart_data['retraction_years'] = [
-                {
-                    'year': item['year'],
-                    'count': item['retraction_count']
-                }
-                for item in chart_data['combined_trends']
-            ]
+                # Fallback to citation data only
+                chart_data['combined_trends'] = [
+                    {
+                        'year': item['year'],
+                        'retraction_count': 1,
+                        'post_retraction_citations': item['post_retraction']
+                    }
+                    for item in chart_data['retraction_comparison']
+                ]
         
         # Fallback only if no real data exists
         if not chart_data.get('retraction_years'):
