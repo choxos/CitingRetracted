@@ -790,13 +790,13 @@ function initializeOverviewCharts() {
 
 // Retraction trends over time - now initialized in overview
 // This code runs immediately since the chart is in the overview tab
-const retractionYearsData = {{ retraction_years|safe }} || [];
+const retractionYearsData = {{ retraction_years|safe_json }};
 console.log('Retraction Years Data:', retractionYearsData);
 console.log('Retraction Years Length:', retractionYearsData.length);
 console.log('Retraction Years Sample:', retractionYearsData.slice(0, 3));
     
     // Combined trends chart showing both retractions and post-retraction citations
-    const combinedTrendsData = {{ combined_trends|safe }} || [];
+    const combinedTrendsData = {{ combined_trends|safe_json }};
     console.log('Combined Trends Data:', combinedTrendsData);
     
     if (combinedTrendsData.length > 0) {
@@ -955,7 +955,7 @@ console.log('Retraction Years Sample:', retractionYearsData.slice(0, 3));
     }
     
     // Citation comparison chart
-    const comparisonData = {{ retraction_comparison|safe }} || [];
+    const comparisonData = {{ retraction_comparison|safe_json }};
     console.log('Comparison Data:', comparisonData);
     console.log('Comparison Data Length:', comparisonData.length);
     console.log('Comparison Data Sample:', comparisonData.slice(0, 3));
@@ -1036,7 +1036,7 @@ console.log('Retraction Years Sample:', retractionYearsData.slice(0, 3));
     );
     
     // Subject distribution donut
-    const subjectData = {{ subject_donut_data|safe }} || [];
+    const subjectData = {{ subject_donut_data|safe_json }};
     console.log('Subject Data:', subjectData);
     
     const subjectDistributionData = {
@@ -1511,7 +1511,7 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
     console.log('Plotly choropleth world map initialized with', plotlyMapData.length, 'countries');
     
     // Article Type Chart
-    const articleTypeData = {{ article_type_data|safe }} || [];
+    const articleTypeData = {{ article_type_data|safe_json }};
     console.log('Article Type Data:', articleTypeData);
     
     if (articleTypeData.length > 0) {
