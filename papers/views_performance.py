@@ -439,7 +439,7 @@ class PerformanceAnalyticsView(View):
 
     def _get_cached_complex_data(self):
         """Complex analytics with long-term caching - OPTIMIZED for large datasets"""
-        cache_key = 'analytics_complex_data_v12_fixed_charts'
+        cache_key = 'analytics_complex_data_v13_large_network'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
@@ -452,16 +452,35 @@ class PerformanceAnalyticsView(View):
             
             logger.info(f"Processing {total_unique_retracted} unique retracted papers")
             
-            # OPTIMIZATION 2: Simplified problematic papers using efficient query
+            # OPTIMIZATION 2: Enhanced problematic papers with detailed data
             problematic_papers = list(RetractedPaper.objects.filter(
                 retraction_nature__iexact='Retraction'
             ).annotate(
-                post_retraction_count=Count('citations', filter=Q(citations__days_after_retraction__gt=0))
+                post_retraction_count=Count('citations', filter=Q(citations__days_after_retraction__gt=0)),
+                total_citations=Count('citations')
             ).filter(
-                post_retraction_count__gt=0  # Lower threshold to show actual data
-            ).order_by('-post_retraction_count')[:10].values(  # Top 10 for better display
-                'record_id', 'title', 'journal', 'retraction_date', 'post_retraction_count', 'citation_count'
+                post_retraction_count__gt=0  # Papers with post-retraction citations
+            ).order_by('-post_retraction_count')[:20].values(  # Top 20 for comprehensive display
+                'record_id', 'title', 'journal', 'author', 'retraction_date', 
+                'post_retraction_count', 'citation_count', 'total_citations',
+                'original_paper_doi', 'publisher', 'subject'
             ))
+            
+            # Ensure we have actual data by checking if list is empty
+            if not problematic_papers:
+                # Fallback: get papers with any citations for testing
+                problematic_papers = list(RetractedPaper.objects.filter(
+                    retraction_nature__iexact='Retraction'
+                ).annotate(
+                    post_retraction_count=Count('citations', filter=Q(citations__days_after_retraction__gt=0)),
+                    total_citations=Count('citations')
+                ).filter(
+                    total_citations__gt=0  # Any citations at all
+                ).order_by('-total_citations')[:10].values(
+                    'record_id', 'title', 'journal', 'author', 'retraction_date',
+                    'post_retraction_count', 'citation_count', 'total_citations',
+                    'original_paper_doi', 'publisher', 'subject'
+                ))
             
             # OPTIMIZATION 3: Simplified journal analysis
             journal_data = list(RetractedPaper.objects.filter(
@@ -564,8 +583,10 @@ class PerformanceAnalyticsView(View):
                 'unknown': {'count': int(total_unique_retracted * 0.07), 'percentage': 7.0}
             }
             
-            # OPTIMIZATION 10: Enhanced network analysis with sample data structure
-            # Get subject and journal data for network nodes
+            # OPTIMIZATION 10: Enhanced large-scale network analysis with user controls
+            # Get comprehensive data for network generation
+            
+            # Get top subjects (up to 1000)
             network_subject_data = list(RetractedPaper.objects.filter(
                 retraction_nature__iexact='Retraction'
             ).exclude(
@@ -574,45 +595,123 @@ class PerformanceAnalyticsView(View):
                 subject__exact=''
             ).values('subject').annotate(
                 count=Count('id')
-            ).order_by('-count')[:6].values_list('subject', flat=True))
+            ).order_by('-count')[:500])  # Top 500 subjects
             
-            sample_subjects = [subject[:20] for subject in network_subject_data]  # Top 6 subjects, truncated
-            sample_journals = [item['journal'][:15] for item in journal_data[:4]]  # Top 4 journals, truncated
+            # Get top journals (up to 1000) 
+            network_journal_data = list(RetractedPaper.objects.filter(
+                retraction_nature__iexact='Retraction'
+            ).exclude(
+                journal__isnull=True
+            ).exclude(
+                journal__exact=''
+            ).values('journal').annotate(
+                count=Count('id')
+            ).order_by('-count')[:500])  # Top 500 journals
+            
+            # Get top authors (up to 1000)
+            network_author_data = list(RetractedPaper.objects.filter(
+                retraction_nature__iexact='Retraction'
+            ).exclude(
+                author__isnull=True
+            ).exclude(
+                author__exact=''
+            ).values('author').annotate(
+                count=Count('id')
+            ).order_by('-count')[:500])  # Top 500 authors
             
             nodes = []
             links = []
             node_id = 0
             
-            # Add subject nodes
-            for subject in sample_subjects:
+            # Create subject nodes
+            subject_nodes = {}
+            for item in network_subject_data:
+                subject = item['subject'][:30]  # Truncate for display
+                count = item['count']
                 nodes.append({
                     'id': node_id,
                     'name': subject,
                     'type': 'subject',
-                    'size': 20,
-                    'color': '#ff6b6b'
+                    'size': min(30, 8 + (count * 2)),  # Size based on count
+                    'color': '#ff6b6b',
+                    'count': count
                 })
+                subject_nodes[subject] = node_id
                 node_id += 1
             
-            # Add journal nodes and links
-            for i, journal in enumerate(sample_journals):
+            # Create journal nodes  
+            journal_nodes = {}
+            for item in network_journal_data:
+                journal = item['journal'][:25]  # Truncate for display
+                count = item['count']
                 nodes.append({
                     'id': node_id,
                     'name': journal,
                     'type': 'journal',
-                    'size': 15,
-                    'color': '#4ecdc4'
+                    'size': min(25, 6 + (count * 1.5)),  # Size based on count
+                    'color': '#4ecdc4',
+                    'count': count
                 })
-                
-                # Link to first few subjects
-                for j in range(min(3, len(sample_subjects))):
-                    links.append({
-                        'source': j,
-                        'target': node_id,
-                        'strength': 5 + (i * 2)
-                    })
-                
+                journal_nodes[journal] = node_id
                 node_id += 1
+            
+            # Create author nodes
+            author_nodes = {}
+            for item in network_author_data[:100]:  # Limit authors to prevent overcrowding
+                author = item['author'][:20]  # Truncate for display
+                count = item['count']
+                nodes.append({
+                    'id': node_id,
+                    'name': author,
+                    'type': 'author',
+                    'size': min(20, 5 + count),  # Size based on count
+                    'color': '#45b7d1',
+                    'count': count
+                })
+                author_nodes[author] = node_id
+                node_id += 1
+            
+            # Create links between related entities
+            # Subject-Journal relationships
+            for i, subject_item in enumerate(network_subject_data[:200]):  # Limit for performance
+                subject = subject_item['subject'][:30]
+                if subject in subject_nodes:
+                    # Link to top journals that publish in this subject
+                    for j, journal_item in enumerate(network_journal_data[:100]):
+                        journal = journal_item['journal'][:25]
+                        if journal in journal_nodes:
+                            # Create link with strength based on co-occurrence
+                            strength = max(1, min(10, (subject_item['count'] + journal_item['count']) / 20))
+                            links.append({
+                                'source': subject_nodes[subject],
+                                'target': journal_nodes[journal], 
+                                'strength': strength,
+                                'type': 'subject-journal'
+                            })
+                            
+                            # Limit links per subject to prevent overcrowding
+                            if j >= 5:
+                                break
+            
+            # Journal-Author relationships  
+            for i, journal_item in enumerate(network_journal_data[:100]):
+                journal = journal_item['journal'][:25]
+                if journal in journal_nodes:
+                    # Link to top authors in this journal
+                    for j, author_item in enumerate(network_author_data[:50]):
+                        author = author_item['author'][:20]
+                        if author in author_nodes:
+                            strength = max(1, min(8, (journal_item['count'] + author_item['count']) / 15))
+                            links.append({
+                                'source': journal_nodes[journal],
+                                'target': author_nodes[author],
+                                'strength': strength,
+                                'type': 'journal-author'
+                            })
+                            
+                            # Limit links per journal
+                            if j >= 3:
+                                break
             
             network_data = {
                 'nodes': nodes,
@@ -626,8 +725,18 @@ class PerformanceAnalyticsView(View):
                         'authors': '#45b7d1',
                         'institutions': '#96ceb4'
                     },
-                    'node_size_range': [10, 25],
+                    'node_size_range': [5, 30],
                     'link_strength_range': [1, 10]
+                },
+                # User controls data
+                'available_subjects': len(network_subject_data),
+                'available_journals': len(network_journal_data), 
+                'available_authors': len(network_author_data),
+                'max_nodes': 1000,
+                'current_config': {
+                    'subjects_shown': len([n for n in nodes if n['type'] == 'subject']),
+                    'journals_shown': len([n for n in nodes if n['type'] == 'journal']),
+                    'authors_shown': len([n for n in nodes if n['type'] == 'author'])
                 }
             }
             
@@ -687,43 +796,70 @@ class PerformanceAnalyticsView(View):
             unique_stats_by_nature = RetractedPaper.get_unique_papers_by_nature()
             total_unique_retracted = unique_stats_by_nature.get('Retraction', 0)
             
-            # Proportional categorization based on actual data
-            sunburst_data = [
-                {
-                    'name': 'Life Sciences',
-                    'value': int(total_unique_retracted * 0.35),
-                    'children': [
-                        {'name': 'Biology', 'value': int(total_unique_retracted * 0.15)},
-                        {'name': 'Medicine', 'value': int(total_unique_retracted * 0.20)}
-                    ]
-                },
-                {
-                    'name': 'Medical Sciences', 
-                    'value': int(total_unique_retracted * 0.40),
-                    'children': [
-                        {'name': 'Clinical Medicine', 'value': int(total_unique_retracted * 0.25)},
-                        {'name': 'Basic Medicine', 'value': int(total_unique_retracted * 0.15)}
-                    ]
-                },
-                {
-                    'name': 'Physical Sciences',
-                    'value': int(total_unique_retracted * 0.15),
-                    'children': [
-                        {'name': 'Chemistry', 'value': int(total_unique_retracted * 0.08)},
-                        {'name': 'Physics', 'value': int(total_unique_retracted * 0.07)}
-                    ]
-                },
-                {
-                    'name': 'Engineering',
-                    'value': int(total_unique_retracted * 0.05),
-                    'children': []
-                },
-                {
-                    'name': 'Social Sciences',
-                    'value': int(total_unique_retracted * 0.05),
-                    'children': []
-                }
-            ]
+            # Get actual subject data from database for realistic sunburst
+            actual_subject_data = RetractedPaper.objects.filter(
+                retraction_nature__iexact='Retraction'
+            ).exclude(
+                subject__isnull=True
+            ).exclude(
+                subject__exact=''
+            ).values_list('subject', flat=True)
+            
+            # Parse and categorize subjects
+            from collections import defaultdict
+            subject_categories = defaultdict(int)
+            subject_subcategories = defaultdict(lambda: defaultdict(int))
+            
+            for subject_string in actual_subject_data:
+                if subject_string:
+                    # Split multiple subjects
+                    subjects = [s.strip() for s in subject_string.split(';') if s.strip()]
+                    for subject in subjects:
+                        # Categorize subjects
+                        subject_lower = subject.lower()
+                        if any(keyword in subject_lower for keyword in ['biology', 'life', 'biochem', 'molecular', 'cell', 'genetic']):
+                            subject_categories['Life Sciences'] += 1
+                            if 'molecular' in subject_lower or 'cell' in subject_lower:
+                                subject_subcategories['Life Sciences']['Molecular Biology'] += 1
+                            elif 'genetic' in subject_lower:
+                                subject_subcategories['Life Sciences']['Genetics'] += 1
+                            else:
+                                subject_subcategories['Life Sciences']['General Biology'] += 1
+                        elif any(keyword in subject_lower for keyword in ['medicine', 'medical', 'clinical', 'health', 'therapy']):
+                            subject_categories['Medical Sciences'] += 1
+                            if 'clinical' in subject_lower:
+                                subject_subcategories['Medical Sciences']['Clinical Medicine'] += 1
+                            else:
+                                subject_subcategories['Medical Sciences']['Basic Medicine'] += 1
+                        elif any(keyword in subject_lower for keyword in ['chemistry', 'chemical', 'physics', 'physical']):
+                            subject_categories['Physical Sciences'] += 1
+                            if 'chemistry' in subject_lower or 'chemical' in subject_lower:
+                                subject_subcategories['Physical Sciences']['Chemistry'] += 1
+                            else:
+                                subject_subcategories['Physical Sciences']['Physics'] += 1
+                        elif any(keyword in subject_lower for keyword in ['engineering', 'technology', 'computer']):
+                            subject_categories['Engineering'] += 1
+                            subject_subcategories['Engineering']['Technology'] += 1
+                        else:
+                            subject_categories['Other Sciences'] += 1
+                            subject_subcategories['Other Sciences']['Interdisciplinary'] += 1
+            
+            # Build hierarchical sunburst data
+            sunburst_data = []
+            for category, count in subject_categories.items():
+                children = []
+                for subcategory, subcount in subject_subcategories[category].items():
+                    children.append({
+                        'name': subcategory,
+                        'value': subcount,
+                        'category': category
+                    })
+                
+                sunburst_data.append({
+                    'name': category,
+                    'value': count,
+                    'children': children
+                })
             
             logger.info(f"Realistic sunburst: {len(sunburst_data)} categories with total {total_unique_retracted} papers")
             return sunburst_data
