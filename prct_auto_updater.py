@@ -48,12 +48,19 @@ class PRCTAutoUpdater:
         elif level == "ERROR":
             self.logger.error(message)
             
-    def download_retraction_watch_data(self):
-        """Download the latest Retraction Watch CSV data"""
+    def download_retraction_watch_data(self, force_download=False):
+        """Download the latest Retraction Watch CSV data if it's different from local version"""
         self.log("🔍 Checking for latest Retraction Watch data...")
         
         # Official GitLab URL
         url = "https://gitlab.com/crossref/retraction-watch-data/-/raw/main/retraction_watch.csv?ref_type=heads&inline=false"
+        
+        # Check if we should skip download
+        if not force_download:
+            should_download, reason = self._should_download_rwd(url)
+            if not should_download:
+                self.log(f"⏭️  Skipping download: {reason}")
+                return self.get_latest_rwd_file()
         
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"retraction_watch_{timestamp}.csv"
@@ -72,6 +79,8 @@ class PRCTAutoUpdater:
             
             # Validate the file
             if filepath.stat().st_size > 1000000:  # Should be >1MB
+                # Save metadata for future comparison
+                self._save_download_metadata(filepath, response.headers)
                 self.log(f"✅ Downloaded: {filename} ({filepath.stat().st_size / 1024 / 1024:.1f} MB)")
                 return filepath
             else:
@@ -84,6 +93,85 @@ class PRCTAutoUpdater:
             if filepath.exists():
                 filepath.unlink()
             return None
+    
+    def _should_download_rwd(self, url):
+        """Check if we should download RWD data by comparing with local version"""
+        try:
+            # Get local file info
+            local_file = self.get_latest_rwd_file()
+            if not local_file or not local_file.exists():
+                return True, "No local file found"
+            
+            # Check remote file metadata
+            self.log("🔍 Checking remote file metadata...")
+            response = requests.head(url, timeout=30)
+            response.raise_for_status()
+            
+            # Compare file sizes first (quick check)
+            remote_size = response.headers.get('content-length')
+            local_size = local_file.stat().st_size
+            
+            if remote_size and int(remote_size) != local_size:
+                return True, f"File size differs (remote: {remote_size}, local: {local_size})"
+            
+            # Compare Last-Modified if available
+            last_modified = response.headers.get('last-modified')
+            if last_modified:
+                try:
+                    from email.utils import parsedate_to_datetime
+                    remote_time = parsedate_to_datetime(last_modified)
+                    local_time = datetime.fromtimestamp(local_file.stat().st_mtime, tz=remote_time.tzinfo)
+                    
+                    if remote_time > local_time:
+                        return True, f"Remote file is newer (remote: {remote_time}, local: {local_time})"
+                except Exception as e:
+                    self.log(f"⚠️  Could not compare timestamps: {e}", "WARNING")
+            
+            # Check ETag if available
+            etag = response.headers.get('etag')
+            if etag:
+                local_etag = self._get_local_etag(local_file)
+                if local_etag and etag != local_etag:
+                    return True, f"ETag differs (remote: {etag}, local: {local_etag})"
+            
+            # Files appear to be the same
+            return False, "Remote file appears to be the same as local version"
+            
+        except Exception as e:
+            self.log(f"⚠️  Could not check remote file metadata: {e}", "WARNING")
+            return True, "Error checking remote metadata, downloading to be safe"
+    
+    def _save_download_metadata(self, filepath, headers):
+        """Save download metadata for future comparison"""
+        try:
+            metadata_file = filepath.with_suffix('.metadata')
+            metadata = {
+                'download_time': datetime.now().isoformat(),
+                'content_length': headers.get('content-length'),
+                'last_modified': headers.get('last-modified'),
+                'etag': headers.get('etag'),
+                'file_size': filepath.stat().st_size
+            }
+            
+            import json
+            with open(metadata_file, 'w') as f:
+                json.dump(metadata, f, indent=2)
+                
+        except Exception as e:
+            self.log(f"⚠️  Could not save metadata: {e}", "WARNING")
+    
+    def _get_local_etag(self, filepath):
+        """Get stored ETag for local file"""
+        try:
+            import json
+            metadata_file = filepath.with_suffix('.metadata')
+            if metadata_file.exists():
+                with open(metadata_file, 'r') as f:
+                    metadata = json.load(f)
+                return metadata.get('etag')
+        except Exception:
+            pass
+        return None
     
     def cleanup_old_rwd_files(self, keep_latest=True):
         """Remove old Retraction Watch data files, optionally keeping the latest"""
@@ -386,27 +474,53 @@ print('✅ Analytics cache cleared!')
         self.log("🚀 Starting PRCT automatic update process...")
         
         success_count = 0
+        skip_import = False
         
-        # 1. Download latest Retraction Watch data
-        if force_download or not self.get_latest_rwd_file():
-            latest_file = self.download_retraction_watch_data()
-            if latest_file:
-                success_count += 1
-                # Clean up old files after successful download
-                self.cleanup_old_rwd_files(keep_latest=True)
-            else:
-                self.log("❌ Could not download RWD data, using existing file if available", "WARNING")
+        # 1. Download latest Retraction Watch data (with version checking)
+        original_file = self.get_latest_rwd_file()
+        latest_file = self.download_retraction_watch_data(force_download=force_download)
+        
+        if latest_file:
+            # Check if we got the same file (no download occurred)
+            try:
+                if original_file and latest_file.samefile(original_file):
+                    self.log("✅ RWD data is up to date, skipping import")
+                    skip_import = True
+                    success_count += 1  # Count as success since data is current
+                else:
+                    # New file downloaded, clean up old files
+                    self.log("✅ New RWD data downloaded")
+                    self.cleanup_old_rwd_files(keep_latest=True)
+                    success_count += 1
+            except (OSError, AttributeError):
+                # Fallback: compare file names or assume new file
+                if original_file and latest_file.name == original_file.name:
+                    self.log("✅ RWD data appears to be up to date, skipping import")
+                    skip_import = True
+                    success_count += 1
+                else:
+                    self.log("✅ New RWD data downloaded")
+                    self.cleanup_old_rwd_files(keep_latest=True)
+                    success_count += 1
         else:
-            latest_file = self.get_latest_rwd_file()
+            self.log("❌ Could not download RWD data", "ERROR")
+            if not original_file:
+                return False
+            latest_file = original_file
             self.log(f"📁 Using existing file: {latest_file.name}")
         
-        # 2. Import retraction data
-        if latest_file and latest_file.exists():
-            if self.import_retraction_data(latest_file, limit=import_limit):
-                success_count += 1
+        # 2. Import retraction data (skip if data hasn't changed)
+        if not skip_import:
+            if latest_file and latest_file.exists():
+                self.log("📊 Importing new retraction data...")
+                if self.import_retraction_data(latest_file, limit=import_limit):
+                    success_count += 1
+            else:
+                self.log("❌ No RWD file available for import", "ERROR")
+                return False
         else:
-            self.log("❌ No RWD file available for import", "ERROR")
-            return False
+            self.log("⏭️  Skipping RWD import - data unchanged")
+            success_count += 1  # Count as success since import wasn't needed
         
         # 3. Fetch citations (choose method based on continuous_citations flag)
         if continuous_citations:
@@ -426,7 +540,10 @@ print('✅ Analytics cache cleared!')
             success_count += 1  # Already cleared during continuous process
         
         # 5. Summary
-        self.log(f"📈 Update process completed: {success_count}/4 steps successful")
+        expected_steps = 4
+        self.log(f"📈 Update process completed: {success_count}/{expected_steps} steps successful")
+        if skip_import:
+            self.log("💡 RWD data was current, skipped import and went straight to citations")
         
         if success_count >= 3:
             self.log("✅ Update process completed successfully!")

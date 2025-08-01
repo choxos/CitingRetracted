@@ -76,7 +76,7 @@ sudo -u xeradb crontab -e
 0 6 * * * cd /var/www/prct && source .env && export DJANGO_SETTINGS_MODULE=citing_retracted.settings_production && ./venv/bin/python prct_auto_updater.py --citation-limit 100 >> logs/cron.log 2>&1
 
 # Option 2: Real-time daily updates at 6:00 AM (updates website continuously)
-0 6 * * * cd /var/www/prct && source .env && export DJANGO_SETTINGS_MODULE=citing_retracted.settings_production && ./venv/bin/python prct_auto_updater.py --citation-limit 100 --continuous-citations >> logs/cron.log 2>&1
+0 6 * * * cd /var/www/prct && source .env && export DJANGO_SETTINGS_MODULE=citing_retracted.settings_production && ./venv/bin/python prct_auto_updater.py --citation-limit 100000 --continuous-citations >> logs/cron.log 2>&1
 ```
 
 **Recommendation:** Use **Option 2 (continuous)** for better user experience as citations appear on the website in real-time during the update process.
@@ -108,17 +108,30 @@ sudo -u xeradb crontab -e
 - Progress tracking for each paper processed
 - Better error recovery - partial progress is saved
 
+### **🔍 NEW: Smart Version Checking**
+- **Automatic detection if remote RWD data has changed**
+- Compares file size, timestamps, and ETags with local version
+- **Skips download and import if data is identical** to save time
+- Goes straight to citation fetching when RWD data is current
+- Saves bandwidth and processing time for daily automation
+
 ## 📊 Script Usage Options
 
-### Basic Daily Update
+### Basic Daily Update (With Smart Version Checking)
 ```bash
-# Standard daily update (recommended for cron)
+# Automatically checks if RWD data has changed, skips import if identical
 ./venv/bin/python prct_auto_updater.py --citation-limit 100
+```
+
+### With Continuous Citations (Recommended)
+```bash
+# Real-time updates + smart version checking
+./venv/bin/python prct_auto_updater.py --continuous-citations --citation-limit 100000
 ```
 
 ### Manual Updates with Options
 ```bash
-# Force new download even if recent file exists
+# Force new download even if recent file exists (bypasses version checking)
 ./venv/bin/python prct_auto_updater.py --force-download
 
 # Limit imports for testing
@@ -130,18 +143,21 @@ sudo -u xeradb crontab -e
 
 ### Advanced Configuration
 ```bash
-# Custom PRCT path and limits
+# Custom PRCT path and limits with continuous citations
 ./venv/bin/python prct_auto_updater.py \
   --prct-path /custom/path/to/prct \
   --citation-limit 200 \
-  --import-limit 2000
+  --import-limit 2000 \
+  --continuous-citations
 ```
 
 ## 🗂️ Data Management
 
 ### Automatic Cleanup
 The script automatically:
-- Downloads new Retraction Watch data daily
+- **Checks for new Retraction Watch data** (compares with local version)
+- **Skips download and import if data is unchanged** (saves time and bandwidth)
+- Downloads new RWD data only when changes are detected
 - Removes previous CSV files after successful import
 - Keeps only the latest dataset
 - Maintains logs in `/var/www/prct/logs/auto_updater.log`
