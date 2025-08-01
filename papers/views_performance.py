@@ -544,6 +544,108 @@ class PerformanceAnalyticsView(View):
                 }
             }
             
+            # Add journal/country/subject network nodes for filtering support
+            # Add top journals as nodes
+            top_journals = list(RetractedPaper.objects.values('journal').annotate(
+                count=Count('id'),
+                post_retraction_citations=Count('citations', filter=Q(citations__days_after_retraction__gt=0))
+            ).filter(journal__isnull=False).exclude(journal__exact='').order_by('-count')[:10])
+            
+            for i, journal in enumerate(top_journals):
+                network_data['nodes'].append({
+                    'id': f"journal_{i}",
+                    'name': journal['journal'][:20] + '...' if len(journal['journal']) > 20 else journal['journal'],
+                    'type': 'journal',
+                    'size': max(8, min(30, journal['count'] / 5)),
+                    'full_name': journal['journal'],
+                    'retraction_count': journal['count'],
+                    'post_retraction_citations': journal['post_retraction_citations']
+                })
+            
+            # Add country nodes
+            top_countries = list(RetractedPaper.objects.values('country').annotate(
+                count=Count('id')
+            ).filter(country__isnull=False).exclude(country__exact='').order_by('-count')[:8])
+            
+            for i, country in enumerate(top_countries):
+                country_name = country['country'].split(';')[0].strip() if ';' in country['country'] else country['country']
+                network_data['nodes'].append({
+                    'id': f"country_{i}",
+                    'name': country_name[:15] + '...' if len(country_name) > 15 else country_name,
+                    'type': 'country',
+                    'size': max(8, min(25, country['count'] / 10)),
+                    'full_name': country_name,
+                    'retraction_count': country['count']
+                })
+            
+            # Add subject nodes
+            top_subjects = list(RetractedPaper.objects.values('subject').annotate(
+                count=Count('id')
+            ).filter(subject__isnull=False).exclude(subject__exact='').order_by('-count')[:6])
+            
+            for i, subject in enumerate(top_subjects):
+                network_data['nodes'].append({
+                    'id': f"subject_{i}",
+                    'name': subject['subject'][:15] + '...' if len(subject['subject']) > 15 else subject['subject'],
+                    'type': 'subject',
+                    'size': max(8, min(20, subject['count'] / 20)),
+                    'full_name': subject['subject'],
+                    'retraction_count': subject['count']
+                })
+            
+            # Create links between journals and countries
+            journal_country_links = list(RetractedPaper.objects.values('journal', 'country').annotate(
+                count=Count('id')
+            ).filter(
+                journal__in=[j['journal'] for j in top_journals],
+                country__in=[c['country'] for c in top_countries],
+                count__gte=2
+            )[:15])
+            
+            for link in journal_country_links:
+                journal_idx = next((i for i, j in enumerate(top_journals) if j['journal'] == link['journal']), None)
+                country_idx = next((i for i, c in enumerate(top_countries) if c['country'] == link['country']), None)
+                
+                if journal_idx is not None and country_idx is not None:
+                    network_data['links'].append({
+                        'source': f"journal_{journal_idx}",
+                        'target': f"country_{country_idx}",
+                        'value': link['count'],
+                        'type': 'journal-country',
+                        'strength': link['count']
+                    })
+            
+            # Create links between subjects and journals
+            subject_journal_links = list(RetractedPaper.objects.values('subject', 'journal').annotate(
+                count=Count('id')
+            ).filter(
+                subject__in=[s['subject'] for s in top_subjects],
+                journal__in=[j['journal'] for j in top_journals],
+                count__gte=2
+            )[:12])
+            
+            for link in subject_journal_links:
+                subject_idx = next((i for i, s in enumerate(top_subjects) if s['subject'] == link['subject']), None)
+                journal_idx = next((i for i, j in enumerate(top_journals) if j['journal'] == link['journal']), None)
+                
+                if subject_idx is not None and journal_idx is not None:
+                    network_data['links'].append({
+                        'source': f"subject_{subject_idx}",
+                        'target': f"journal_{journal_idx}",
+                        'value': link['count'],
+                        'type': 'subject-journal',
+                        'strength': link['count']
+                    })
+            
+            # Update metadata
+            network_data['metadata'].update({
+                'total_nodes': len(network_data['nodes']),
+                'total_links': len(network_data['links']),
+                'journal_nodes': len([n for n in network_data['nodes'] if n.get('type') == 'journal']),
+                'country_nodes': len([n for n in network_data['nodes'] if n.get('type') == 'country']),
+                'subject_nodes': len([n for n in network_data['nodes'] if n.get('type') == 'subject'])
+            })
+            
             logger.info(f"Network: {len(network_nodes)} nodes, {len(network_links)} links")
             logger.info(f"Network breakdown: {network_data['metadata']['retracted_papers']} retracted, {network_data['metadata']['citing_papers']} citing papers")
             logger.info(f"Post-retraction links: {network_data['metadata']['post_retraction_links']}")

@@ -1411,8 +1411,26 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
     
     // Function to generate choropleth data based on scale
     function generateChoroplethData(scale = 'linear') {
+        console.log('generateChoroplethData called with scale:', scale);
+        console.log('plotlyMapData available:', plotlyMapData ? plotlyMapData.length : 0, 'countries');
+        
+        if (!plotlyMapData || plotlyMapData.length === 0) {
+            console.error('No plotlyMapData available for choropleth');
+            return [{
+                type: 'choropleth',
+                locations: [],
+                z: [],
+                text: [],
+                colorscale: [[0, '#f0f0f0'], [1, '#f0f0f0']],
+                colorbar: { title: 'No Data' }
+            }];
+        }
+        
         const values = plotlyMapData.map(country => country.value);
         let transformedValues, colorbarTitle, validValues;
+        
+        console.log('Original values sample:', values.slice(0, 5));
+        console.log('Value range:', Math.min(...values), 'to', Math.max(...values));
         
         if (scale === 'log') {
             // Apply log10 transformation, handle zero and invalid values
@@ -1430,14 +1448,25 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
                 originalValues: values.slice(0, 5),
                 transformedValues: transformedValues.slice(0, 5),
                 validCount: validValues.length,
+                totalCount: transformedValues.length,
                 range: validValues.length > 0 ? [Math.min(...validValues), Math.max(...validValues)] : [0, 1]
             });
+            
+            // Check if we have enough valid values for log transformation
+            if (validValues.length === 0) {
+                console.warn('No valid values for log transformation, falling back to linear');
+                return generateChoroplethData('linear');
+            }
             
             colorbarTitle = 'Log₁₀(Retractions)';
         } else {
             transformedValues = values.map(value => Number(value) || 0);
             validValues = transformedValues.filter(v => v > 0);
             colorbarTitle = 'Retractions';
+            console.log('Linear transformation:', {
+                validCount: validValues.length,
+                range: validValues.length > 0 ? [Math.min(...validValues), Math.max(...validValues)] : [0, 0]
+            });
         }
         
         // Dynamic color scale based on scale type and data range
@@ -1458,6 +1487,7 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
                 [0.8, '#fb6a4a'],
                 [1, '#de2d26']
             ];
+            console.log('Log scale settings:', { zmin, zmax, validCount: validValues.length });
         } else {
             zmin = 0;
             zmax = Math.max(...transformedValues);
@@ -1469,9 +1499,10 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
                 [0.8, '#dc2626'],
                 [1, '#b91c1c']
             ];
+            console.log('Linear scale settings:', { zmin, zmax, totalValues: transformedValues.length });
         }
         
-        return [{
+        const choroplethData = [{
             type: 'choropleth',
             locations: plotlyMapData.map(country => country.iso_alpha),
             z: transformedValues,
@@ -1490,6 +1521,9 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
                 titleside: 'right'
             }
         }];
+        
+        console.log('Generated choropleth data successfully for', scale, 'scale');
+        return choroplethData;
     }
     
     // Function to update the choropleth map
@@ -1904,46 +1938,76 @@ function updateNetworkChart() {
     const networkType = document.getElementById('networkTypeFilter').value;
     const networkData = {{ network_data|safe }};
     
+    // Debug the network data structure
+    console.log('Network data for filter:', networkType, networkData);
+    
+    if (!networkData || !networkData.nodes || !networkData.links) {
+        console.error('Invalid network data structure for filtering');
+        document.getElementById("networkVisualization").innerHTML = '<p class="text-center text-muted">No network data available for this view</p>';
+        return;
+    }
+    
     // Filter nodes and links based on network type
     let filteredNodes = [];
     let filteredLinks = [];
     
     switch(networkType) {
         case 'journals':
-            filteredNodes = networkData.nodes.filter(node => node.type === 'journal');
+            // Filter for journal-related nodes and links
+            filteredNodes = networkData.nodes.filter(node => 
+                node.type === 'journal' || node.type === 'country'
+            );
             filteredLinks = networkData.links.filter(link => 
                 link.type === 'journal-country' && 
                 filteredNodes.some(n => n.id === link.source) &&
-                networkData.nodes.filter(n => n.type === 'country').some(n => n.id === link.target)
+                filteredNodes.some(n => n.id === link.target)
             );
-            // Add country nodes that are connected to journals
-            const connectedCountryIds = [...new Set(filteredLinks.map(l => l.target))];
-            const connectedCountries = networkData.nodes.filter(node => 
-                node.type === 'country' && connectedCountryIds.includes(node.id)
-            );
-            filteredNodes = [...filteredNodes, ...connectedCountries];
             break;
             
         case 'subjects':
-            filteredNodes = networkData.nodes.filter(node => node.type === 'subject');
+            // Filter for subject-related nodes and links
+            filteredNodes = networkData.nodes.filter(node => 
+                node.type === 'subject' || node.type === 'journal'
+            );
             filteredLinks = networkData.links.filter(link => 
                 link.type === 'subject-journal' &&
                 filteredNodes.some(n => n.id === link.source) &&
-                networkData.nodes.filter(n => n.type === 'journal').some(n => n.id === link.target)
+                filteredNodes.some(n => n.id === link.target)
             );
-            // Add journal nodes that are connected to subjects
-            const connectedJournalIds = [...new Set(filteredLinks.map(l => l.target))];
-            const connectedJournals = networkData.nodes.filter(node => 
-                node.type === 'journal' && connectedJournalIds.includes(node.id)
-            );
-            filteredNodes = [...filteredNodes, ...connectedJournals];
             break;
             
         case 'combined':
         default:
-            filteredNodes = networkData.nodes;
-            filteredLinks = networkData.links;
+            // For combined view, use all nodes and links but prioritize main retracted/citing structure
+            if (networkData.nodes.some(n => n.group === 'retracted' || n.group === 'citing')) {
+                // Use retracted/citing paper structure
+                filteredNodes = networkData.nodes.filter(node => 
+                    node.group === 'retracted' || node.group === 'citing'
+                );
+                filteredLinks = networkData.links.filter(link => 
+                    filteredNodes.some(n => n.id === link.source) &&
+                    filteredNodes.some(n => n.id === link.target)
+                );
+            } else {
+                // Use all available nodes and links
+                filteredNodes = networkData.nodes;
+                filteredLinks = networkData.links;
+            }
             break;
+    }
+    
+    console.log(`Filtered data for ${networkType}:`, {
+        nodes: filteredNodes.length,
+        links: filteredLinks.length,
+        nodeTypes: [...new Set(filteredNodes.map(n => n.type || n.group))],
+        linkTypes: [...new Set(filteredLinks.map(l => l.type))]
+    });
+    
+    // If no data available for this view, show message
+    if (filteredNodes.length === 0) {
+        document.getElementById("networkVisualization").innerHTML = 
+            `<p class="text-center text-muted">No ${networkType} relationship data available</p>`;
+        return;
     }
     
     // Clear and reinitialize the network visualization
@@ -1956,6 +2020,9 @@ function updateNetworkChart() {
         .append("svg")
         .attr("width", width)
         .attr("height", height);
+    
+    // Create container for all network elements
+    const container = svg.append("g");
     
     // Add zoom behavior
     const zoom = d3.zoom()
@@ -1995,37 +2062,35 @@ function updateNetworkChart() {
             svg.transition().call(zoom.transform, d3.zoomIdentity);
         });
     
-    // Create container for all network elements
-    const container = svg.append("g");
-    
     const simulation = d3.forceSimulation(filteredNodes)
         .force("link", d3.forceLink(filteredLinks).id(d => d.id))
         .force("charge", d3.forceManyBody().strength(-300))
         .force("center", d3.forceCenter(width / 2, height / 2))
-        .force("collision", d3.forceCollide().radius(d => Math.max(8, d.size / 2) + 2));
+        .force("collision", d3.forceCollide().radius(d => Math.max(8, (d.size || 10) / 2) + 2));
     
     const link = container.append("g")
         .selectAll("line")
         .data(filteredLinks)
         .enter()
         .append("line")
-        .attr("stroke", "#999")
+        .attr("stroke", d => d.color || "#999")
         .attr("stroke-opacity", 0.6)
-        .attr("stroke-width", d => Math.max(1, d.value / 10));
+        .attr("stroke-width", d => Math.max(1, (d.strength || d.value || 2) / 2));
     
     const node = container.append("g")
         .selectAll("circle")
         .data(filteredNodes)
         .enter()
         .append("circle")
-        .attr("r", d => Math.max(8, d.size / 2))
+        .attr("r", d => Math.max(8, (d.size || 10) / 2))
         .attr("fill", d => {
-            switch(d.type) {
-                case 'journal': return '#007bff';
-                case 'country': return '#28a745';
-                case 'subject': return '#ffc107';
-                default: return '#6c757d';
-            }
+            // Handle both group-based and type-based coloring
+            if (d.group === 'retracted') return '#dc2626'; // Red for retracted papers
+            if (d.group === 'citing') return '#10b981';    // Green for citing papers
+            if (d.type === 'journal') return '#007bff';    // Blue for journals
+            if (d.type === 'country') return '#28a745';    // Green for countries
+            if (d.type === 'subject') return '#ffc107';    // Yellow for subjects
+            return '#6b7280'; // Gray fallback
         })
         .style("cursor", "pointer")
         .call(d3.drag()
@@ -2038,53 +2103,74 @@ function updateNetworkChart() {
         .data(filteredNodes)
         .enter()
         .append("text")
-        .text(d => d.name)
-        .attr("font-size", "12px")
+        .text(d => (d.title || d.name || d.full_name || 'Unknown').substring(0, 15) + '...')
+        .attr("font-size", "10px")
         .attr("dx", 15)
         .attr("dy", 4)
-        .style("pointer-events", "none");
+        .style("pointer-events", "none")
+        .style("fill", "#333");
     
-    // Tooltip functionality
+    // Enhanced tooltip functionality
     node.on("mouseover", function(event, d) {
-        d3.select(this).attr("r", Math.max(12, d.size / 2 + 4));
+        const tooltip = document.getElementById("networkTooltip") || createNetworkTooltip();
+        tooltip.style.display = "block";
+        tooltip.style.left = (event.pageX + 10) + "px";
+        tooltip.style.top = (event.pageY - 10) + "px";
         
-        const tooltip = d3.select("body").append("div")
-            .attr("class", "tooltip")
-            .style("opacity", 0)
-            .style("position", "absolute")
-            .style("background", "rgba(0,0,0,0.8)")
-            .style("color", "white")
-            .style("padding", "8px")
-            .style("border-radius", "4px")
-            .style("font-size", "12px")
-            .style("z-index", "1000");
+        let tooltipContent = `<strong>${d.title || d.name || d.full_name || 'Unknown'}</strong><br>`;
         
-        tooltip.transition()
-            .duration(200)
-            .style("opacity", .9);
-            
-        tooltip.html(`
-            <strong>${d.full_name}</strong><br/>
-            Type: ${d.type}<br/>
-            ${d.retraction_count ? `Retractions: ${d.retraction_count}` : ''}
-            ${d.post_retraction_citations ? `<br/>Post-retraction citations: ${d.post_retraction_citations}` : ''}
-        `)
-            .style("left", (event.pageX + 10) + "px")
-            .style("top", (event.pageY - 28) + "px");
+        if (d.group === 'retracted') {
+            tooltipContent += `Type: Retracted Paper<br>`;
+            tooltipContent += `Journal: ${d.journal || 'Unknown'}<br>`;
+            tooltipContent += `Citations: ${d.citations || 0}<br>`;
+            tooltipContent += `Post-retraction: ${d.post_citations || 0}<br>`;
+            tooltipContent += `Retracted: ${d.retraction_year || 'Unknown'}`;
+        } else if (d.group === 'citing') {
+            tooltipContent += `Type: Citing Paper<br>`;
+            tooltipContent += `Journal: ${d.journal || 'Unknown'}<br>`;
+            tooltipContent += `Citations: ${d.citations || 0}<br>`;
+            if (d.citation_type) {
+                tooltipContent += `Citation Type: ${d.citation_type.replace('_', ' ')}<br>`;
+            }
+            tooltipContent += `Published: ${d.pub_year || 'Unknown'}`;
+        } else if (d.type) {
+            tooltipContent += `Type: ${d.type}<br>`;
+            if (d.retraction_count) {
+                tooltipContent += `Retractions: ${d.retraction_count}<br>`;
+            }
+            if (d.post_retraction_citations) {
+                tooltipContent += `Post-retraction citations: ${d.post_retraction_citations}<br>`;
+            }
+            tooltipContent += `Size: ${d.size || 'N/A'}`;
+        }
+        
+        tooltip.innerHTML = tooltipContent;
     })
-    .on("mouseout", function(event, d) {
-        d3.select(this).attr("r", Math.max(8, d.size / 2));
-        d3.selectAll(".tooltip").remove();
+    .on("mouseout", function() {
+        const tooltip = document.getElementById("networkTooltip");
+        if (tooltip) tooltip.style.display = "none";
     });
     
-    simulation
-        .nodes(filteredNodes)
-        .on("tick", ticked);
+    // Create tooltip element if it doesn't exist
+    function createNetworkTooltip() {
+        const tooltip = document.createElement("div");
+        tooltip.id = "networkTooltip";
+        tooltip.style.cssText = `
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+        `;
+        document.body.appendChild(tooltip);
+        return tooltip;
+    }
     
-    simulation.force("link")
-        .links(filteredLinks);
-    
-    function ticked() {
+    simulation.on("tick", () => {
         link
             .attr("x1", d => d.source.x)
             .attr("y1", d => d.source.y)
@@ -2094,11 +2180,11 @@ function updateNetworkChart() {
         node
             .attr("cx", d => d.x)
             .attr("cy", d => d.y);
-        
+            
         label
             .attr("x", d => d.x)
             .attr("y", d => d.y);
-    }
+    });
     
     function dragstarted(event, d) {
         if (!event.active) simulation.alphaTarget(0.3).restart();
