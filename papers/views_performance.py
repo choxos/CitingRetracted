@@ -94,17 +94,34 @@ class PerformanceAnalyticsView(View):
                     'q1_citations': float(citation_counts[q1_index]) if q1_index < len(citation_counts) else 0,
                     'median_citations': float(citation_counts[median_index]) if median_index < len(citation_counts) else 0,
                     'q3_citations': float(citation_counts[q3_index]) if q3_index < len(citation_counts) else 0,
-                    'total_papers_with_citations': n
+                    'total_papers_with_citations': n,
+                    # Template expects these field names
+                    'avg_citations_per_paper': float(stats['mean_citations']) if stats['mean_citations'] else 0,
+                    'stdev_citations_per_paper': float(stats['std_citations']) if stats['std_citations'] else 0,
+                    'median_citations_per_paper': float(citation_counts[median_index]) if median_index < len(citation_counts) else 0,
+                    'q1_citations_per_paper': float(citation_counts[q1_index]) if q1_index < len(citation_counts) else 0,
+                    'q3_citations_per_paper': float(citation_counts[q3_index]) if q3_index < len(citation_counts) else 0
                 })
             else:
                 basic_stats.update({
                     'mean_citations': 0, 'std_citations': 0, 'q1_citations': 0,
-                    'median_citations': 0, 'q3_citations': 0, 'total_papers_with_citations': 0
+                    'median_citations': 0, 'q3_citations': 0, 'total_papers_with_citations': 0,
+                    # Template expects these field names
+                    'avg_citations_per_paper': 0,
+                    'stdev_citations_per_paper': 0,
+                    'median_citations_per_paper': 0,
+                    'q1_citations_per_paper': 0,
+                    'q3_citations_per_paper': 0
                 })
             
             logger.info(f"Statistics calculated - Mean: {basic_stats.get('mean_citations', 0):.1f}, "
                        f"SD: {basic_stats.get('std_citations', 0):.1f}, "
                        f"Median: {basic_stats.get('median_citations', 0):.1f}")
+            
+            # Verify template field names are properly set
+            logger.info(f"Template stats - Mean: {basic_stats.get('avg_citations_per_paper', 0):.1f}, "
+                       f"SD: {basic_stats.get('stdev_citations_per_paper', 0):.1f}, "
+                       f"Median: {basic_stats.get('median_citations_per_paper', 0):.1f}")
             
             # Citation statistics in one query
             citation_stats = Citation.objects.aggregate(
@@ -411,6 +428,9 @@ class PerformanceAnalyticsView(View):
             logger.info(f"Found {len(top_retracted)} retracted papers with >5 post-retraction citations")
             if top_retracted:
                 logger.info(f"Top paper: {top_retracted[0]['title'][:50]}... with {top_retracted[0]['post_retraction_count']} post-retraction citations")
+                # Verify these are real papers from database
+                for i, paper in enumerate(top_retracted[:3]):
+                    logger.info(f"Retracted paper {i+1}: '{paper['title'][:30]}...' (ID: {paper['record_id']}, Citations: {paper['citation_count']}, Post-retraction: {paper['post_retraction_count']})")
             
             # Get citing papers for these retracted papers
             network_nodes = []
@@ -446,11 +466,17 @@ class PerformanceAnalyticsView(View):
                 logger.info(f"Found {len(citations)} actual citations for network visualization")
                 
                 # Add citing paper nodes and links
+                citing_papers_added = 0
                 for i, citation in enumerate(citations):
                     citing_id = f"citing_{i}"
                     citing_title = citation['citing_paper__title']
                     
                     if citing_title:  # Only add if we have a title
+                        citing_papers_added += 1
+                        # Log first few citing papers to verify real data
+                        if citing_papers_added <= 3:
+                            logger.info(f"Citing paper {citing_papers_added}: '{citing_title[:30]}...' (Days after: {citation['days_after_retraction']}, Journal: '{citation['citing_paper__journal'][:20] if citation['citing_paper__journal'] else 'Unknown'}')")
+                        
                         # Determine citation timing type
                         days_after = citation['days_after_retraction'] or 0
                         if days_after > 0:
@@ -632,7 +658,7 @@ class PerformanceAnalyticsView(View):
                     categories['Life Sciences']['Ecology & Environment'][subject[:20]] = categories['Life Sciences']['Ecology & Environment'].get(subject[:20], 0) + 1
                     placed = True
                 
-                # Physical Sciences
+                # Physical Sciences (enhanced)
                 elif any(word in subject_lower for word in ['chemistry', 'chemical', 'organic', 'inorganic']):
                     categories['Physical Sciences']['Chemistry'][subject[:20]] = categories['Physical Sciences']['Chemistry'].get(subject[:20], 0) + 1
                     placed = True
@@ -646,7 +672,7 @@ class PerformanceAnalyticsView(View):
                     categories['Physical Sciences']['Earth Sciences'][subject[:20]] = categories['Physical Sciences']['Earth Sciences'].get(subject[:20], 0) + 1
                     placed = True
                 
-                # Medical Sciences
+                # Medical Sciences (enhanced)
                 elif any(word in subject_lower for word in ['medical', 'clinical', 'medicine', 'health', 'disease']):
                     categories['Medical Sciences']['Clinical Medicine'][subject[:20]] = categories['Medical Sciences']['Clinical Medicine'].get(subject[:20], 0) + 1
                     placed = True
@@ -660,7 +686,7 @@ class PerformanceAnalyticsView(View):
                     categories['Medical Sciences']['Neuroscience'][subject[:20]] = categories['Medical Sciences']['Neuroscience'].get(subject[:20], 0) + 1
                     placed = True
                 
-                # Engineering & Technology
+                # Engineering & Technology (enhanced)
                 elif any(word in subject_lower for word in ['computer', 'software', 'algorithm', 'data']):
                     categories['Engineering & Technology']['Computer Science'][subject[:20]] = categories['Engineering & Technology']['Computer Science'].get(subject[:20], 0) + 1
                     placed = True
@@ -674,7 +700,7 @@ class PerformanceAnalyticsView(View):
                     categories['Engineering & Technology']['Technology'][subject[:20]] = categories['Engineering & Technology']['Technology'].get(subject[:20], 0) + 1
                     placed = True
                 
-                # Social Sciences
+                # Social Sciences (enhanced)
                 elif any(word in subject_lower for word in ['psychology', 'behavioral', 'psycho']):
                     categories['Social Sciences']['Psychology'][subject[:20]] = categories['Social Sciences']['Psychology'].get(subject[:20], 0) + 1
                     placed = True
@@ -688,9 +714,24 @@ class PerformanceAnalyticsView(View):
                     categories['Social Sciences']['Sociology'][subject[:20]] = categories['Social Sciences']['Sociology'].get(subject[:20], 0) + 1
                     placed = True
                 
+                # Enhanced catch-all categories for better coverage
+                elif any(word in subject_lower for word in ['agriculture', 'food', 'nutrition', 'farming']):
+                    categories['Life Sciences']['Ecology & Environment'][subject[:20]] = categories['Life Sciences']['Ecology & Environment'].get(subject[:20], 0) + 1
+                    placed = True
+                elif any(word in subject_lower for word in ['art', 'literature', 'history', 'philosophy']):
+                    categories['Social Sciences']['Education'][subject[:20]] = categories['Social Sciences']['Education'].get(subject[:20], 0) + 1
+                    placed = True
+                elif any(word in subject_lower for word in ['energy', 'renewable', 'power', 'electrical']):
+                    categories['Engineering & Technology']['Technology'][subject[:20]] = categories['Engineering & Technology']['Technology'].get(subject[:20], 0) + 1
+                    placed = True
+                
                 # If not placed anywhere, add to most relevant broader category
                 if not placed:
-                    categories['Life Sciences']['Biology'][subject[:20]] = categories['Life Sciences']['Biology'].get(subject[:20], 0) + 1
+                    # Try to make an educated guess based on common academic terms
+                    if any(word in subject_lower for word in ['research', 'study', 'analysis', 'investigation']):
+                        categories['Social Sciences']['Education'][subject[:20]] = categories['Social Sciences']['Education'].get(subject[:20], 0) + 1
+                    else:
+                        categories['Life Sciences']['Biology'][subject[:20]] = categories['Life Sciences']['Biology'].get(subject[:20], 0) + 1
         
         # Convert to three-level sunburst format
         children = []
