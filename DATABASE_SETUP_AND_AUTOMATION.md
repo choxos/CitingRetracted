@@ -7,7 +7,7 @@ This guide covers how to populate your PRCT application with real retraction dat
 After SSL setup, your PRCT application is live at https://prct.xeradb.com. This guide will help you:
 
 1. **Clear sample data** from the database
-2. **Import real retracted papers** from Retraction Watch
+2. **Download and import real retracted papers** from Retraction Watch
 3. **Fetch citations** from academic APIs
 4. **Set up automated daily updates** using Celery
 
@@ -20,8 +20,8 @@ Remove any existing sample data to start fresh:
 sudo -u xeradb bash -c "
 cd /var/www/prct
 export SECRET_KEY='$(grep SECRET_KEY .env | cut -d= -f2)'
-export DB_PASSWORD='$(grep DB_PASSWORD .env | cut -d= -f2)'
-export DJANGO_SETTINGS_MODULE=citing_retracted.production_settings
+export DATABASE_PASSWORD='$(grep DATABASE_PASSWORD .env | cut -d= -f2)'
+export DJANGO_SETTINGS_MODULE=citing_retracted.settings_production
 
 # Clear existing data
 ./venv/bin/python manage.py shell << 'EOF'
@@ -36,25 +36,65 @@ EOF
 "
 ```
 
-## 📥 Step 2: Import Retracted Papers from Retraction Watch
+## 📥 Step 2: Download Retraction Watch Data
 
-Import real retracted papers data from Retraction Watch CSV:
+**First, download the latest Retraction Watch CSV data:**
 
 ```bash
-# Import retracted papers data
+# Download the latest Retraction Watch data
 sudo -u xeradb bash -c "
 cd /var/www/prct
-export SECRET_KEY='$(grep SECRET_KEY .env | cut -d= -f2)'
-export DB_PASSWORD='$(grep DB_PASSWORD .env | cut -d= -f2)'
-export DJANGO_SETTINGS_MODULE=citing_retracted.production_settings
 
-# Download and import retraction watch data (this will take several minutes)
-echo 'Starting retracted papers import...'
-./venv/bin/python manage.py import_retraction_watch --update-existing --limit 1000
+# Option A: Use the built-in download script (Recommended)
+./download_retraction_watch.sh
+
+# Option B: Use the Python fetcher
+# python fetch_retraction_watch_data.py
+
+# Option C: Manual download with wget
+# wget -c -O \"retraction_watch_\$(date +%Y%m%d).csv\" \
+#   \"https://gitlab.com/crossref/retraction-watch-data/-/raw/main/retraction_watch.csv?ref_type=heads&inline=false\"
 "
 ```
 
-### Alternative: Import from Local CSV File
+**Important:** The download script will show you the filename - note it for the next step!
+
+## 📊 Step 3: Import Retracted Papers from CSV
+
+Import the downloaded CSV file into your database:
+
+```bash
+# Import retracted papers data (REPLACE with your actual CSV filename!)
+sudo -u xeradb bash -c "
+cd /var/www/prct
+export SECRET_KEY='$(grep SECRET_KEY .env | cut -d= -f2)'
+export DATABASE_PASSWORD='$(grep DATABASE_PASSWORD .env | cut -d= -f2)'
+export DJANGO_SETTINGS_MODULE=citing_retracted.settings_production
+
+# Import from the downloaded CSV file (replace filename with actual downloaded file)
+echo 'Starting retracted papers import...'
+./venv/bin/python manage.py import_retraction_watch retraction_watch_YYYYMMDD_HHMMSS.csv --update-existing --limit 1000
+"
+```
+
+### Alternative: Complete Automated Pipeline
+
+For a fully automated download and import process:
+
+```bash
+# Use the complete update pipeline (downloads AND imports automatically)
+sudo -u xeradb bash -c "
+cd /var/www/prct
+export SECRET_KEY='$(grep SECRET_KEY .env | cut -d= -f2)'
+export DATABASE_PASSWORD='$(grep DATABASE_PASSWORD .env | cut -d= -f2)'
+export DJANGO_SETTINGS_MODULE=citing_retracted.settings_production
+
+# This will download the latest data AND import it
+python update_retraction_database.py --prct-path /var/www/prct --citations-limit 1000
+"
+```
+
+### Import from Local CSV File
 
 If you have a local Retraction Watch CSV file:
 
@@ -63,10 +103,10 @@ If you have a local Retraction Watch CSV file:
 sudo -u xeradb bash -c "
 cd /var/www/prct
 export SECRET_KEY='$(grep SECRET_KEY .env | cut -d= -f2)'
-export DB_PASSWORD='$(grep DB_PASSWORD .env | cut -d= -f2)'
-export DJANGO_SETTINGS_MODULE=citing_retracted.production_settings
+export DATABASE_PASSWORD='$(grep DATABASE_PASSWORD .env | cut -d= -f2)'
+export DJANGO_SETTINGS_MODULE=citing_retracted.settings_production
 
-# Import from specific file
+# Import from specific file (MUST provide CSV file path)
 ./venv/bin/python manage.py import_retraction_watch /path/to/retraction_watch.csv --update-existing
 "
 ```
@@ -76,8 +116,9 @@ export DJANGO_SETTINGS_MODULE=citing_retracted.production_settings
 - `--update-existing`: Update existing records with new data
 - `--limit N`: Process only first N rows
 - `--dry-run`: Preview changes without saving to database
+- `--verbosity 2`: Show detailed progress information
 
-## 🔍 Step 3: Fetch Citations from APIs
+## 🔍 Step 4: Fetch Citations from APIs
 
 Retrieve citation data for the imported papers:
 
@@ -86,8 +127,8 @@ Retrieve citation data for the imported papers:
 sudo -u xeradb bash -c "
 cd /var/www/prct
 export SECRET_KEY='$(grep SECRET_KEY .env | cut -d= -f2)'
-export DB_PASSWORD='$(grep DB_PASSWORD .env | cut -d= -f2)'
-export DJANGO_SETTINGS_MODULE=citing_retracted.production_settings
+export DATABASE_PASSWORD='$(grep DATABASE_PASSWORD .env | cut -d= -f2)'
+export DJANGO_SETTINGS_MODULE=citing_retracted.settings_production
 
 # Fetch citations for first 50 papers (this will take 10-15 minutes)
 echo 'Starting citation fetching...'
@@ -102,9 +143,9 @@ echo 'Starting citation fetching...'
 - `--force-refresh`: Force refresh even for recently checked papers
 - `--dry-run`: Preview API calls without saving data
 
-## ⏰ Step 4: Set Up Daily Automated Updates
+## ⏰ Step 5: Set Up Daily Automated Updates
 
-### 4.1 Install Redis (Required for Celery)
+### 5.1 Install Redis (Required for Celery)
 
 ```bash
 # Install Redis for background tasks
@@ -120,7 +161,7 @@ redis-cli ping
 # Should return: PONG
 ```
 
-### 4.2 Install Celery Dependencies
+### 5.2 Install Celery Dependencies
 
 ```bash
 # Install Celery in your virtual environment
@@ -130,7 +171,7 @@ cd /var/www/prct
 "
 ```
 
-### 4.3 Create Celery Configuration
+### 5.3 Create Celery Configuration
 
 ```bash
 # Create Celery configuration
@@ -140,7 +181,7 @@ from celery import Celery
 from django.conf import settings
 
 # Set default Django settings
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'citing_retracted.production_settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'citing_retracted.settings_production')
 
 app = Celery('citing_retracted')
 app.config_from_object('django.conf:settings', namespace='CELERY')
@@ -168,11 +209,11 @@ app.conf.timezone = 'UTC'
 EOF
 ```
 
-### 4.4 Update Django Settings for Celery
+### 5.4 Update Django Settings for Celery
 
 ```bash
-# Add Celery settings to production_settings.py
-sudo -u xeradb tee -a /var/www/prct/citing_retracted/production_settings.py > /dev/null << 'EOF'
+# Add Celery settings to settings_production.py
+sudo -u xeradb tee -a /var/www/prct/citing_retracted/settings_production.py > /dev/null << 'EOF'
 
 # Celery Configuration
 CELERY_BROKER_URL = 'redis://localhost:6379/0'
@@ -191,7 +232,7 @@ INSTALLED_APPS += ['django_celery_beat']
 EOF
 ```
 
-### 4.5 Create Celery Systemd Services
+### 5.5 Create Celery Systemd Services
 
 #### Celery Worker Service
 
@@ -243,7 +284,7 @@ WantedBy=multi-user.target
 EOF
 ```
 
-### 4.6 Run Migrations and Start Services
+### 5.6 Run Migrations and Start Services
 
 ```bash
 # Run migrations for Celery Beat
@@ -251,7 +292,7 @@ sudo -u xeradb bash -c "
 cd /var/www/prct
 export SECRET_KEY='$(grep SECRET_KEY .env | cut -d= -f2)'
 export DATABASE_PASSWORD='$(grep DATABASE_PASSWORD .env | cut -d= -f2)'
-export DJANGO_SETTINGS_MODULE=citing_retracted.production_settings
+export DJANGO_SETTINGS_MODULE=citing_retracted.settings_production
 ./venv/bin/python manage.py migrate
 "
 
@@ -267,15 +308,15 @@ sudo systemctl status xeradb-prct-celery
 sudo systemctl status xeradb-prct-beat
 ```
 
-## 📊 Step 5: Set Up Scheduled Tasks in Django Admin
+## 📊 Step 6: Set Up Scheduled Tasks in Django Admin
 
 ```bash
 # Create periodic tasks
 sudo -u xeradb bash -c "
 cd /var/www/prct
 export SECRET_KEY='$(grep SECRET_KEY .env | cut -d= -f2)'
-export DB_PASSWORD='$(grep DB_PASSWORD .env | cut -d= -f2)'
-export DJANGO_SETTINGS_MODULE=citing_retracted.production_settings
+export DATABASE_PASSWORD='$(grep DATABASE_PASSWORD .env | cut -d= -f2)'
+export DJANGO_SETTINGS_MODULE=citing_retracted.settings_production
 
 ./venv/bin/python manage.py shell << 'EOF'
 from django_celery_beat.models import PeriodicTask, CrontabSchedule
@@ -323,15 +364,15 @@ EOF
 "
 ```
 
-## ✅ Step 6: Test Everything
+## ✅ Step 7: Test Everything
 
 ```bash
 # Test that everything is working
 sudo -u xeradb bash -c "
 cd /var/www/prct
 export SECRET_KEY='$(grep SECRET_KEY .env | cut -d= -f2)'
-export DB_PASSWORD='$(grep DB_PASSWORD .env | cut -d= -f2)'
-export DJANGO_SETTINGS_MODULE=citing_retracted.production_settings
+export DATABASE_PASSWORD='$(grep DATABASE_PASSWORD .env | cut -d= -f2)'
+export DJANGO_SETTINGS_MODULE=citing_retracted.settings_production
 
 echo 'Testing database connection...'
 ./venv/bin/python manage.py shell -c 'from papers.models import RetractedPaper; print(f\"Papers in database: {RetractedPaper.objects.count()}\")'
@@ -350,6 +391,30 @@ sudo systemctl status redis-server
 curl -I https://prct.xeradb.com
 ```
 
+## 🔧 Clear Analytics Cache After Import
+
+**Important:** After importing new data, clear the analytics cache:
+
+```bash
+# Clear analytics cache to show updated data
+sudo -u xeradb bash -c "
+cd /var/www/prct
+export SECRET_KEY='$(grep SECRET_KEY .env | cut -d= -f2)'
+export DATABASE_PASSWORD='$(grep DATABASE_PASSWORD .env | cut -d= -f2)'
+export DJANGO_SETTINGS_MODULE=citing_retracted.settings_production
+
+./venv/bin/python manage.py shell -c \"
+from django.core.cache import cache
+cache.delete('analytics_complex_data_v2')
+cache.delete('analytics_basic_stats_v2')
+print('✅ Analytics cache cleared!')
+\"
+"
+
+# Restart the web service to ensure fresh data
+sudo systemctl restart xeradb-prct.service
+```
+
 ## 📋 Daily Schedule Summary
 
 Your PRCT application will now automatically:
@@ -363,8 +428,9 @@ Your PRCT application will now automatically:
 ### Retracted Papers Import
 
 ```bash
-# Import from CSV file
-./venv/bin/python manage.py import_retraction_watch /path/to/file.csv
+# Download data first, then import
+./download_retraction_watch.sh
+./venv/bin/python manage.py import_retraction_watch retraction_watch_YYYYMMDD.csv
 
 # Import with options
 ./venv/bin/python manage.py import_retraction_watch file.csv --update-existing --limit 500
@@ -448,8 +514,8 @@ redis-cli monitor
 sudo -u xeradb bash -c "
 cd /var/www/prct
 export SECRET_KEY='$(grep SECRET_KEY .env | cut -d= -f2)'
-export DB_PASSWORD='$(grep DB_PASSWORD .env | cut -d= -f2)'
-export DJANGO_SETTINGS_MODULE=citing_retracted.production_settings
+export DATABASE_PASSWORD='$(grep DATABASE_PASSWORD .env | cut -d= -f2)'
+export DJANGO_SETTINGS_MODULE=citing_retracted.settings_production
 
 ./venv/bin/python manage.py shell << 'EOF'
 from papers.tasks import refresh_retracted_papers, refresh_citations, cleanup_old_logs
@@ -472,7 +538,14 @@ EOF
 
 ### Common Issues
 
-1. **Celery services not starting**
+1. **Import command fails with "csv_file required"**
+   ```bash
+   # MUST provide CSV file path - download first!
+   ./download_retraction_watch.sh
+   ./venv/bin/python manage.py import_retraction_watch retraction_watch_YYYYMMDD.csv --update-existing
+   ```
+
+2. **Celery services not starting**
    ```bash
    # Check logs
    sudo journalctl -u xeradb-prct-celery --no-pager
@@ -482,7 +555,7 @@ EOF
    sudo systemctl restart xeradb-prct-beat
    ```
 
-2. **Redis connection errors**
+3. **Redis connection errors**
    ```bash
    # Check Redis status
    sudo systemctl status redis-server
@@ -494,10 +567,11 @@ EOF
    sudo systemctl restart redis-server
    ```
 
-3. **Import command fails**
+4. **Environment variable issues**
    ```bash
-   # Check Django settings
-   echo $DJANGO_SETTINGS_MODULE
+   # Check environment variables
+   grep SECRET_KEY /var/www/prct/.env
+   grep DATABASE_PASSWORD /var/www/prct/.env
    
    # Test database connection
    ./venv/bin/python manage.py check --deploy
@@ -506,13 +580,24 @@ EOF
    ./venv/bin/python manage.py import_retraction_watch file.csv --verbosity 2
    ```
 
-4. **Tasks not running on schedule**
+5. **Tasks not running on schedule**
    ```bash
    # Check beat scheduler logs
    sudo journalctl -u xeradb-prct-beat --no-pager
    
    # Verify tasks in Django admin
    # Visit: https://prct.xeradb.com/admin/django_celery_beat/periodictask/
+   ```
+
+6. **Analytics showing old data**
+   ```bash
+   # Clear analytics cache after importing new data
+   ./venv/bin/python manage.py shell -c "
+   from django.core.cache import cache
+   cache.delete('analytics_complex_data_v2')
+   cache.delete('analytics_basic_stats_v2')
+   print('Cache cleared!')
+   "
    ```
 
 ### Performance Optimization
@@ -529,7 +614,7 @@ EOF
 2. **Optimize API rate limits**
    ```bash
    # Edit production settings
-   sudo nano /var/www/prct/citing_retracted/production_settings.py
+   sudo nano /var/www/prct/citing_retracted/settings_production.py
    
    # Adjust rate limits based on your API quotas
    ```
