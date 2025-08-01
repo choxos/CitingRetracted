@@ -224,16 +224,18 @@
                         
                         <!-- View Toggle -->
                         <div class="btn-group me-3" role="group" aria-label="View mode">
-                            <a href="{% url_replace view='cards' %}" 
-                               class="btn btn-sm {% if view_mode == 'cards' %}btn-primary{% else %}btn-outline-primary{% endif %}"
-                               title="Card View">
+                            <button type="button" id="cards-view-btn"
+                                    class="btn btn-sm {% if view_mode == 'cards' or not view_mode %}btn-primary{% else %}btn-outline-primary{% endif %}"
+                                    title="Card View"
+                                    onclick="switchView('cards')">
                                 <i class="fas fa-th-large"></i> Cards
-                            </a>
-                            <a href="{% url_replace view='table' %}" 
-                               class="btn btn-sm {% if view_mode == 'table' %}btn-primary{% else %}btn-outline-primary{% endif %}"
-                               title="Table View">
+                            </button>
+                            <button type="button" id="table-view-btn"
+                                    class="btn btn-sm {% if view_mode == 'table' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+                                    title="Table View"
+                                    onclick="switchView('table')">
                                 <i class="fas fa-table"></i> Table
-                            </a>
+                            </button>
                         </div>
                     </div>
                     
@@ -252,9 +254,8 @@
                 </div>
             </div>
         
-        {% if view_mode == 'table' %}
-            <!-- Table View -->
-            <div class="table-responsive">
+        <!-- Table View -->
+        <div id="table-view" class="table-responsive {% if view_mode != 'table' %}d-none{% endif %}">
                 <table class="table table-hover">
                     <thead class="table-light">
                         <tr>
@@ -421,8 +422,8 @@
                     </tbody>
                 </table>
             </div>
-        {% else %}
-            <!-- Card View (Default) -->
+        <!-- Card View (Default) -->
+        <div id="card-view" class="{% if view_mode == 'table' %}d-none{% endif %}">
             {% for paper in papers %}
             <div class="xera-card paper-card">
                 <div class="xera-card-body">
@@ -590,7 +591,7 @@
                 </div>
             </div>
             {% endfor %}
-        {% endif %}
+        </div>
         
         <!-- Pagination -->
         {% if is_paginated %}
@@ -638,18 +639,72 @@
 
 {% block extra_js %}
 <script>
-// Search autocomplete (if you want to implement it)
-$(document).ready(function() {
-    $('#q').on('input', function() {
-        const query = $(this).val();
-        if (query.length >= 3) {
-            $.get('{% url "papers:search_autocomplete" %}', {q: query})
-                .done(function(data) {
-                    // Handle autocomplete suggestions
-                    console.log(data.suggestions);
-                });
-        }
-    });
+// Fast client-side view switching without page reload
+function switchView(viewType) {
+    const cardView = document.getElementById('card-view');
+    const tableView = document.getElementById('table-view');
+    const cardsBtn = document.getElementById('cards-view-btn');
+    const tableBtn = document.getElementById('table-view-btn');
+    
+    if (viewType === 'table') {
+        // Show table view
+        cardView.classList.add('d-none');
+        tableView.classList.remove('d-none');
+        
+        // Update button states
+        cardsBtn.classList.remove('btn-primary');
+        cardsBtn.classList.add('btn-outline-primary');
+        tableBtn.classList.remove('btn-outline-primary');
+        tableBtn.classList.add('btn-primary');
+        
+        // Update URL without reload (for bookmarking)
+        const url = new URL(window.location);
+        url.searchParams.set('view', 'table');
+        window.history.replaceState({}, '', url);
+        
+    } else {
+        // Show card view
+        tableView.classList.add('d-none');
+        cardView.classList.remove('d-none');
+        
+        // Update button states
+        tableBtn.classList.remove('btn-primary');
+        tableBtn.classList.add('btn-outline-primary');
+        cardsBtn.classList.remove('btn-outline-primary');
+        cardsBtn.classList.add('btn-primary');
+        
+        // Update URL without reload (for bookmarking)
+        const url = new URL(window.location);
+        url.searchParams.set('view', 'cards');
+        window.history.replaceState({}, '', url);
+    }
+}
+
+// Handle browser back/forward buttons
+window.addEventListener('popstate', function(event) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const viewMode = urlParams.get('view') || 'cards';
+    switchView(viewMode);
 });
+
+// Performance optimization: Add loading states
+function showLoadingState() {
+    const buttons = document.querySelectorAll('#cards-view-btn, #table-view-btn');
+    buttons.forEach(btn => {
+        btn.disabled = true;
+        btn.style.opacity = '0.6';
+    });
+}
+
+function hideLoadingState() {
+    const buttons = document.querySelectorAll('#cards-view-btn, #table-view-btn');
+    buttons.forEach(btn => {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+    });
+}
+
+// Remove jQuery dependency - no autocomplete for now (performance)
+// Future: Implement with vanilla JS if needed
 </script>
 {% endblock %} 
