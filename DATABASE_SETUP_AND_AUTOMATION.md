@@ -545,7 +545,31 @@ EOF
    ./venv/bin/python manage.py import_retraction_watch retraction_watch_YYYYMMDD.csv --update-existing
    ```
 
-2. **Celery services not starting**
+2. **All records fail with "Skipping row without Record ID"**
+   ```bash
+   # This indicates CSV delimiter detection bug (fixed in latest version)
+   # Pull latest code to get the fix:
+   git pull origin main
+   
+   # If still having issues, check CSV headers:
+   head -n 1 retraction_watch_YYYYMMDD.csv | od -c
+   
+   # Should show comma-separated headers like: Record ID,Title,Subject...
+   ```
+
+3. **CSV delimiter detection errors**
+   ```bash
+   # Debug CSV parsing issues:
+   ./venv/bin/python manage.py shell -c "
+   import csv
+   with open('retraction_watch_YYYYMMDD.csv', 'r', encoding='utf-8') as file:
+       reader = csv.DictReader(file, delimiter=',')
+       headers = reader.fieldnames
+       print(f'Headers: {headers[:5]}...')  # Show first 5 headers
+   "
+   ```
+
+4. **Celery services not starting**
    ```bash
    # Check logs
    sudo journalctl -u xeradb-prct-celery --no-pager
@@ -555,7 +579,7 @@ EOF
    sudo systemctl restart xeradb-prct-beat
    ```
 
-3. **Redis connection errors**
+5. **Redis connection errors**
    ```bash
    # Check Redis status
    sudo systemctl status redis-server
@@ -567,7 +591,7 @@ EOF
    sudo systemctl restart redis-server
    ```
 
-4. **Environment variable issues**
+6. **Environment variable issues**
    ```bash
    # Check environment variables
    grep SECRET_KEY /var/www/prct/.env
@@ -580,7 +604,7 @@ EOF
    ./venv/bin/python manage.py import_retraction_watch file.csv --verbosity 2
    ```
 
-5. **Tasks not running on schedule**
+7. **Tasks not running on schedule**
    ```bash
    # Check beat scheduler logs
    sudo journalctl -u xeradb-prct-beat --no-pager
@@ -589,7 +613,7 @@ EOF
    # Visit: https://prct.xeradb.com/admin/django_celery_beat/periodictask/
    ```
 
-6. **Analytics showing old data**
+8. **Analytics showing old data**
    ```bash
    # Clear analytics cache after importing new data
    ./venv/bin/python manage.py shell -c "
