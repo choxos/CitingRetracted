@@ -918,26 +918,47 @@ function initializeTrendCharts() {
                             },
                         },
                     },
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                title: function(context) {
-                                    return 'Year: ' + context[0].label;
-                                },
-                                label: function(context) {
-                                    if (context.datasetIndex === 0) {
-                                        return 'Papers Retracted: ' + context.raw;
-                                    } else {
-                                        return 'Post-Retraction Citations: ' + context.raw;
-                                    }
-                                }
-                            }
-                        }
-                    }
+                                         plugins: {
+                         legend: {
+                             display: true,
+                             position: 'top'
+                         },
+                         tooltip: {
+                             mode: 'index',
+                             intersect: false,
+                             callbacks: {
+                                 title: function(context) {
+                                     return 'Year: ' + context[0].label;
+                                 },
+                                 label: function(context) {
+                                     const value = context.raw;
+                                     if (context.datasetIndex === 0) {
+                                         return 'Papers Retracted: ' + value.toLocaleString();
+                                     } else {
+                                         return 'Post-Retraction Citations: ' + value.toLocaleString();
+                                     }
+                                 },
+                                 footer: function(context) {
+                                     const retractions = context[0].raw;
+                                     const citations = context.length > 1 ? context[1].raw : 0;
+                                     if (retractions > 0 && citations > 0) {
+                                         const ratio = (citations / retractions).toFixed(1);
+                                         return `Average citations per retracted paper: ${ratio}`;
+                                     }
+                                     return '';
+                                 }
+                             }
+                         }
+                     },
+                     elements: {
+                         point: {
+                             radius: 3,
+                             hoverRadius: 6,
+                             backgroundColor: function(context) {
+                                 return context.dataset.borderColor;
+                             }
+                         }
+                     }
                 }
             }
         );

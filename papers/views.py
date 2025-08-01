@@ -1253,8 +1253,27 @@ class AnalyticsView(View):
                 year_aggregates[year]['retraction_count'] += item['retraction_count']
                 year_aggregates[year]['post_retraction_citations'] += item['post_retraction_citations']
             
-            # Convert back to list and sort by year
-            chart_data['combined_trends'] = sorted(year_aggregates.values(), key=lambda x: x['year'])
+            # Fill in missing years with zero values for complete timeline
+            if year_aggregates:
+                min_year = min(year_aggregates.keys())
+                max_year = max(year_aggregates.keys())
+                
+                # Create entry for every year in the range
+                complete_timeline = []
+                for year in range(min_year, max_year + 1):
+                    if year in year_aggregates:
+                        complete_timeline.append(year_aggregates[year])
+                    else:
+                        # Fill missing years with zero values
+                        complete_timeline.append({
+                            'year': year,
+                            'retraction_count': 0,
+                            'post_retraction_citations': 0
+                        })
+                
+                chart_data['combined_trends'] = complete_timeline
+            else:
+                chart_data['combined_trends'] = sorted(year_aggregates.values(), key=lambda x: x['year'])
             
             # Also use this data for retraction_years to show full historical span
             chart_data['retraction_years'] = [
