@@ -4,6 +4,7 @@ from datetime import datetime
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from django.utils.dateparse import parse_date
+from django.db.models import Max
 from papers.models import RetractedPaper, DataImportLog
 
 
@@ -134,6 +135,31 @@ class Command(BaseCommand):
             )
             return
 
+        # Get the highest existing record_id to skip already imported records
+        try:
+            max_existing_id = RetractedPaper.objects.aggregate(
+                max_id=Max('record_id')
+            )['max_id']
+            
+            if max_existing_id is not None:
+                max_existing_id = int(max_existing_id)
+                self.stdout.write(
+                    self.style.SUCCESS(f"Highest existing Record ID: {max_existing_id}")
+                )
+                self.stdout.write(
+                    self.style.SUCCESS(f"Will only process records with ID > {max_existing_id}")
+                )
+            else:
+                max_existing_id = 0
+                self.stdout.write(
+                    self.style.SUCCESS("No existing records found - will process all records")
+                )
+        except Exception as e:
+            self.stdout.write(
+                self.style.WARNING(f"Could not check existing records: {e}")
+            )
+            max_existing_id = 0
+
         # Create import log
         import_log = DataImportLog.objects.create(
             import_type='retraction_watch',
@@ -181,6 +207,16 @@ class Command(BaseCommand):
                             )
                             records_failed += 1
                             continue
+
+                        # Skip records that already exist (efficiency optimization)
+                        try:
+                            record_id_int = int(record_id)
+                            if record_id_int <= max_existing_id:
+                                # Skip silently - we know this record already exists
+                                continue
+                        except ValueError:
+                            # If record_id is not a number, proceed with normal processing
+                            pass
 
                         # Check if record exists
                         existing_paper = None
