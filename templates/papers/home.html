@@ -130,12 +130,27 @@
                         <ul class="nav nav-tabs xera-nav-tabs" id="homeContentTabs" role="tablist">
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link active" id="retractions-tab" data-bs-toggle="tab" data-bs-target="#retractions" type="button" role="tab">
-                                    <i class="fas fa-ban text-danger me-2"></i>Recent Retractions
+                                    <i class="fas fa-ban text-danger me-2"></i>Retractions
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="concerns-tab" data-bs-toggle="tab" data-bs-target="#concerns" type="button" role="tab">
+                                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>Expressions of Concern
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="corrections-tab" data-bs-toggle="tab" data-bs-target="#corrections" type="button" role="tab">
+                                    <i class="fas fa-edit text-info me-2"></i>Corrections
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="reinstatements-tab" data-bs-toggle="tab" data-bs-target="#reinstatements" type="button" role="tab">
+                                    <i class="fas fa-check-circle text-success me-2"></i>Reinstatements
                                 </button>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="citations-tab" data-bs-toggle="tab" data-bs-target="#citations" type="button" role="tab">
-                                    <i class="fas fa-quote-right text-warning me-2"></i>Latest Citations
+                                    <i class="fas fa-quote-right text-secondary me-2"></i>Latest Citations
                                 </button>
                             </li>
                         </ul>
@@ -230,6 +245,228 @@
                                     <div class="prct-alert prct-alert-warning">
                                         <i class="fas fa-info-circle"></i>
                                         No retracted papers found. Data may still be loading.
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Expressions of Concern Tab -->
+                            <div class="tab-pane fade" id="concerns" role="tabpanel">
+                                {% if expression_of_concern_papers %}
+                                    {% for paper in expression_of_concern_papers %}
+                                    <div class="prct-citation-card">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 class="mb-1">
+                                                <a href="{{ paper.get_absolute_url }}" class="text-decoration-none">
+                                                    {{ paper.title|truncatechars:120 }}
+                                                </a>
+                                            </h5>
+                                            <span class="prct-retraction-badge {{ paper.retraction_badge_class }}">
+                                                {{ paper.retraction_nature_display }}
+                                            </span>
+                                        </div>
+                                        
+                                        <div class="row mb-2">
+                                            <div class="col-md-6">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-user"></i>
+                                                    {% if paper.author_list %}
+                                                        {% for author in paper.author_list|slice:":2" %}
+                                                            <a href="{% url 'papers:search' %}?author={{ author|urlencode }}" 
+                                                               class="text-decoration-none text-muted"
+                                                               title="Find papers by {{ author }}">
+                                                                {{ author|truncatechars:25 }}
+                                                            </a>{% if not forloop.last %}, {% endif %}
+                                                        {% endfor %}
+                                                        {% if paper.author_list|length > 2 %}
+                                                            <span class="text-muted"> et al.</span>
+                                                        {% endif %}
+                                                    {% else %}
+                                                        Unknown Author
+                                                    {% endif %}
+                                                </small>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-journal-whills"></i>
+                                                    {{ paper.journal|default:"Unknown Journal"|truncatechars:40 }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-calendar"></i>
+                                                    {{ paper.retraction_nature_display }}: {{ paper.retraction_date|date:"M d, Y"|default:"Unknown" }}
+                                                    {% if paper.formatted_reasons %}
+                                                        <br><i class="fas fa-exclamation-circle"></i>
+                                                        <strong>{{ paper.formatted_reasons|truncatechars:100 }}</strong>
+                                                    {% endif %}
+                                                </small>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <span class="xera-badge xera-badge-warning">
+                                                    {{ paper.citation_count }} citations
+                                                </span>
+                                                {% if paper.is_open_access %}
+                                                    <span class="xera-badge xera-badge-success ms-2">Open Access</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="prct-alert prct-alert-warning">
+                                        <i class="fas fa-info-circle"></i>
+                                        No expressions of concern found.
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Corrections Tab -->
+                            <div class="tab-pane fade" id="corrections" role="tabpanel">
+                                {% if correction_papers %}
+                                    {% for paper in correction_papers %}
+                                    <div class="prct-citation-card">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 class="mb-1">
+                                                <a href="{{ paper.get_absolute_url }}" class="text-decoration-none">
+                                                    {{ paper.title|truncatechars:120 }}
+                                                </a>
+                                            </h5>
+                                            <span class="prct-retraction-badge {{ paper.retraction_badge_class }}">
+                                                {{ paper.retraction_nature_display }}
+                                            </span>
+                                        </div>
+                                        
+                                        <div class="row mb-2">
+                                            <div class="col-md-6">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-user"></i>
+                                                    {% if paper.author_list %}
+                                                        {% for author in paper.author_list|slice:":2" %}
+                                                            <a href="{% url 'papers:search' %}?author={{ author|urlencode }}" 
+                                                               class="text-decoration-none text-muted"
+                                                               title="Find papers by {{ author }}">
+                                                                {{ author|truncatechars:25 }}
+                                                            </a>{% if not forloop.last %}, {% endif %}
+                                                        {% endfor %}
+                                                        {% if paper.author_list|length > 2 %}
+                                                            <span class="text-muted"> et al.</span>
+                                                        {% endif %}
+                                                    {% else %}
+                                                        Unknown Author
+                                                    {% endif %}
+                                                </small>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-journal-whills"></i>
+                                                    {{ paper.journal|default:"Unknown Journal"|truncatechars:40 }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-calendar"></i>
+                                                    {{ paper.retraction_nature_display }}: {{ paper.retraction_date|date:"M d, Y"|default:"Unknown" }}
+                                                    {% if paper.formatted_reasons %}
+                                                        <br><i class="fas fa-exclamation-circle"></i>
+                                                        <strong>{{ paper.formatted_reasons|truncatechars:100 }}</strong>
+                                                    {% endif %}
+                                                </small>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <span class="xera-badge xera-badge-info">
+                                                    {{ paper.citation_count }} citations
+                                                </span>
+                                                {% if paper.is_open_access %}
+                                                    <span class="xera-badge xera-badge-success ms-2">Open Access</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="prct-alert prct-alert-warning">
+                                        <i class="fas fa-info-circle"></i>
+                                        No corrections found.
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Reinstatements Tab -->
+                            <div class="tab-pane fade" id="reinstatements" role="tabpanel">
+                                {% if reinstatement_papers %}
+                                    {% for paper in reinstatement_papers %}
+                                    <div class="prct-citation-card">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 class="mb-1">
+                                                <a href="{{ paper.get_absolute_url }}" class="text-decoration-none">
+                                                    {{ paper.title|truncatechars:120 }}
+                                                </a>
+                                            </h5>
+                                            <span class="prct-retraction-badge {{ paper.retraction_badge_class }}">
+                                                {{ paper.retraction_nature_display }}
+                                            </span>
+                                        </div>
+                                        
+                                        <div class="row mb-2">
+                                            <div class="col-md-6">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-user"></i>
+                                                    {% if paper.author_list %}
+                                                        {% for author in paper.author_list|slice:":2" %}
+                                                            <a href="{% url 'papers:search' %}?author={{ author|urlencode }}" 
+                                                               class="text-decoration-none text-muted"
+                                                               title="Find papers by {{ author }}">
+                                                                {{ author|truncatechars:25 }}
+                                                            </a>{% if not forloop.last %}, {% endif %}
+                                                        {% endfor %}
+                                                        {% if paper.author_list|length > 2 %}
+                                                            <span class="text-muted"> et al.</span>
+                                                        {% endif %}
+                                                    {% else %}
+                                                        Unknown Author
+                                                    {% endif %}
+                                                </small>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-journal-whills"></i>
+                                                    {{ paper.journal|default:"Unknown Journal"|truncatechars:40 }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-calendar"></i>
+                                                    {{ paper.retraction_nature_display }}: {{ paper.retraction_date|date:"M d, Y"|default:"Unknown" }}
+                                                    {% if paper.formatted_reasons %}
+                                                        <br><i class="fas fa-exclamation-circle"></i>
+                                                        <strong>{{ paper.formatted_reasons|truncatechars:100 }}</strong>
+                                                    {% endif %}
+                                                </small>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <span class="xera-badge xera-badge-success">
+                                                    {{ paper.citation_count }} citations
+                                                </span>
+                                                {% if paper.is_open_access %}
+                                                    <span class="xera-badge xera-badge-success ms-2">Open Access</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="prct-alert prct-alert-warning">
+                                        <i class="fas fa-info-circle"></i>
+                                        No reinstatements found.
                                     </div>
                                 {% endif %}
                             </div>

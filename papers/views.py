@@ -33,7 +33,8 @@ class HomeView(ListView):
     
     def get_queryset(self):
         return RetractedPaper.objects.filter(
-            retraction_date__isnull=False
+            retraction_date__isnull=False,
+            retraction_nature__iexact='Retraction'  # Only actual retractions for main tab
         ).order_by('-retraction_date')[:10]
     
     def get_context_data(self, **kwargs):
@@ -90,6 +91,22 @@ class HomeView(ListView):
         
         # Top 3 most problematic papers for home page (cached)
         context['top_problematic_papers'] = self._get_cached_top_problematic_papers()
+        
+        # Get papers by nature for tabs
+        context['expression_of_concern_papers'] = RetractedPaper.objects.filter(
+            retraction_date__isnull=False,
+            retraction_nature__iexact='Expression of Concern'
+        ).order_by('-retraction_date')[:10]
+        
+        context['correction_papers'] = RetractedPaper.objects.filter(
+            retraction_date__isnull=False,
+            retraction_nature__iexact='Correction'
+        ).order_by('-retraction_date')[:10]
+        
+        context['reinstatement_papers'] = RetractedPaper.objects.filter(
+            retraction_date__isnull=False,
+            retraction_nature__iexact='Reinstatement'
+        ).order_by('-retraction_date')[:10]
         
         return context
     
@@ -360,7 +377,7 @@ class HomeView(ListView):
         ]
     
     def _get_top_problematic_papers(self):
-        """Get top 3 most problematic papers (highest post-retraction citations)"""
+        """Get top 3 most problematic papers (highest post-retraction citations) - only retracted papers"""
         top_problematic_papers = RetractedPaper.objects.annotate(
             post_retraction_count=Count(
                 'citations', filter=Q(citations__days_after_retraction__gt=0)
@@ -368,7 +385,8 @@ class HomeView(ListView):
             total_citation_count=Count('citations')
         ).filter(
             post_retraction_count__gt=0,
-            record_id__isnull=False
+            record_id__isnull=False,
+            retraction_nature__iexact='Retraction'  # Only include actual retractions
         ).exclude(record_id__exact='').order_by('-post_retraction_count')[:3]
         
         problematic_papers = []
@@ -979,9 +997,11 @@ class AnalyticsView(View):
         return json_context
     
     def _get_basic_stats(self):
-        """Get basic statistics in efficient bulk queries"""
-        # Get all basic counts in one go
-        paper_stats = RetractedPaper.objects.aggregate(
+        """Get basic statistics in efficient bulk queries - only for retracted papers"""
+        # Get all basic counts in one go - only for actual retractions
+        paper_stats = RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).aggregate(
             total_papers=Count('id'),
             recent_retractions=Count('id', filter=Q(
                 retraction_date__gte=timezone.now().date() - timedelta(days=365)
@@ -994,8 +1014,11 @@ class AnalyticsView(View):
         paper_stats['unique_papers_by_nature'] = unique_stats
         paper_stats['total_unique_papers'] = sum(unique_stats.values())
         
-        # Calculate statistics for papers with citations only (to avoid the 0-skew)
-        citation_counts_nonzero = list(RetractedPaper.objects.filter(citation_count__gt=0).values_list('citation_count', flat=True))
+        # Calculate statistics for papers with citations only (to avoid the 0-skew) - only retracted papers
+        citation_counts_nonzero = list(RetractedPaper.objects.filter(
+            citation_count__gt=0,
+            retraction_nature__iexact='Retraction'
+        ).values_list('citation_count', flat=True))
         
         if citation_counts_nonzero and len(citation_counts_nonzero) >= 4:
             import statistics
@@ -1012,8 +1035,10 @@ class AnalyticsView(View):
             paper_stats['q1_citations_per_paper'] = 0
             paper_stats['q3_citations_per_paper'] = 0
         
-        # Get citation stats efficiently
-        citation_stats = Citation.objects.aggregate(
+        # Get citation stats efficiently - only for retracted papers
+        citation_stats = Citation.objects.filter(
+            retracted_paper__retraction_nature__iexact='Retraction'
+        ).aggregate(
             total_citations=Count('id'),
             post_retraction_citations=Count('id', filter=Q(days_after_retraction__gt=0)),
             pre_retraction_citations=Count('id', filter=Q(days_after_retraction__lt=0)),
