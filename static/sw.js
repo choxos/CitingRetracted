@@ -3,9 +3,10 @@
 
 const CACHE_NAME = 'prct-analytics-v1';
 const urlsToCache = [
-  '/static/css/',
-  '/static/js/',
-  '/static/images/'
+  '/static/css/xera-unified-theme.css',
+  '/static/css/themes/prct-theme.css',
+  '/static/js/performance-optimizations.js',
+  '/static/images/favicon.svg'
 ];
 
 // Install event

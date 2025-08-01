@@ -686,8 +686,8 @@
 {% block extra_js %}
 <!-- Plotly.js for interactive choropleth maps -->
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
+<!-- Chart.js (specific version for analytics) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <!-- D3.js for network visualization -->
 <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -1284,9 +1284,9 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
     document.getElementById('sunburstChart').innerHTML = '<p class="text-center text-muted">No subject hierarchy data available</p>';
 }
     
-    // Country analytics chart
-    const countryData = {{ country_analytics|safe }};
-    const worldMapData = {{ world_map_data|safe }};
+    // Country analytics chart  
+    const countryData = {{ country_analytics|safe }} || [];
+    const worldMapData = {{ world_map_data|safe }} || [];
     
     // Create Plotly choropleth world map
     const worldMapContainer = document.getElementById('countryChart').parentElement;
