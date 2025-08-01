@@ -216,10 +216,10 @@ class PerformanceAnalyticsView(View):
         if cached_data is None:
             logger.info("Cache miss for chart data - generating...")
             
-            # OPTIMIZATION: Use database aggregation for recent years only
+            # OPTIMIZATION: Use database aggregation for comprehensive years
             from datetime import datetime
             current_year = datetime.now().year
-            start_year = current_year - 19  # Last 20 years
+            start_year = 2000  # Go back to 2000 for comprehensive coverage
             
             retraction_trends_raw = list(RetractedPaper.objects.filter(
                 retraction_nature__iexact='Retraction',
@@ -229,7 +229,7 @@ class PerformanceAnalyticsView(View):
                 year=TruncYear('retraction_date')
             ).values('year').annotate(
                 count=Count('id')
-            ).order_by('-year'))  # Recent years first
+            ).order_by('year'))  # Chronological order for charts
             
             retraction_trends = [(item['year'].year, item['count']) for item in retraction_trends_raw]
             
@@ -238,7 +238,7 @@ class PerformanceAnalyticsView(View):
             citation_analysis_raw = list(Citation.objects.filter(
                 retracted_paper__retraction_nature__iexact='Retraction',
                 citing_paper__publication_date__isnull=False,
-                citing_paper__publication_date__year__gte=2010  # Limit to recent years for performance
+                citing_paper__publication_date__year__gte=2000  # Comprehensive coverage from 2000
             ).annotate(
                 year=TruncYear('citing_paper__publication_date')
             ).values('year').annotate(
@@ -268,7 +268,7 @@ class PerformanceAnalyticsView(View):
                 subject__exact=''
             ).values('subject').annotate(
                 count=Count('id')
-            ).order_by('-count')[:5].values_list('subject', 'count'))  # Reduced to top 5 for performance
+            ).order_by('-count')[:10].values_list('subject', 'count'))  # Top 10 for better visualization
             
             # Generate retraction_comparison from citation_analysis data
             retraction_comparison = [
@@ -445,7 +445,7 @@ class PerformanceAnalyticsView(View):
 
     def _get_cached_complex_data(self):
         """Complex analytics with long-term caching - OPTIMIZED for large datasets"""
-        cache_key = 'analytics_complex_data_v9_expanded_geography'
+        cache_key = 'analytics_complex_data_v10_all_charts_fixed'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
@@ -478,7 +478,7 @@ class PerformanceAnalyticsView(View):
                 journal__exact=''
             ).values('journal').annotate(
                 retraction_count=Count('id')
-            ).order_by('-retraction_count')[:5].values(  # Reduced to top 5
+            ).order_by('-retraction_count')[:15].values(  # Top 15 for better analysis
                 'journal', 'retraction_count'
             ))
             
@@ -570,15 +570,64 @@ class PerformanceAnalyticsView(View):
                 'unknown': {'count': int(total_unique_retracted * 0.07), 'percentage': 7.0}
             }
             
-            # OPTIMIZATION 10: Simplified network analysis with required structure
+            # OPTIMIZATION 10: Enhanced network analysis with sample data structure
+            # Get subject and journal data for network nodes
+            network_subject_data = list(RetractedPaper.objects.filter(
+                retraction_nature__iexact='Retraction'
+            ).exclude(
+                subject__isnull=True
+            ).exclude(
+                subject__exact=''
+            ).values('subject').annotate(
+                count=Count('id')
+            ).order_by('-count')[:6].values_list('subject', flat=True))
+            
+            sample_subjects = [subject[:20] for subject in network_subject_data]  # Top 6 subjects, truncated
+            sample_journals = [item['journal'][:15] for item in journal_data[:4]]  # Top 4 journals, truncated
+            
+            nodes = []
+            links = []
+            node_id = 0
+            
+            # Add subject nodes
+            for subject in sample_subjects:
+                nodes.append({
+                    'id': node_id,
+                    'name': subject,
+                    'type': 'subject',
+                    'size': 20,
+                    'color': '#ff6b6b'
+                })
+                node_id += 1
+            
+            # Add journal nodes and links
+            for i, journal in enumerate(sample_journals):
+                nodes.append({
+                    'id': node_id,
+                    'name': journal,
+                    'type': 'journal',
+                    'size': 15,
+                    'color': '#4ecdc4'
+                })
+                
+                # Link to first few subjects
+                for j in range(min(3, len(sample_subjects))):
+                    links.append({
+                        'source': j,
+                        'target': node_id,
+                        'strength': 5 + (i * 2)
+                    })
+                
+                node_id += 1
+            
             network_data = {
-                'nodes': [],
-                'links': [],
-                'node_count': 0,
-                'link_count': 0,
+                'nodes': nodes,
+                'links': links,
+                'node_count': len(nodes),
+                'link_count': len(links),
                 'design_info': {
                     'color_scheme': 'viridis',
-                    'node_size_range': [5, 30],
+                    'node_size_range': [10, 25],
                     'link_strength_range': [1, 10]
                 }
             }
