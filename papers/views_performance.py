@@ -314,16 +314,38 @@ class PerformanceAnalyticsView(View):
                 {'days': 730, 'count': timing_data['after_1_year']}
             ]
             
-            # Citation heatmap with proper month structure
+            # Citation heatmap with REAL database queries (not fake data!)
+            import calendar
             month_names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
                           'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-            citation_heatmap = [
-                {
-                    'month': month_names[i], 
-                    'data': [15 + (i * 3), 25 + (i * 2), 20 + i, 30 + (i * 2), 35 + i, 40 + (i * 1.5)]
-                } 
-                for i in range(12)
-            ]
+            
+            citation_heatmap = []
+            for month in range(1, 13):
+                month_data = []
+                buckets = [30, 90, 180, 365, 730, 9999]
+                prev_bucket = 0
+                
+                for i, bucket in enumerate(buckets):
+                    if bucket == 9999:
+                        # 2+ years after retraction
+                        count = Citation.objects.filter(
+                            retracted_paper__retraction_date__month=month,
+                            days_after_retraction__gt=730
+                        ).count()
+                    else:
+                        # Time buckets: 0-30, 30-90, 90-180, 180-365, 365-730 days
+                        count = Citation.objects.filter(
+                            retracted_paper__retraction_date__month=month,
+                            days_after_retraction__gt=prev_bucket,
+                            days_after_retraction__lte=bucket
+                        ).count()
+                        prev_bucket = bucket
+                    month_data.append(count)
+                
+                citation_heatmap.append({
+                    'month': month_names[month-1], 
+                    'data': month_data
+                })
             
             # World map data with proper ISO codes and structure
             country_iso_mapping = {
