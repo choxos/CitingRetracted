@@ -41,8 +41,8 @@
             <h2 class="text-center mb-4">Database Overview</h2>
             <div class="prct-stats-grid">
                 <a href="{% url 'papers:search' %}" class="text-decoration-none">
-                    <div class="prct-stat-card">
-                        <div class="text-center">
+                    <div class="prct-stat-card h-100">
+                        <div class="text-center h-100 d-flex flex-column justify-content-center">
                             <i class="fas fa-ban fa-3x text-danger mb-3"></i>
                             <h3 class="prct-stat-number">{{ total_retracted|default:0 }}</h3>
                             <p class="prct-stat-label">Retracted Papers</p>
@@ -51,8 +51,8 @@
                 </a>
                 
                 <a href="{% url 'papers:analytics' %}" class="text-decoration-none">
-                    <div class="prct-stat-card">
-                        <div class="text-center">
+                    <div class="prct-stat-card h-100">
+                        <div class="text-center h-100 d-flex flex-column justify-content-center">
                             <i class="fas fa-quote-right fa-3x text-warning mb-3"></i>
                             <h3 class="prct-stat-number">{{ total_citations|default:0 }}</h3>
                             <p class="prct-stat-label">Total Citations</p>
@@ -61,8 +61,8 @@
                 </a>
                 
                 <a href="{% url 'papers:search' %}?sort=recent" class="text-decoration-none">
-                    <div class="prct-stat-card">
-                        <div class="text-center">
+                    <div class="prct-stat-card h-100">
+                        <div class="text-center h-100 d-flex flex-column justify-content-center">
                             <i class="fas fa-clock fa-3x text-info mb-3"></i>
                             <h3 class="prct-stat-number">{{ recent_retractions|default:0 }}</h3>
                             <p class="prct-stat-label">Recent Retractions<br><small>(in {{ current_year }}, as of {{ current_date|date:"M jS" }})</small></p>
@@ -71,8 +71,8 @@
                 </a>
                 
                 <a href="{% url 'papers:analytics' %}#patterns" class="text-decoration-none">
-                    <div class="prct-stat-card">
-                        <div class="text-center">
+                    <div class="prct-stat-card h-100">
+                        <div class="text-center h-100 d-flex flex-column justify-content-center">
                             <i class="fas fa-exclamation-circle fa-3x text-danger mb-3"></i>
                             <h3 class="prct-stat-number">{{ post_retraction_citations|default:0 }}</h3>
                             <p class="prct-stat-label">Post-Retraction<br><small>Citations</small></p>
