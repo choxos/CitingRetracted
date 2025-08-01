@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.db.models import Q, Count, Avg, Case, When, IntegerField, F, Max, Sum
+from django.db.models.functions import TruncYear, TruncMonth
 from django.db import models
 from django.conf import settings
 from django.views.generic import ListView, DetailView
@@ -743,7 +744,6 @@ class AnalyticsView(View):
         data = {}
         
         # Retractions by year - use original_paper_date to extract year
-        from django.db.models.functions import TruncYear
         
         # First try with original_paper_date since that field exists
         original_paper_years = RetractedPaper.objects.filter(
@@ -878,7 +878,6 @@ class AnalyticsView(View):
         data['recent_imports'] = DataImportLog.objects.order_by('-start_time')[:5]
         
         # Monthly post-retraction trends (simplified)
-        from django.db.models.functions import TruncMonth
         monthly_data = Citation.objects.filter(
             days_after_retraction__gt=0,
             created_at__gte=timezone.now() - timedelta(days=365)
@@ -1322,7 +1321,6 @@ class AnalyticsView(View):
         missing_data = {}
         
         # Retraction comparison data (before vs after retraction by year)
-        from django.db.models.functions import TruncYear
         retraction_comparison = []
         
         # Debug logging
@@ -1746,7 +1744,6 @@ class PostRetractionAnalyticsAPIView(View):
         }
         
         # Monthly trend data
-        from django.db.models.functions import TruncMonth
         monthly_trend = citations_qs.annotate(
             month=TruncMonth('created_at')
         ).values('month').annotate(
@@ -1798,7 +1795,6 @@ class AnalyticsDataAPIView(View):
     
     def _get_retractions_timeline_data(self, time_filter):
         """Get retraction timeline data with time filtering."""
-        from django.db.models.functions import TruncYear
         
         papers_qs = RetractedPaper.objects.filter(retraction_date__isnull=False)
         
