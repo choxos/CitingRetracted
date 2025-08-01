@@ -1228,7 +1228,44 @@ class AnalyticsView(View):
         chart_data.setdefault('publisher_data', [])
         chart_data.setdefault('access_analytics', {'open_access': {'count': 0}, 'paywalled': {'count': 0}, 'unknown': {'count': 0}})
         
-        # Critical fix: Ensure retraction_years always has data for chart display
+        # Create combined retraction trends and post-retraction citation timeline
+        # Use the real historical data instead of artificial recent years
+        if chart_data.get('retraction_comparison'):
+            # Extract retraction counts and post-retraction citations for combined chart
+            combined_timeline = []
+            for item in chart_data['retraction_comparison']:
+                combined_timeline.append({
+                    'year': item['year'],
+                    'retraction_count': 1,  # Each year entry represents papers retracted
+                    'post_retraction_citations': item['post_retraction']
+                })
+            
+            # Aggregate by year to get total retractions per year
+            year_aggregates = {}
+            for item in combined_timeline:
+                year = item['year']
+                if year not in year_aggregates:
+                    year_aggregates[year] = {
+                        'year': year,
+                        'retraction_count': 0,
+                        'post_retraction_citations': 0
+                    }
+                year_aggregates[year]['retraction_count'] += item['retraction_count']
+                year_aggregates[year]['post_retraction_citations'] += item['post_retraction_citations']
+            
+            # Convert back to list and sort by year
+            chart_data['combined_trends'] = sorted(year_aggregates.values(), key=lambda x: x['year'])
+            
+            # Also use this data for retraction_years to show full historical span
+            chart_data['retraction_years'] = [
+                {
+                    'year': item['year'],
+                    'count': item['retraction_count']
+                }
+                for item in chart_data['combined_trends']
+            ]
+        
+        # Fallback only if no real data exists
         if not chart_data.get('retraction_years'):
             total_papers = RetractedPaper.objects.count()
             chart_data['retraction_years'] = [
@@ -1238,19 +1275,6 @@ class AnalyticsView(View):
                 {'year': 2023, 'count': max(45, total_papers // 3)},
                 {'year': 2024, 'count': max(67, total_papers // 2)},
             ]
-            
-        # Update citation comparison to include recent years  
-        if chart_data.get('retraction_comparison'):
-            # Add recent years to make the chart more relevant
-            recent_data = [
-                {'year': 2020, 'pre_retraction': 89, 'post_retraction': 23, 'same_day': 5},
-                {'year': 2021, 'pre_retraction': 134, 'post_retraction': 34, 'same_day': 8},
-                {'year': 2022, 'pre_retraction': 178, 'post_retraction': 45, 'same_day': 12},
-                {'year': 2023, 'pre_retraction': 223, 'post_retraction': 56, 'same_day': 15},
-                {'year': 2024, 'pre_retraction': 267, 'post_retraction': 67, 'same_day': 18},
-            ]
-            # Keep some original data but add recent years
-            chart_data['retraction_comparison'] = chart_data['retraction_comparison'][:5] + recent_data
         
         return chart_data
     
