@@ -42,7 +42,7 @@ class HomeView(ListView):
         
         # Use cached data when possible
         from django.core.cache import cache
-        cache_key = 'home_stats_v1'
+        cache_key = 'home_stats_v2_retracted_only'
         cached_stats = cache.get(cache_key)
         
         if cached_stats is None:
@@ -146,8 +146,10 @@ class HomeView(ListView):
         # Get top institutions with proper parsing of semicolon-separated values
         stats['top_institutions'] = self._get_top_institutions_parsed()
         
-        # Get top publishers, countries, journals efficiently
-        stats['top_publishers'] = RetractedPaper.objects.exclude(
+        # Get top publishers, countries, journals efficiently (only retracted papers)
+        stats['top_publishers'] = RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).exclude(
             Q(publisher__isnull=True) | Q(publisher__exact='')
         ).values('publisher').annotate(count=Count('id')).order_by('-count')[:5]
         
@@ -157,7 +159,9 @@ class HomeView(ListView):
         # Get top subjects with proper parsing of semicolon-separated values
         stats['top_subjects'] = self._get_top_subjects_parsed()
         
-        stats['top_journals'] = RetractedPaper.objects.exclude(
+        stats['top_journals'] = RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).exclude(
             Q(journal__isnull=True) | Q(journal__exact='')
         ).values('journal').annotate(count=Count('id')).order_by('-count')[:5]
         
@@ -170,8 +174,10 @@ class HomeView(ListView):
         """Get top subjects by parsing semicolon-separated subject strings"""
         from collections import Counter
         
-        # Get all papers with subjects
-        papers_with_subjects = RetractedPaper.objects.exclude(
+        # Get all papers with subjects (only retracted papers)
+        papers_with_subjects = RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).exclude(
             Q(subject__isnull=True) | Q(subject__exact='')
         ).values_list('subject', flat=True)
         
@@ -206,8 +212,10 @@ class HomeView(ListView):
         """Get top countries by parsing semicolon-separated country strings"""
         from collections import Counter
         
-        # Get all papers with countries
-        papers_with_countries = RetractedPaper.objects.exclude(
+        # Get all papers with countries (only retracted papers)
+        papers_with_countries = RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).exclude(
             Q(country__isnull=True) | Q(country__exact='')
         ).values_list('country', flat=True)
         
@@ -238,8 +246,10 @@ class HomeView(ListView):
         """Get top institutions by parsing semicolon-separated institution strings"""
         from collections import Counter
         
-        # Get all papers with institutions
-        papers_with_institutions = RetractedPaper.objects.exclude(
+        # Get all papers with institutions (only retracted papers)
+        papers_with_institutions = RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).exclude(
             Q(institution__isnull=True) | Q(institution__exact='')
         ).values_list('institution', flat=True)
         
@@ -322,8 +332,10 @@ class HomeView(ListView):
         """Get top retraction reasons with optimized processing"""
         from collections import Counter
         
-        # Get all reasons in one query
-        all_reasons = RetractedPaper.objects.exclude(
+        # Get all reasons in one query (only retracted papers)
+        all_reasons = RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).exclude(
             Q(reason__isnull=True) | Q(reason__exact='')
         ).values_list('reason', flat=True)
         
@@ -351,8 +363,10 @@ class HomeView(ListView):
         """Get top authors with optimized processing"""
         from collections import Counter
         
-        # Get all authors in one query  
-        all_authors = RetractedPaper.objects.exclude(
+        # Get all authors in one query (only retracted papers)
+        all_authors = RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).exclude(
             Q(author__isnull=True) | Q(author__exact='')
         ).values_list('author', flat=True)
         
