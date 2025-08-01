@@ -1666,93 +1666,69 @@ class AnalyticsView(View):
     
     def _get_sunburst_subject_data(self):
         """Generate hierarchical subject data for sunburst chart"""
-        # Try to use the new database fields first
-        papers_with_new_fields = RetractedPaper.objects.exclude(
-            broad_subjects__isnull=True
-        ).exclude(broad_subjects__exact='').exclude(
-            specific_fields__isnull=True
-        ).exclude(specific_fields__exact='')
+        # Get all papers with subjects
+        papers_with_subjects = RetractedPaper.objects.exclude(
+            subject__isnull=True
+        ).exclude(subject__exact='')
         
-        # If we have enough papers with new fields, use them, otherwise fallback to parsing
-        if papers_with_new_fields.count() > 100:
-            papers_with_subjects = papers_with_new_fields
-            use_new_fields = True
-        else:
-            papers_with_subjects = RetractedPaper.objects.exclude(
-                subject__isnull=True
-            ).exclude(subject__exact='')
-            use_new_fields = False
-        
-        # Build hierarchy: broad_category -> specific_field -> count
-        hierarchy = {}
+        # Build category counts directly from broad categories
+        category_counts = {}
         
         for paper in papers_with_subjects:
-            if use_new_fields:
-                # Use new database fields
-                broad_subjects = [s.strip() for s in paper.broad_subjects.split(';') if s.strip()] if paper.broad_subjects else []
-                specific_fields = [s.strip() for s in paper.specific_fields.split(';') if s.strip()] if paper.specific_fields else []
+            # Parse all subjects from this paper
+            parsed_subjects = paper.parsed_subjects
+            
+            for subject_info in parsed_subjects:
+                broad_category = subject_info['broad_category']
                 
-                # Match broad subjects with specific fields
-                max_len = max(len(broad_subjects), len(specific_fields), 1)
+                if broad_category not in category_counts:
+                    category_counts[broad_category] = 0
                 
-                for i in range(max_len):
-                    broad_category = broad_subjects[i] if i < len(broad_subjects) else broad_subjects[0] if broad_subjects else 'Unknown'
-                    specific_field = specific_fields[i] if i < len(specific_fields) else 'General'
-                    
-                    if broad_category not in hierarchy:
-                        hierarchy[broad_category] = {}
-                    
-                    if specific_field not in hierarchy[broad_category]:
-                        hierarchy[broad_category][specific_field] = 0
-                    
-                    hierarchy[broad_category][specific_field] += 1
-            else:
-                # Fallback to parsing the original subject field
-                parsed_subjects = paper.parsed_subjects
-                
-                for subject_info in parsed_subjects:
-                    broad_category = subject_info['broad_category']
-                    specific_field = subject_info['specific_field'] or 'General'
-                    
-                    if broad_category not in hierarchy:
-                        hierarchy[broad_category] = {}
-                    
-                    if specific_field not in hierarchy[broad_category]:
-                        hierarchy[broad_category][specific_field] = 0
-                    
-                    hierarchy[broad_category][specific_field] += 1
+                category_counts[broad_category] += 1
         
-        # Convert to sunburst format
+        # Create a simplified sunburst with just broad categories
+        # This creates a full circle with better balance
         sunburst_data = {
-            'name': 'All Subjects',
+            'name': 'Subject Areas',
             'children': []
         }
         
         total_count = 0
-        for broad_category, fields in hierarchy.items():
-            broad_total = sum(fields.values())
-            total_count += broad_total
-            
-            broad_node = {
-                'name': broad_category,
-                'value': broad_total,
-                'children': []
-            }
-            
-            for field, count in fields.items():
-                broad_node['children'].append({
-                    'name': field,
-                    'value': count,
-                    'full_name': f"{broad_category} - {field}" if field != 'General' else broad_category
-                })
-            
-            # Sort children by value
-            broad_node['children'].sort(key=lambda x: x['value'], reverse=True)
-            sunburst_data['children'].append(broad_node)
+        for category, count in category_counts.items():
+            total_count += count
+            sunburst_data['children'].append({
+                'name': category,
+                'value': count,
+                'full_name': category
+            })
         
-        # Sort broad categories by value
+        # Sort categories by value (largest first)
         sunburst_data['children'].sort(key=lambda x: x['value'], reverse=True)
         sunburst_data['value'] = total_count
+        
+        # Add a bit more structure by grouping smaller categories
+        if len(sunburst_data['children']) > 12:
+            # Keep top 10 categories and group the rest as "Other"
+            top_categories = sunburst_data['children'][:10]
+            other_categories = sunburst_data['children'][10:]
+            other_total = sum(cat['value'] for cat in other_categories)
+            
+            if other_total > 0:
+                # Create "Other" category with subcategories
+                other_node = {
+                    'name': 'Other Fields',
+                    'value': other_total,
+                    'children': [
+                        {
+                            'name': cat['name'],
+                            'value': cat['value'],
+                            'full_name': cat['name']
+                        }
+                        for cat in other_categories
+                    ]
+                }
+                
+                sunburst_data['children'] = top_categories + [other_node]
         
         return sunburst_data
 

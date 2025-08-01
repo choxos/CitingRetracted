@@ -2100,10 +2100,12 @@ function initializeSunburstChart(data) {
                     .style("opacity", .9);
                     
                 const fullName = d.data.full_name || d.data.name;
+                const hasChildren = d.children && d.children.length > 0;
                 tooltip.html(`
                     <strong>${fullName}</strong><br/>
                     Papers: ${d.value.toLocaleString()}<br/>
-                    ${d.depth === 1 ? 'Broad Category' : 'Specific Field'}
+                    ${hasChildren ? 'Category Group' : 'Subject Area'}
+                    ${hasChildren ? `<br/>${d.children.length} subcategories` : ''}
                 `)
                     .style("left", (event.pageX + 10) + "px")
                     .style("top", (event.pageY - 28) + "px");
@@ -2123,9 +2125,9 @@ function initializeSunburstChart(data) {
             }
         });
     
-    // Add text labels for broad categories only
+    // Add text labels for larger categories
     svg.selectAll("text")
-        .data(root.descendants().filter(d => d.depth === 1 && d.value > 50))
+        .data(root.descendants().filter(d => d.depth === 1 && d.value >= 2))
         .enter()
         .append("text")
         .attr("transform", function(d) {
