@@ -64,6 +64,31 @@ class PerformanceAnalyticsView(View):
                 total_citation_sum=Sum('citation_count')
             )
             
+            # Calculate additional statistics (SD, Median, Quartiles)
+            from django.db import connection
+            with connection.cursor() as cursor:
+                # Get citation statistics with percentiles and standard deviation
+                cursor.execute("""
+                    SELECT 
+                        AVG(citation_count) as mean_citations,
+                        STDDEV(citation_count) as std_citations,
+                        PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY citation_count) as q1_citations,
+                        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY citation_count) as median_citations,
+                        PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY citation_count) as q3_citations
+                    FROM papers_retractedpaper 
+                    WHERE citation_count IS NOT NULL
+                """)
+                
+                row = cursor.fetchone()
+                if row:
+                    basic_stats.update({
+                        'mean_citations': float(row[0]) if row[0] else 0,
+                        'std_citations': float(row[1]) if row[1] else 0,
+                        'q1_citations': float(row[2]) if row[2] else 0,
+                        'median_citations': float(row[3]) if row[3] else 0,
+                        'q3_citations': float(row[4]) if row[4] else 0
+                    })
+            
             # Citation statistics in one query
             citation_stats = Citation.objects.aggregate(
                 total_citations=Count('id'),
@@ -279,13 +304,27 @@ class PerformanceAnalyticsView(View):
                 if iso_code and retraction_count > 0:
                     log_value = math.log10(max(retraction_count, 1))
                     
+                    # Get additional country statistics
+                    country_stats = RetractedPaper.objects.filter(
+                        country=country_name
+                    ).aggregate(
+                        post_retraction_citations=Count('citations', filter=Q(citations__days_after_retraction__gt=0)),
+                        open_access_count=Count('id', filter=Q(is_open_access=True)),
+                        total_papers=Count('id')
+                    )
+                    
+                    # Calculate open access percentage
+                    total_papers = country_stats['total_papers'] or 1
+                    open_access_percentage = (country_stats['open_access_count'] / total_papers) * 100
+                    
                     world_map_data.append({
                         'country': country_name,
                         'iso_alpha': iso_code,
                         'value': retraction_count,
                         'log_value': log_value,
-                        'post_retraction_citations': int(retraction_count * 1.5),
-                        'open_access_percentage': min(35.0 + (abs(hash(country_name)) % 40), 95.0)  # 35-75%
+                        'post_retraction_citations': country_stats['post_retraction_citations'] or 0,
+                        'open_access_percentage': round(open_access_percentage, 1),
+                        'total_papers': total_papers
                     })
             
             # Article type data with proper structure
@@ -329,53 +368,117 @@ class PerformanceAnalyticsView(View):
                 }
             }
             
-            # Network data with comprehensive sample for visualization
+            # Network data with REAL database relationships for meaningful visualization
+            # Get top retracted papers with most post-retraction citations
+            top_retracted = list(RetractedPaper.objects.annotate(
+                post_retraction_count=Count('citations', filter=Q(citations__days_after_retraction__gt=0))
+            ).filter(
+                post_retraction_count__gt=5  # Only papers with meaningful post-retraction citations
+            ).order_by('-post_retraction_count')[:15].values(
+                'record_id', 'title', 'post_retraction_count', 'citation_count', 'journal', 'retraction_date'
+            ))
+            
+            # Get citing papers for these retracted papers
             network_nodes = []
             network_links = []
             
-            # Add retracted papers (central nodes)
-            for i in range(1, 8):
+            # Add retracted paper nodes
+            for i, paper in enumerate(top_retracted):
+                node_size = min(10 + (paper['post_retraction_count'] * 0.5), 30)
                 network_nodes.append({
-                    'id': f'retracted_{i}',
+                    'id': f"retracted_{paper['record_id']}",
                     'group': 'retracted',
-                    'citations': 20 + i * 5,
-                    'title': f'Retracted Paper {i}',
-                    'size': 10 + i * 2
+                    'title': paper['title'][:40] + ('...' if len(paper['title']) > 40 else ''),
+                    'journal': paper['journal'][:20] if paper['journal'] else 'Unknown',
+                    'citations': paper['citation_count'] or 0,
+                    'post_citations': paper['post_retraction_count'],
+                    'size': node_size,
+                    'retraction_year': paper['retraction_date'].year if paper['retraction_date'] else 'Unknown'
                 })
             
-            # Add citing papers (peripheral nodes)
-            for i in range(1, 15):
-                network_nodes.append({
-                    'id': f'citing_{i}',
-                    'group': 'citing',
-                    'citations': 5 + (i % 8),
-                    'title': f'Citing Paper {i}',
-                    'size': 5 + (i % 6)
-                })
+            # Get actual citing papers for the top retracted papers
+            if top_retracted:
+                retracted_ids = [p['record_id'] for p in top_retracted]
+                citations = list(Citation.objects.filter(
+                    retracted_paper__record_id__in=retracted_ids,
+                    citing_paper__isnull=False
+                ).select_related('citing_paper', 'retracted_paper').order_by(
+                    '-days_after_retraction'
+                )[:50].values(
+                    'citing_paper__title', 'citing_paper__journal', 'citing_paper__publication_date',
+                    'retracted_paper__record_id', 'days_after_retraction', 'citing_paper__cited_by_count'
+                ))
+                
+                # Add citing paper nodes and links
+                for i, citation in enumerate(citations):
+                    citing_id = f"citing_{i}"
+                    citing_title = citation['citing_paper__title']
+                    
+                    if citing_title:  # Only add if we have a title
+                        # Determine citation timing type
+                        days_after = citation['days_after_retraction'] or 0
+                        if days_after > 0:
+                            link_type = 'post_retraction'
+                            link_color = '#dc2626'  # Red for problematic post-retraction
+                        elif days_after == 0:
+                            link_type = 'same_day'
+                            link_color = '#f59e0b'  # Orange for same day
+                        else:
+                            link_type = 'pre_retraction'
+                            link_color = '#10b981'  # Green for normal pre-retraction
+                        
+                        # Add citing paper node
+                        node_size = min(5 + ((citation['citing_paper__cited_by_count'] or 0) * 0.1), 15)
+                        network_nodes.append({
+                            'id': citing_id,
+                            'group': 'citing',
+                            'title': citing_title[:30] + ('...' if len(citing_title) > 30 else ''),
+                            'journal': citation['citing_paper__journal'][:15] if citation['citing_paper__journal'] else 'Unknown',
+                            'citations': citation['citing_paper__cited_by_count'] or 0,
+                            'size': node_size,
+                            'citation_type': link_type,
+                            'pub_year': citation['citing_paper__publication_date'].year if citation['citing_paper__publication_date'] else 'Unknown'
+                        })
+                        
+                        # Add citation link
+                        network_links.append({
+                            'source': citing_id,
+                            'target': f"retracted_{citation['retracted_paper__record_id']}",
+                            'type': link_type,
+                            'color': link_color,
+                            'days_after_retraction': days_after,
+                            'strength': min(abs(days_after) * 0.01 + 1, 5) if days_after != 0 else 1
+                        })
             
-            # Create citation relationships
-            citation_types = ['pre_retraction', 'post_retraction']
-            for i in range(1, 15):
-                retracted_target = f'retracted_{(i % 7) + 1}'
-                network_links.append({
-                    'source': f'citing_{i}',
-                    'target': retracted_target,
-                    'type': citation_types[i % 2],
-                    'strength': 1 + (i % 3)
-                })
-            
-            # Add some cross-references between retracted papers
-            for i in range(1, 4):
-                network_links.append({
-                    'source': f'retracted_{i}',
-                    'target': f'retracted_{i + 1}',
-                    'type': 'cross_reference',
-                    'strength': 2
-                })
+            # Add some cross-references between retracted papers (from actual database)
+            if len(top_retracted) > 1:
+                cross_refs = Citation.objects.filter(
+                    retracted_paper__record_id__in=[p['record_id'] for p in top_retracted[:10]],
+                    citing_paper__in=RetractedPaper.objects.filter(record_id__in=[p['record_id'] for p in top_retracted[:10]])
+                ).values(
+                    'retracted_paper__record_id', 'citing_paper__record_id'
+                )[:5]
+                
+                for ref in cross_refs:
+                    if ref['retracted_paper__record_id'] != ref['citing_paper__record_id']:
+                        network_links.append({
+                            'source': f"retracted_{ref['citing_paper__record_id']}",
+                            'target': f"retracted_{ref['retracted_paper__record_id']}",
+                            'type': 'cross_reference',
+                            'color': '#8b5cf6',  # Purple for cross-references
+                            'strength': 3
+                        })
             
             network_data = {
                 'nodes': network_nodes,
-                'links': network_links
+                'links': network_links,
+                'metadata': {
+                    'total_nodes': len(network_nodes),
+                    'total_links': len(network_links),
+                    'retracted_papers': len([n for n in network_nodes if n['group'] == 'retracted']),
+                    'citing_papers': len([n for n in network_nodes if n['group'] == 'citing']),
+                    'post_retraction_links': len([l for l in network_links if l['type'] == 'post_retraction'])
+                }
             }
             
             cached_data = {
@@ -420,66 +523,161 @@ class PerformanceAnalyticsView(View):
         return cached_data
     
     def _generate_sunburst_data(self):
-        """Generate optimized sunburst data with hierarchical structure"""
-        # Get subject counts directly
-        subjects = RetractedPaper.objects.exclude(
+        """Generate comprehensive sunburst data with three-level hierarchy"""
+        # Get all subjects with proper aggregation
+        subject_data = RetractedPaper.objects.exclude(
             subject__isnull=True
         ).exclude(
             subject__exact=''
         ).values_list('subject', flat=True)
         
-        # Parse subjects into broader categories with subcategories
-        broad_categories = {
-            'Life Sciences': {},
-            'Physical Sciences': {},
-            'Computer Science': {},
-            'Engineering': {},
-            'Social Sciences': {},
-            'Medical Sciences': {},
-            'Other Fields': {}
+        # More detailed categorization with three levels
+        categories = {
+            'Life Sciences': {
+                'Biology': {},
+                'Biochemistry': {},
+                'Genetics & Genomics': {},
+                'Ecology & Environment': {}
+            },
+            'Physical Sciences': {
+                'Chemistry': {},
+                'Physics': {},
+                'Mathematics': {},
+                'Earth Sciences': {}
+            },
+            'Medical Sciences': {
+                'Clinical Medicine': {},
+                'Public Health': {},
+                'Pharmacology': {},
+                'Neuroscience': {}
+            },
+            'Engineering & Technology': {
+                'Computer Science': {},
+                'Engineering': {},
+                'Materials Science': {},
+                'Technology': {}
+            },
+            'Social Sciences': {
+                'Psychology': {},
+                'Economics': {},
+                'Education': {},
+                'Sociology': {}
+            }
         }
         
-        for subject_string in subjects:
-            # Parse the first subject
-            first_subject = subject_string.split(';')[0].strip()
+        # Process each subject string
+        for subject_string in subject_data:
+            subjects = [s.strip() for s in subject_string.split(';')]
             
-            # Categorize into broad fields
-            if any(word in first_subject.lower() for word in ['biology', 'biochemistry', 'genetics', 'ecology']):
-                category = 'Life Sciences'
-            elif any(word in first_subject.lower() for word in ['physics', 'chemistry', 'mathematics', 'statistics']):
-                category = 'Physical Sciences'
-            elif any(word in first_subject.lower() for word in ['computer', 'software', 'data']):
-                category = 'Computer Science'
-            elif any(word in first_subject.lower() for word in ['engineering', 'technology', 'materials']):
-                category = 'Engineering'
-            elif any(word in first_subject.lower() for word in ['psychology', 'sociology', 'economics', 'education']):
-                category = 'Social Sciences'
-            elif any(word in first_subject.lower() for word in ['medicine', 'clinical', 'health', 'medical']):
-                category = 'Medical Sciences'
-            else:
-                category = 'Other Fields'
-            
-            # Add to subcategory
-            truncated_subject = first_subject[:25] if len(first_subject) > 25 else first_subject
-            broad_categories[category][truncated_subject] = broad_categories[category].get(truncated_subject, 0) + 1
+            for subject in subjects[:2]:  # Process up to 2 subjects per paper
+                subject_lower = subject.lower()
+                
+                # Detailed categorization
+                placed = False
+                
+                # Life Sciences categorization
+                if any(word in subject_lower for word in ['biology', 'bio-', 'cell', 'molecular', 'organism']):
+                    categories['Life Sciences']['Biology'][subject[:20]] = categories['Life Sciences']['Biology'].get(subject[:20], 0) + 1
+                    placed = True
+                elif any(word in subject_lower for word in ['biochem', 'protein', 'enzyme', 'metabolism']):
+                    categories['Life Sciences']['Biochemistry'][subject[:20]] = categories['Life Sciences']['Biochemistry'].get(subject[:20], 0) + 1
+                    placed = True
+                elif any(word in subject_lower for word in ['genetic', 'gene', 'genome', 'dna', 'rna']):
+                    categories['Life Sciences']['Genetics & Genomics'][subject[:20]] = categories['Life Sciences']['Genetics & Genomics'].get(subject[:20], 0) + 1
+                    placed = True
+                elif any(word in subject_lower for word in ['ecology', 'environment', 'climate', 'conservation']):
+                    categories['Life Sciences']['Ecology & Environment'][subject[:20]] = categories['Life Sciences']['Ecology & Environment'].get(subject[:20], 0) + 1
+                    placed = True
+                
+                # Physical Sciences
+                elif any(word in subject_lower for word in ['chemistry', 'chemical', 'organic', 'inorganic']):
+                    categories['Physical Sciences']['Chemistry'][subject[:20]] = categories['Physical Sciences']['Chemistry'].get(subject[:20], 0) + 1
+                    placed = True
+                elif any(word in subject_lower for word in ['physics', 'quantum', 'mechanics', 'thermal']):
+                    categories['Physical Sciences']['Physics'][subject[:20]] = categories['Physical Sciences']['Physics'].get(subject[:20], 0) + 1
+                    placed = True
+                elif any(word in subject_lower for word in ['math', 'statistics', 'algebra', 'calculus']):
+                    categories['Physical Sciences']['Mathematics'][subject[:20]] = categories['Physical Sciences']['Mathematics'].get(subject[:20], 0) + 1
+                    placed = True
+                elif any(word in subject_lower for word in ['geology', 'earth', 'geophysics', 'atmospheric']):
+                    categories['Physical Sciences']['Earth Sciences'][subject[:20]] = categories['Physical Sciences']['Earth Sciences'].get(subject[:20], 0) + 1
+                    placed = True
+                
+                # Medical Sciences
+                elif any(word in subject_lower for word in ['medical', 'clinical', 'medicine', 'health', 'disease']):
+                    categories['Medical Sciences']['Clinical Medicine'][subject[:20]] = categories['Medical Sciences']['Clinical Medicine'].get(subject[:20], 0) + 1
+                    placed = True
+                elif any(word in subject_lower for word in ['public health', 'epidemiology', 'population']):
+                    categories['Medical Sciences']['Public Health'][subject[:20]] = categories['Medical Sciences']['Public Health'].get(subject[:20], 0) + 1
+                    placed = True
+                elif any(word in subject_lower for word in ['pharmacology', 'drug', 'pharmaceutical', 'toxicology']):
+                    categories['Medical Sciences']['Pharmacology'][subject[:20]] = categories['Medical Sciences']['Pharmacology'].get(subject[:20], 0) + 1
+                    placed = True
+                elif any(word in subject_lower for word in ['neuroscience', 'brain', 'neural', 'cognitive']):
+                    categories['Medical Sciences']['Neuroscience'][subject[:20]] = categories['Medical Sciences']['Neuroscience'].get(subject[:20], 0) + 1
+                    placed = True
+                
+                # Engineering & Technology
+                elif any(word in subject_lower for word in ['computer', 'software', 'algorithm', 'data']):
+                    categories['Engineering & Technology']['Computer Science'][subject[:20]] = categories['Engineering & Technology']['Computer Science'].get(subject[:20], 0) + 1
+                    placed = True
+                elif any(word in subject_lower for word in ['engineering', 'mechanical', 'electrical', 'civil']):
+                    categories['Engineering & Technology']['Engineering'][subject[:20]] = categories['Engineering & Technology']['Engineering'].get(subject[:20], 0) + 1
+                    placed = True
+                elif any(word in subject_lower for word in ['materials', 'nanotechnology', 'polymer']):
+                    categories['Engineering & Technology']['Materials Science'][subject[:20]] = categories['Engineering & Technology']['Materials Science'].get(subject[:20], 0) + 1
+                    placed = True
+                elif any(word in subject_lower for word in ['technology', 'tech', 'innovation']):
+                    categories['Engineering & Technology']['Technology'][subject[:20]] = categories['Engineering & Technology']['Technology'].get(subject[:20], 0) + 1
+                    placed = True
+                
+                # Social Sciences
+                elif any(word in subject_lower for word in ['psychology', 'behavioral', 'psycho']):
+                    categories['Social Sciences']['Psychology'][subject[:20]] = categories['Social Sciences']['Psychology'].get(subject[:20], 0) + 1
+                    placed = True
+                elif any(word in subject_lower for word in ['economics', 'economic', 'finance', 'business']):
+                    categories['Social Sciences']['Economics'][subject[:20]] = categories['Social Sciences']['Economics'].get(subject[:20], 0) + 1
+                    placed = True
+                elif any(word in subject_lower for word in ['education', 'teaching', 'learning', 'pedagogy']):
+                    categories['Social Sciences']['Education'][subject[:20]] = categories['Social Sciences']['Education'].get(subject[:20], 0) + 1
+                    placed = True
+                elif any(word in subject_lower for word in ['sociology', 'social', 'anthropology']):
+                    categories['Social Sciences']['Sociology'][subject[:20]] = categories['Social Sciences']['Sociology'].get(subject[:20], 0) + 1
+                    placed = True
+                
+                # If not placed anywhere, add to most relevant broader category
+                if not placed:
+                    categories['Life Sciences']['Biology'][subject[:20]] = categories['Life Sciences']['Biology'].get(subject[:20], 0) + 1
         
-        # Convert to hierarchical sunburst format
+        # Convert to three-level sunburst format
         children = []
-        for broad_cat, subcats in broad_categories.items():
-            if subcats:  # Only include categories with data
-                subcat_children = [
-                    {'name': subcat, 'value': count, 'full_name': subcat}
-                    for subcat, count in sorted(subcats.items(), key=lambda x: x[1], reverse=True)[:8]
-                ]
+        for broad_cat, mid_cats in categories.items():
+            mid_children = []
+            for mid_cat, subcats in mid_cats.items():
+                if subcats:  # Only include if there's data
+                    subcat_children = [
+                        {'name': subcat, 'value': count}
+                        for subcat, count in sorted(subcats.items(), key=lambda x: x[1], reverse=True)[:6]
+                    ]
+                    if subcat_children:  # Only add if there are subcategories
+                        mid_children.append({
+                            'name': mid_cat,
+                            'value': sum(subcats.values()),
+                            'children': subcat_children
+                        })
+            
+            if mid_children:  # Only add broad category if it has middle categories
                 children.append({
                     'name': broad_cat,
-                    'value': sum(subcats.values()),
-                    'children': subcat_children
+                    'value': sum(sum(subcats.values()) for subcats in mid_cats.values()),
+                    'children': mid_children
                 })
+        
+        total_value = sum(sum(sum(subcats.values()) for subcats in mid_cats.values()) for mid_cats in categories.values())
         
         return {
             'name': 'Research Fields',
-            'value': sum(sum(subcats.values()) for subcats in broad_categories.values()),
+            'value': total_value,
             'children': children
         }
 
