@@ -2082,7 +2082,9 @@ function initializeNetworkVisualization() {
     }
     
     console.log(`Beautiful network initialized with ${networkData.nodes.length} nodes and ${networkData.links.length} links`);
-    console.log(`Network composition: ${networkData.metadata.subjects} subjects, ${networkData.metadata.countries} countries, ${networkData.metadata.journals} journals`);
+    
+    // Update current stats display
+    updateNetworkStats(networkData.nodes.length, networkData.links.length);
 }
 
 function updateNetworkChart() {
