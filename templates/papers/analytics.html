@@ -40,8 +40,20 @@
 /* Sunburst chart specific sizing */
 #sunburstChart {
     width: 100%;
-    height: 320px;
-    overflow: hidden;
+    height: 450px;
+    min-height: 350px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+#sunburstChart svg {
+    display: block;
+    margin: auto;
 }
 
 /* World map responsive sizing */
@@ -2546,30 +2558,42 @@ function initializeSunburstChart(data) {
     // Clear any existing chart
     d3.select("#sunburstChart").selectAll("*").remove();
     
-    // Get container dimensions to make it responsive
+    // Get container dimensions and use more available space
     const container = document.getElementById('sunburstChart');
     const containerRect = container.getBoundingClientRect();
-    const width = Math.min(containerRect.width || 350, 350);
-    const height = Math.min(containerRect.height || 350, 350);
-    const radius = Math.min(width, height) / 2 - 10;
     
+    // Use more of the available space (increased from 350 max to better utilization)
+    const width = Math.max(300, Math.min(containerRect.width || 400, 450));
+    const height = Math.max(300, Math.min(containerRect.height || 400, 450));
+    
+    // Optimize radius to use more space (reduced padding from -10 to -5)
+    const radius = Math.min(width, height) / 2 - 5;
+    
+    // Create SVG with proper sizing
     const svg = d3.select("#sunburstChart")
         .append("svg")
-        .attr("width", width)
-        .attr("height", height)
+        .attr("width", "100%")
+        .attr("height", "100%")
         .attr("viewBox", `0 0 ${width} ${height}`)
         .attr("preserveAspectRatio", "xMidYMid meet")
+        .style("max-width", `${width}px`)
+        .style("max-height", `${height}px`)
         .append("g")
         .attr("transform", `translate(${width / 2},${height / 2})`);
     
-    // Create color scale
-    const color = d3.scaleOrdinal(d3.schemeCategory10);
+    // Create enhanced color scale with better differentiation
+    const color = d3.scaleOrdinal([
+        '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+        '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf',
+        '#aec7e8', '#ffbb78', '#98df8a', '#ff9896', '#c5b0d5'
+    ]);
     
-    // Create partition layout
+    // Enhanced partition layout with better size distribution
     const partition = d3.partition()
-        .size([2 * Math.PI, radius]);
+        .size([2 * Math.PI, radius])
+        .padding(0.001); // Reduce gaps between segments
     
-    // Create hierarchy
+    // Create hierarchy with better sorting
     const root = d3.hierarchy(data)
         .sum(d => d.value)
         .sort((a, b) => b.value - a.value);
@@ -2577,62 +2601,76 @@ function initializeSunburstChart(data) {
     // Apply partition
     partition(root);
     
-    // Create arc generator
+    // Enhanced arc generator with better proportions
     const arc = d3.arc()
         .startAngle(d => d.x0)
         .endAngle(d => d.x1)
         .innerRadius(d => d.y0)
-        .outerRadius(d => d.y1);
+        .outerRadius(d => d.y1)
+        .cornerRadius(1); // Add slight rounding for better aesthetics
     
-    // Add arcs
+    // Add arcs with enhanced styling
     const arcs = svg.selectAll("path")
         .data(root.descendants())
         .enter()
         .append("path")
         .attr("d", arc)
         .style("fill", d => {
-            if (d.depth === 0) return "#f8f9fa"; // Center
-            if (d.depth === 1) return color(d.data.name); // Broad categories
-            return d3.color(color(d.parent.data.name)).brighter(0.5); // Specific fields
+            if (d.depth === 0) return "transparent"; // Make center transparent
+            if (d.depth === 1) return color(d.data.name);
+            return d3.color(color(d.parent.data.name)).brighter(0.3);
         })
         .style("stroke", "#fff")
-        .style("stroke-width", 1)
-        .style("cursor", "pointer")
+        .style("stroke-width", d => d.depth === 0 ? 0 : (d.depth === 1 ? 2 : 1))
+        .style("cursor", d => d.depth > 0 ? "pointer" : "default")
+        .style("opacity", d => d.depth === 0 ? 0 : 1)
         .on("mouseover", function(event, d) {
             if (d.depth > 0) {
-                d3.select(this).style("opacity", 0.8);
+                d3.select(this)
+                    .style("opacity", 0.8)
+                    .style("stroke-width", d.depth === 1 ? 3 : 2);
                 
-                // Show tooltip
+                // Enhanced tooltip
                 const tooltip = d3.select("body").append("div")
-                    .attr("class", "tooltip")
+                    .attr("class", "sunburst-tooltip")
                     .style("opacity", 0)
                     .style("position", "absolute")
-                    .style("background", "rgba(0,0,0,0.8)")
+                    .style("background", "rgba(0,0,0,0.9)")
                     .style("color", "white")
-                    .style("padding", "8px")
-                    .style("border-radius", "4px")
+                    .style("padding", "12px")
+                    .style("border-radius", "6px")
                     .style("font-size", "12px")
-                    .style("z-index", "1000");
+                    .style("z-index", "1000")
+                    .style("box-shadow", "0 4px 6px rgba(0,0,0,0.3)")
+                    .style("max-width", "250px");
                 
                 tooltip.transition()
                     .duration(200)
-                    .style("opacity", .9);
+                    .style("opacity", 1);
                     
                 const fullName = d.data.full_name || d.data.name;
                 const hasChildren = d.children && d.children.length > 0;
+                const percentage = ((d.value / root.value) * 100).toFixed(1);
+                
                 tooltip.html(`
-                    <strong>${fullName}</strong><br/>
-                    Papers: ${d.value.toLocaleString()}<br/>
-                    ${hasChildren ? 'Category Group' : 'Subject Area'}
-                    ${hasChildren ? `<br/>${d.children.length} subcategories` : ''}
+                    <div style="font-weight: bold; margin-bottom: 4px;">${fullName}</div>
+                    <div>Papers: <strong>${d.value.toLocaleString()}</strong> (${percentage}%)</div>
+                    <div style="color: #ccc; margin-top: 4px;">
+                        ${hasChildren ? `Category with ${d.children.length} subcategories` : 'Specific subject area'}
+                    </div>
+                    ${hasChildren ? '' : '<div style="font-size: 10px; margin-top: 4px; color: #aaa;">Click to search papers</div>'}
                 `)
                     .style("left", (event.pageX + 10) + "px")
-                    .style("top", (event.pageY - 28) + "px");
+                    .style("top", (event.pageY - 10) + "px");
             }
         })
         .on("mouseout", function(event, d) {
-            d3.select(this).style("opacity", 1);
-            d3.selectAll(".tooltip").remove();
+            if (d.depth > 0) {
+                d3.select(this)
+                    .style("opacity", 1)
+                    .style("stroke-width", d.depth === 1 ? 2 : 1);
+            }
+            d3.selectAll(".sunburst-tooltip").remove();
         })
         .on("click", function(event, d) {
             if (d.depth > 0) {
@@ -2644,36 +2682,94 @@ function initializeSunburstChart(data) {
             }
         });
     
-    // Add text labels for larger categories
-    svg.selectAll("text")
-        .data(root.descendants().filter(d => d.depth === 1 && d.value >= 2))
+    // Enhanced text labels with better positioning and sizing
+    const labels = svg.selectAll("text")
+        .data(root.descendants().filter(d => {
+            // Show labels for categories with enough angular space and significance
+            const angularSize = d.x1 - d.x0;
+            const radialSize = d.y1 - d.y0;
+            return d.depth === 1 && angularSize > 0.3 && d.value >= 2 && radialSize > 20;
+        }))
         .enter()
         .append("text")
         .attr("transform", function(d) {
-            const x = (d.x0 + d.x1) / 2 * 180 / Math.PI;
-            const y = (d.y0 + d.y1) / 2;
-            return `rotate(${x - 90}) translate(${y},0) rotate(${x < 180 ? 0 : 180})`;
+            const angle = (d.x0 + d.x1) / 2 * 180 / Math.PI;
+            const radius = (d.y0 + d.y1) / 2;
+            return `rotate(${angle - 90}) translate(${radius},0) rotate(${angle < 180 ? 0 : 180})`;
         })
         .attr("dy", "0.35em")
         .style("text-anchor", function(d) {
             return (d.x0 + d.x1) / 2 < Math.PI ? "start" : "end";
         })
-        .style("font-size", "10px")
+        .style("font-size", function(d) {
+            // Dynamic font sizing based on available space
+            const angularSize = d.x1 - d.x0;
+            const radialSize = d.y1 - d.y0;
+            if (angularSize > 1.0 && radialSize > 30) return "11px";
+            if (angularSize > 0.5 && radialSize > 25) return "10px";
+            return "9px";
+        })
         .style("font-weight", "bold")
         .style("fill", "#333")
         .style("pointer-events", "none")
-        .text(d => d.data.name.length > 12 ? d.data.name.substring(0, 12) + "..." : d.data.name);
+        .style("text-shadow", "1px 1px 1px rgba(255,255,255,0.8)")
+        .text(function(d) {
+            // Smart text truncation based on available space
+            const angularSize = d.x1 - d.x0;
+            let maxLength = Math.floor(angularSize * 15); // Rough approximation
+            maxLength = Math.max(8, Math.min(maxLength, 20));
+            
+            return d.data.name.length > maxLength ? 
+                d.data.name.substring(0, maxLength - 3) + "..." : 
+                d.data.name;
+        });
     
-    // Add center text
-    svg.append("text")
+    // Enhanced center information
+    const centerGroup = svg.append("g")
+        .attr("class", "center-info");
+    
+    centerGroup.append("text")
         .attr("text-anchor", "middle")
-        .attr("dy", "0.35em")
-        .style("font-size", "12px")
+        .attr("dy", "-0.5em")
+        .style("font-size", "14px")
         .style("font-weight", "bold")
-        .style("fill", "#666")
-        .text("Subjects");
+        .style("fill", "#333")
+        .text("Research");
     
-    console.log('Sunburst chart initialized with', data.children.length, 'broad categories');
+    centerGroup.append("text")
+        .attr("text-anchor", "middle")
+        .attr("dy", "0.8em")
+        .style("font-size", "14px")
+        .style("font-weight", "bold")
+        .style("fill", "#333")
+        .text("Subjects");
+        
+    centerGroup.append("text")
+        .attr("text-anchor", "middle")
+        .attr("dy", "2.2em")
+        .style("font-size", "10px")
+        .style("fill", "#666")
+        .text(`${root.value.toLocaleString()} papers`);
+    
+    // Add subtle animation on load
+    arcs.style("opacity", 0)
+        .transition()
+        .duration(800)
+        .delay((d, i) => i * 20)
+        .style("opacity", d => d.depth === 0 ? 0 : 1);
+    
+    labels.style("opacity", 0)
+        .transition()
+        .duration(1000)
+        .delay(500)
+        .style("opacity", 1);
+    
+    console.log('Enhanced sunburst chart initialized:', {
+        categories: data.children.length,
+        totalPapers: root.value,
+        chartSize: `${width}x${height}`,
+        radius: radius
+    });
 }
 </script>
 {% endblock %} 
