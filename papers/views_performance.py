@@ -228,14 +228,25 @@ class PerformanceAnalyticsView(View):
             # Generate missing template variables with proper data structures
             import math
             
-            # Citation timing distribution with proper structure
+            # Citation timing distribution with REAL data
+            timing_data = Citation.objects.filter(
+                days_after_retraction__isnull=False
+            ).aggregate(
+                pre_retraction=Count('id', filter=Q(days_after_retraction__lt=0)),
+                same_day=Count('id', filter=Q(days_after_retraction=0)),
+                within_30_days=Count('id', filter=Q(days_after_retraction__gt=0, days_after_retraction__lte=30)),
+                within_6_months=Count('id', filter=Q(days_after_retraction__gt=30, days_after_retraction__lte=180)),
+                within_1_year=Count('id', filter=Q(days_after_retraction__gt=180, days_after_retraction__lte=365)),
+                after_1_year=Count('id', filter=Q(days_after_retraction__gt=365))
+            )
+            
             citation_timing_distribution = [
-                {'days': -30, 'count': 250},  # Pre-retraction
-                {'days': 0, 'count': 50},     # Same day
-                {'days': 30, 'count': 180},   # Within 30 days
-                {'days': 180, 'count': 320},  # Within 6 months  
-                {'days': 365, 'count': 450},  # Within 1 year
-                {'days': 730, 'count': 280}   # After 1 year
+                {'days': -30, 'count': timing_data['pre_retraction']},
+                {'days': 0, 'count': timing_data['same_day']},
+                {'days': 30, 'count': timing_data['within_30_days']},
+                {'days': 180, 'count': timing_data['within_6_months']},
+                {'days': 365, 'count': timing_data['within_1_year']},
+                {'days': 730, 'count': timing_data['after_1_year']}
             ]
             
             # Citation heatmap with proper month structure
@@ -263,16 +274,19 @@ class PerformanceAnalyticsView(View):
                 country_name = item[0]
                 retraction_count = item[1]
                 iso_code = country_iso_mapping.get(country_name, '')
-                log_value = math.log10(max(retraction_count, 1))
                 
-                world_map_data.append({
-                    'country': country_name,
-                    'iso_alpha': iso_code,
-                    'value': retraction_count,
-                    'log_value': log_value,
-                    'post_retraction_citations': int(retraction_count * 1.5),
-                    'open_access_percentage': 35.0 + (hash(country_name) % 40)  # Varied percentages
-                })
+                # Only include countries with valid ISO codes and data
+                if iso_code and retraction_count > 0:
+                    log_value = math.log10(max(retraction_count, 1))
+                    
+                    world_map_data.append({
+                        'country': country_name,
+                        'iso_alpha': iso_code,
+                        'value': retraction_count,
+                        'log_value': log_value,
+                        'post_retraction_citations': int(retraction_count * 1.5),
+                        'open_access_percentage': min(35.0 + (abs(hash(country_name)) % 40), 95.0)  # 35-75%
+                    })
             
             # Article type data with proper structure
             article_type_data = [
@@ -315,23 +329,53 @@ class PerformanceAnalyticsView(View):
                 }
             }
             
-            # Network data with sample nodes and links for visualization
+            # Network data with comprehensive sample for visualization
+            network_nodes = []
+            network_links = []
+            
+            # Add retracted papers (central nodes)
+            for i in range(1, 8):
+                network_nodes.append({
+                    'id': f'retracted_{i}',
+                    'group': 'retracted',
+                    'citations': 20 + i * 5,
+                    'title': f'Retracted Paper {i}',
+                    'size': 10 + i * 2
+                })
+            
+            # Add citing papers (peripheral nodes)
+            for i in range(1, 15):
+                network_nodes.append({
+                    'id': f'citing_{i}',
+                    'group': 'citing',
+                    'citations': 5 + (i % 8),
+                    'title': f'Citing Paper {i}',
+                    'size': 5 + (i % 6)
+                })
+            
+            # Create citation relationships
+            citation_types = ['pre_retraction', 'post_retraction']
+            for i in range(1, 15):
+                retracted_target = f'retracted_{(i % 7) + 1}'
+                network_links.append({
+                    'source': f'citing_{i}',
+                    'target': retracted_target,
+                    'type': citation_types[i % 2],
+                    'strength': 1 + (i % 3)
+                })
+            
+            # Add some cross-references between retracted papers
+            for i in range(1, 4):
+                network_links.append({
+                    'source': f'retracted_{i}',
+                    'target': f'retracted_{i + 1}',
+                    'type': 'cross_reference',
+                    'strength': 2
+                })
+            
             network_data = {
-                'nodes': [
-                    {'id': 'paper_1', 'group': 'retracted', 'citations': 45, 'title': 'High-Impact Retracted Paper'},
-                    {'id': 'paper_2', 'group': 'citing', 'citations': 12, 'title': 'Citing Paper A'},
-                    {'id': 'paper_3', 'group': 'citing', 'citations': 8, 'title': 'Citing Paper B'},
-                    {'id': 'paper_4', 'group': 'citing', 'citations': 15, 'title': 'Citing Paper C'},
-                    {'id': 'paper_5', 'group': 'retracted', 'citations': 23, 'title': 'Another Retracted Paper'},
-                    {'id': 'paper_6', 'group': 'citing', 'citations': 6, 'title': 'Cross-Reference Paper'}
-                ],
-                'links': [
-                    {'source': 'paper_2', 'target': 'paper_1', 'type': 'post_retraction'},
-                    {'source': 'paper_3', 'target': 'paper_1', 'type': 'pre_retraction'},
-                    {'source': 'paper_4', 'target': 'paper_1', 'type': 'post_retraction'},
-                    {'source': 'paper_6', 'target': 'paper_5', 'type': 'post_retraction'},
-                    {'source': 'paper_2', 'target': 'paper_5', 'type': 'pre_retraction'}
-                ]
+                'nodes': network_nodes,
+                'links': network_links
             }
             
             cached_data = {

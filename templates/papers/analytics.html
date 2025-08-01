@@ -1461,8 +1461,14 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
     plotlyMapContainer.style.width = '100%';
     worldMapDiv.appendChild(plotlyMapContainer);
     
-    // Prepare data for Plotly choropleth
-    const plotlyMapData = worldMapData.filter(country => country.iso_alpha); // Only countries with ISO codes
+    // Prepare data for Plotly choropleth - filter for valid data
+    const plotlyMapData = worldMapData.filter(country => 
+        country.iso_alpha && 
+        country.iso_alpha.length > 0 && 
+        country.value !== undefined && 
+        country.value !== null &&
+        !isNaN(Number(country.value))
+    );
     
     // Function to generate choropleth data based on scale
     function generateChoroplethData(scale = 'linear') {
@@ -1470,11 +1476,17 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
         let transformedValues, colorbarTitle;
         
         if (scale === 'log') {
-            // Apply log10 transformation, handle zero values
-            transformedValues = values.map(value => value > 0 ? Math.log10(value) : 0);
+            // Apply log10 transformation, handle zero and invalid values
+            transformedValues = values.map(value => {
+                const numValue = Number(value);
+                if (!isNaN(numValue) && numValue > 0) {
+                    return Math.log10(numValue);
+                }
+                return 0; // Handle zero, NaN, null, undefined
+            });
             colorbarTitle = 'Log₁₀(Retractions)';
         } else {
-            transformedValues = values;
+            transformedValues = values.map(value => Number(value) || 0);
             colorbarTitle = 'Retractions';
         }
         
@@ -1484,9 +1496,9 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
             z: transformedValues,
             text: plotlyMapData.map(country => 
                 `${country.country}<br>` +
-                `Retractions: ${country.value.toLocaleString()}<br>` +
-                `Post-retraction citations: ${country.post_retraction_citations.toLocaleString()}<br>` +
-                `Open access rate: ${country.open_access_percentage.toFixed(1)}%`
+                `Retractions: ${(country.value || 0).toLocaleString()}<br>` +
+                `Post-retraction citations: ${(country.post_retraction_citations || 0).toLocaleString()}<br>` +
+                `Open access rate: ${(country.open_access_percentage || 0).toFixed(1)}%`
             ),
             hovertemplate: '%{text}<extra></extra>',
             colorscale: [
