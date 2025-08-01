@@ -713,7 +713,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize charts when tabs are shown
     document.getElementById('trends-tab').addEventListener('shown.bs.tab', function() {
         // Destroy existing charts before reinitializing
-        ['retractionsTimeline', 'citationComparison', 'subjectDistribution'].forEach(chartKey => {
+        ['retractionsTimeline', 'citationComparison', 'subjectDistribution', 'retractionTrends'].forEach(chartKey => {
             if (chartInstances[chartKey]) {
                 chartInstances[chartKey].destroy();
                 delete chartInstances[chartKey];
@@ -724,7 +724,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     document.getElementById('patterns-tab').addEventListener('shown.bs.tab', function() {
         // Destroy existing charts before reinitializing
-        ['citationTiming', 'journalBubble'].forEach(chartKey => {
+        ['citationTiming', 'journalBubble', 'subjectDistribution', 'articleType', 'publisher', 'openAccess'].forEach(chartKey => {
             if (chartInstances[chartKey]) {
                 chartInstances[chartKey].destroy();
                 delete chartInstances[chartKey];
