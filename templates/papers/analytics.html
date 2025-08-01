@@ -1422,7 +1422,7 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
     console.log('Article Type Data:', articleTypeData);
     
     if (articleTypeData.length > 0) {
-        const articleTypeChart = new Chart(
+        chartInstances['articleType'] = new Chart(
             document.getElementById('articleTypeChart'),
             {
                 type: 'bar',
@@ -1469,7 +1469,7 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
     console.log('Publisher Data:', publisherData);
     
     if (publisherData.length > 0) {
-        const publisherChart = new Chart(
+        chartInstances['publisher'] = new Chart(
             document.getElementById('publisherChart'),
             {
                 type: 'bar',
@@ -1516,7 +1516,7 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
     console.log('Access Analytics Data:', accessData);
     
     if (accessData.open_access) {
-        const openAccessChart = new Chart(
+        chartInstances['openAccess'] = new Chart(
             document.getElementById('openAccessChart'),
             {
                 type: 'doughnut',

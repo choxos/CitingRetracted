@@ -760,10 +760,22 @@ class AnalyticsView(View):
             for item in retraction_years
         ]
         
-        # Ensure retraction_years has data by using both regular data and chart_data
-        chart_data = self._get_chart_data()
-        if not data['retraction_years'] and 'retraction_years' in chart_data:
-            data['retraction_years'] = chart_data['retraction_years']
+        # If no data from main query, generate from available papers  
+        if not data['retraction_years']:
+            # Try using publication_year as fallback if retraction_date is missing
+            publication_years = RetractedPaper.objects.filter(
+                publication_year__isnull=False
+            ).values('publication_year').annotate(
+                count=Count('id')
+            ).order_by('publication_year')[:20]
+            
+            data['retraction_years'] = [
+                {
+                    'year': item['publication_year'],
+                    'count': item['count']
+                }
+                for item in publication_years
+            ]
         
         # Top journals with efficient query (limit complexity)
         data['top_journals'] = RetractedPaper.objects.values(
