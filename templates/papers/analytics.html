@@ -261,11 +261,7 @@
                         <i class="fas fa-tachometer-alt"></i> Overview
                     </button>
                 </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="trends-tab" data-bs-toggle="pill" data-bs-target="#trends" type="button" role="tab">
-                        <i class="fas fa-chart-line"></i> Trends
-                    </button>
-                </li>
+
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="patterns-tab" data-bs-toggle="pill" data-bs-target="#patterns" type="button" role="tab">
                         <i class="fas fa-search"></i> Patterns
@@ -330,6 +326,19 @@
                 </div>
             </div>
             
+            <!-- Retraction Trends Over Time -->
+            <div class="row mb-5">
+                <div class="col-12 mb-4">
+                    <div class="prct-chart-container">
+                        <h5 class="prct-chart-title"><i class="fas fa-chart-line"></i> Retraction Trends Over Time</h5>
+                        <small class="text-muted">Combined view of retractions and their post-retraction citation impact</small>
+                        <div class="chart-container">
+                            <canvas id="retractionsTimelineChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Quick Charts Row -->
             <div class="row mb-5">
                 <div class="col-lg-6 mb-4">
@@ -360,59 +369,7 @@
                 </div>
             </div>
         </div>
-        
-        <!-- Trends Tab -->
-        <div class="tab-pane fade" id="trends" role="tabpanel">
-            <!-- Time Range Controls -->
-            <div class="xera-card mb-4">
-                <div class="xera-card-body">
-                    <div class="filter-group">
-                        <label><strong>Time Range:</strong></label>
-                        <select class="xera-form-control xera-form-control-sm" id="timeRangeFilter" style="width: auto;">
-                            <option value="all">All Time</option>
-                            <option value="5y">Last 5 Years</option>
-                            <option value="3y">Last 3 Years</option>
-                            <option value="1y">Last Year</option>
-                        </select>
-                        <button class="xera-btn xera-btn-sm xera-btn-primary" onclick="updateTrendCharts()">
-                            <i class="fas fa-filter"></i> Apply Filter
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Retraction Trends Chart -->
-            <div class="row mb-5">
-                <div class="col-12 mb-4">
-                    <div class="prct-chart-container">
-                        <h5 class="prct-chart-title"><i class="fas fa-chart-line"></i> Retraction Trends Over Time</h5>
-                        <div class="chart-container">
-                            <canvas id="retractionsTimelineChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Citation Comparison & Subject Distribution -->
-            <div class="row mb-5">
-                <div class="col-lg-8 mb-4">
-                    <div class="prct-chart-container">
-                        <h5 class="prct-chart-title"><i class="fas fa-chart-area"></i> Citation Comparison: Before vs After Retraction</h5>
-                        <div class="chart-container">
-                            <canvas id="citationComparisonChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-4 mb-4">
-                    <div class="prct-chart-container">
-                        <h5 class="prct-chart-title"><i class="fas fa-chart-bar"></i> Subject Distribution</h5>
-                        <div class="chart-container">
-                            <canvas id="subjectDistributionChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+
         
         <!-- Patterns Tab -->
         <div class="tab-pane fade" id="patterns" role="tabpanel">
@@ -710,17 +667,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize pattern charts immediately (including heatmap) so they're visible on page load
     initializePatternCharts();
     
+    // Initialize the retraction trends chart in overview (since it's now part of overview)
+    // This will be called immediately since overview is the active tab
+    
     // Initialize charts when tabs are shown
-    document.getElementById('trends-tab').addEventListener('shown.bs.tab', function() {
-        // Destroy existing charts before reinitializing
-        ['retractionsTimeline', 'citationComparison', 'subjectDistribution', 'retractionTrends'].forEach(chartKey => {
-            if (chartInstances[chartKey]) {
-                chartInstances[chartKey].destroy();
-                delete chartInstances[chartKey];
-            }
-        });
-        initializeTrendCharts();
-    });
+
     
     document.getElementById('patterns-tab').addEventListener('shown.bs.tab', function() {
         // Destroy existing charts before reinitializing
@@ -836,12 +787,12 @@ function initializeOverviewCharts() {
     );
 }
 
-function initializeTrendCharts() {
-    // Retraction trends over time
-    const retractionYearsData = {{ retraction_years|safe }} || [];
-    console.log('Retraction Years Data:', retractionYearsData);
-    console.log('Retraction Years Length:', retractionYearsData.length);
-    console.log('Retraction Years Sample:', retractionYearsData.slice(0, 3));
+// Retraction trends over time - now initialized in overview
+// This code runs immediately since the chart is in the overview tab
+const retractionYearsData = {{ retraction_years|safe }} || [];
+console.log('Retraction Years Data:', retractionYearsData);
+console.log('Retraction Years Length:', retractionYearsData.length);
+console.log('Retraction Years Sample:', retractionYearsData.slice(0, 3));
     
     // Combined trends chart showing both retractions and post-retraction citations
     const combinedTrendsData = {{ combined_trends|safe }} || [];
