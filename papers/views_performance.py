@@ -439,7 +439,7 @@ class PerformanceAnalyticsView(View):
 
     def _get_cached_complex_data(self):
         """Complex analytics with long-term caching - OPTIMIZED for large datasets"""
-        cache_key = 'analytics_complex_data_v14_with_countries'
+        cache_key = 'analytics_complex_data_v15_fixed_template_vars'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
@@ -867,7 +867,8 @@ class PerformanceAnalyticsView(View):
                 # Ensure these are properly passed through
                 'network_visualization_data': network_data,  # Alternative name
                 'subject_hierarchy_data': sunburst_data,     # Alternative name
-                'most_problematic_papers': problematic_papers  # Alternative name
+                'most_problematic_papers': problematic_papers,  # Alternative name
+                'problematic_papers_detailed': problematic_papers  # Template expects this name
             }
             
             # Cache for longer (2 hours) since it's expensive to generate
@@ -931,8 +932,8 @@ class PerformanceAnalyticsView(View):
                             subject_categories['Other Sciences'] += 1
                             subject_subcategories['Other Sciences']['Interdisciplinary'] += 1
             
-            # Build hierarchical sunburst data
-            sunburst_data = []
+            # Build hierarchical sunburst data as single root object with children (template expects this structure)
+            categories = []
             for category, count in subject_categories.items():
                 children = []
                 for subcategory, subcount in subject_subcategories[category].items():
@@ -942,13 +943,20 @@ class PerformanceAnalyticsView(View):
                         'category': category
                     })
                 
-                sunburst_data.append({
+                categories.append({
                     'name': category,
                     'value': count,
                     'children': children
                 })
             
-            logger.info(f"Realistic sunburst: {len(sunburst_data)} categories with total {total_unique_retracted} papers")
+            # Template expects single object with children property
+            sunburst_data = {
+                'name': 'Research Fields',
+                'children': categories,
+                'value': total_unique_retracted
+            }
+            
+            logger.info(f"Realistic sunburst: {len(categories)} categories with total {total_unique_retracted} papers")
             return sunburst_data
             
         except Exception as e:
