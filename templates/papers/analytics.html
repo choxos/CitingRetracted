@@ -978,7 +978,11 @@ function initializePatternCharts() {
     console.log('Timing Data:', timingData);
     
     const citationTimingData = {
-        labels: timingData.map(item => item.days + ' days'),
+        labels: timingData.map(item => {
+            if (item.days < 0) return 'Pre-Retraction';
+            if (item.days === 0) return 'Same Day';
+            return item.days + ' days';
+        }),
         datasets: [{
             label: 'Citations',
             data: timingData.map(item => item.count),
@@ -1003,10 +1007,18 @@ function initializePatternCharts() {
                 },
                 scales: {
                     x: {
-                        display: false
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Time Period'
+                        }
                     },
                     y: {
-                        beginAtZero: true
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Citations'
+                        }
                     }
                 }
             }
@@ -1404,6 +1416,143 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
     Plotly.newPlot('plotlyWorldMap', choroplethData, choroplethLayout, config);
     
     console.log('Plotly choropleth world map initialized with', plotlyMapData.length, 'countries');
+    
+    // Article Type Chart
+    const articleTypeData = {{ article_type_data|safe }} || [];
+    console.log('Article Type Data:', articleTypeData);
+    
+    if (articleTypeData.length > 0) {
+        const articleTypeChart = new Chart(
+            document.getElementById('articleTypeChart'),
+            {
+                type: 'bar',
+                data: {
+                    labels: articleTypeData.map(item => item.type || 'Unknown'),
+                    datasets: [{
+                        label: 'Count',
+                        data: articleTypeData.map(item => item.count || 0),
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Article Type'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Count'
+                            }
+                        }
+                    }
+                }
+            }
+        );
+    }
+    
+    // Publisher Chart
+    const publisherData = {{ publisher_data|safe }} || [];
+    console.log('Publisher Data:', publisherData);
+    
+    if (publisherData.length > 0) {
+        const publisherChart = new Chart(
+            document.getElementById('publisherChart'),
+            {
+                type: 'bar',
+                data: {
+                    labels: publisherData.map(item => (item.publisher || 'Unknown').substring(0, 15) + '...'),
+                    datasets: [{
+                        label: 'Retractions',
+                        data: publisherData.map(item => item.count || 0),
+                        backgroundColor: 'rgba(255, 159, 64, 0.6)',
+                        borderColor: 'rgba(255, 159, 64, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Publisher'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Retractions'
+                            }
+                        }
+                    }
+                }
+            }
+        );
+    }
+    
+    // Open Access Chart
+    const accessData = {{ access_analytics|safe }} || {};
+    console.log('Access Analytics Data:', accessData);
+    
+    if (accessData.open_access) {
+        const openAccessChart = new Chart(
+            document.getElementById('openAccessChart'),
+            {
+                type: 'doughnut',
+                data: {
+                    labels: ['Open Access', 'Paywalled', 'Unknown'],
+                    datasets: [{
+                        data: [
+                            accessData.open_access.count || 0,
+                            accessData.paywalled.count || 0,
+                            accessData.unknown.count || 0
+                        ],
+                        backgroundColor: [
+                            'rgba(75, 192, 192, 0.8)',
+                            'rgba(255, 205, 86, 0.8)',
+                            'rgba(201, 203, 207, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(255, 205, 86, 1)',
+                            'rgba(201, 203, 207, 1)'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            }
+        );
+    }
 }
 
 function initializeNetworkVisualization() {

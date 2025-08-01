@@ -760,6 +760,11 @@ class AnalyticsView(View):
             for item in retraction_years
         ]
         
+        # Ensure retraction_years has data by using both regular data and chart_data
+        chart_data = self._get_chart_data()
+        if not data['retraction_years'] and 'retraction_years' in chart_data:
+            data['retraction_years'] = chart_data['retraction_years']
+        
         # Top journals with efficient query (limit complexity)
         data['top_journals'] = RetractedPaper.objects.values(
             'journal'
@@ -1150,6 +1155,9 @@ class AnalyticsView(View):
         chart_data.setdefault('network_data', {'nodes': [], 'links': []})
         chart_data.setdefault('world_map_data', [])
         chart_data.setdefault('country_analytics', [])
+        chart_data.setdefault('article_type_data', [])
+        chart_data.setdefault('publisher_data', [])
+        chart_data.setdefault('access_analytics', {'open_access': {'count': 0}, 'paywalled': {'count': 0}, 'unknown': {'count': 0}})
         
         return chart_data
     
