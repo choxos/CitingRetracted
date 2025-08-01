@@ -439,7 +439,7 @@ class PerformanceAnalyticsView(View):
 
     def _get_cached_complex_data(self):
         """Complex analytics with long-term caching - OPTIMIZED for large datasets"""
-        cache_key = 'analytics_complex_data_v13_large_network'
+        cache_key = 'analytics_complex_data_v14_with_countries'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
@@ -619,6 +619,17 @@ class PerformanceAnalyticsView(View):
                 count=Count('id')
             ).order_by('-count')[:500])  # Top 500 authors
             
+            # Get top countries (up to 1000)
+            network_country_data = list(RetractedPaper.objects.filter(
+                retraction_nature__iexact='Retraction'
+            ).exclude(
+                country__isnull=True
+            ).exclude(
+                country__exact=''
+            ).values('country').annotate(
+                count=Count('id')
+            ).order_by('-count')[:200])  # Top 200 countries
+            
             nodes = []
             links = []
             node_id = 0
@@ -671,6 +682,34 @@ class PerformanceAnalyticsView(View):
                 author_nodes[author] = node_id
                 node_id += 1
             
+            # Create country nodes
+            country_nodes = {}
+            for item in network_country_data:
+                # Handle semicolon-separated countries
+                country_string = item['country']
+                count = item['count']
+                
+                if country_string:
+                    # Parse multiple countries
+                    countries = [c.strip() for c in country_string.split(';') if c.strip()]
+                    for country in countries:
+                        # Clean up country names and avoid duplicates
+                        country = country.strip()
+                        if len(country) > 1 and country not in country_nodes:
+                            # Skip invalid entries
+                            invalid_entries = {'Unknown', 'unknown', 'N/A', 'n/a', 'None', 'null', 'NA'}
+                            if country not in invalid_entries:
+                                nodes.append({
+                                    'id': node_id,
+                                    'name': country,
+                                    'type': 'country',
+                                    'size': min(25, 6 + (count * 1.2)),  # Size based on count
+                                    'color': '#96ceb4',
+                                    'count': count
+                                })
+                                country_nodes[country] = node_id
+                                node_id += 1
+            
             # Create links between related entities
             # Subject-Journal relationships
             for i, subject_item in enumerate(network_subject_data[:200]):  # Limit for performance
@@ -713,6 +752,52 @@ class PerformanceAnalyticsView(View):
                             if j >= 3:
                                 break
             
+            # Country-Journal relationships (geographic research hubs)
+            for i, country_item in enumerate(network_country_data[:50]):
+                country_string = country_item['country']
+                if country_string:
+                    countries = [c.strip() for c in country_string.split(';') if c.strip()]
+                    for country in countries[:1]:  # Just primary country to avoid complexity
+                        if country in country_nodes:
+                            # Link to top journals from this country
+                            for j, journal_item in enumerate(network_journal_data[:30]):
+                                journal = journal_item['journal'][:25]
+                                if journal in journal_nodes:
+                                    strength = max(2, min(8, (country_item['count'] + journal_item['count']) / 25))
+                                    links.append({
+                                        'source': country_nodes[country],
+                                        'target': journal_nodes[journal],
+                                        'strength': strength,
+                                        'type': 'country-journal'
+                                    })
+                                    
+                                    # Limit links per country
+                                    if j >= 4:
+                                        break
+            
+            # Country-Subject relationships (research focus by geography)
+            for i, country_item in enumerate(network_country_data[:30]):
+                country_string = country_item['country']
+                if country_string:
+                    countries = [c.strip() for c in country_string.split(';') if c.strip()]
+                    for country in countries[:1]:  # Just primary country
+                        if country in country_nodes:
+                            # Link to relevant subjects
+                            for j, subject_item in enumerate(network_subject_data[:20]):
+                                subject = subject_item['subject'][:30]
+                                if subject in subject_nodes:
+                                    strength = max(1, min(6, (country_item['count'] + subject_item['count']) / 30))
+                                    links.append({
+                                        'source': country_nodes[country],
+                                        'target': subject_nodes[subject],
+                                        'strength': strength,
+                                        'type': 'country-subject'
+                                    })
+                                    
+                                    # Limit links per country
+                                    if j >= 2:
+                                        break
+            
             network_data = {
                 'nodes': nodes,
                 'links': links,
@@ -732,11 +817,13 @@ class PerformanceAnalyticsView(View):
                 'available_subjects': len(network_subject_data),
                 'available_journals': len(network_journal_data), 
                 'available_authors': len(network_author_data),
+                'available_countries': len(network_country_data),
                 'max_nodes': 1000,
                 'current_config': {
                     'subjects_shown': len([n for n in nodes if n['type'] == 'subject']),
                     'journals_shown': len([n for n in nodes if n['type'] == 'journal']),
-                    'authors_shown': len([n for n in nodes if n['type'] == 'author'])
+                    'authors_shown': len([n for n in nodes if n['type'] == 'author']),
+                    'countries_shown': len([n for n in nodes if n['type'] == 'country'])
                 }
             }
             
