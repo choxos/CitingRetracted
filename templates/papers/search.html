@@ -219,11 +219,16 @@
             <div class="xera-card-body">
                 <div class="row">
                     <div class="col-lg-8">
-                        <h5>
-                            <a href="{{ paper.get_absolute_url }}" class="text-decoration-none">
-                                {{ paper.title|truncatechars:120 }}
-                            </a>
-                        </h5>
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="mb-0">
+                                <a href="{{ paper.get_absolute_url }}" class="text-decoration-none">
+                                    {{ paper.title|truncatechars:120 }}
+                                </a>
+                            </h5>
+                            <span class="prct-retraction-badge {{ paper.retraction_badge_class }} ms-2">
+                                {{ paper.retraction_nature_display }}
+                            </span>
+                        </div>
                         
                         {% if paper.author_list %}
                         <div class="text-muted mb-2">
