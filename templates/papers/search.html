@@ -50,6 +50,24 @@
                 
                 <div class="row">
                     <div class="col-lg-3 mb-3">
+                        <label for="retraction_nature" class="form-label">Nature of Notice</label>
+                        <select id="retraction_nature" name="retraction_nature" class="xera-form-control">
+                            <option value="">All Types</option>
+                            <option value="Retraction" {% if retraction_nature_filter == 'Retraction' %}selected{% endif %}>
+                                🔴 Retraction
+                            </option>
+                            <option value="Expression of Concern" {% if retraction_nature_filter == 'Expression of Concern' %}selected{% endif %}>
+                                🟠 Expression of Concern
+                            </option>
+                            <option value="Correction" {% if retraction_nature_filter == 'Correction' %}selected{% endif %}>
+                                🔵 Correction
+                            </option>
+                            <option value="Reinstatement" {% if retraction_nature_filter == 'Reinstatement' %}selected{% endif %}>
+                                🟢 Reinstatement
+                            </option>
+                        </select>
+                    </div>
+                    <div class="col-lg-3 mb-3">
                         <label for="reason" class="form-label">Retraction Reason</label>
                         <select id="reason" name="reason" class="xera-form-control">
                             <option value="">All Reasons</option>
@@ -80,6 +98,9 @@
                                value="{{ institution_filter }}"
                                placeholder="University, Institute, etc.">
                     </div>
+                </div>
+                
+                <div class="row">
                     <div class="col-lg-3 mb-3">
                         <label for="author" class="form-label">Author</label>
                         <input type="text" 
@@ -89,7 +110,6 @@
                                value="{{ author_filter }}"
                                placeholder="Author name">
                     </div>
-                </div>
                 
                 <div class="row">
                     <div class="col-lg-3 mb-3">

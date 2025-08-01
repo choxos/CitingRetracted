@@ -435,6 +435,7 @@ class SearchView(ListView):
         institution = self.request.GET.get('institution', '').strip()
         author = self.request.GET.get('author', '').strip()
         publisher = self.request.GET.get('publisher', '').strip()
+        retraction_nature = self.request.GET.get('retraction_nature', '').strip()
         
         # Advanced filters
         min_citations = self.request.GET.get('min_citations', '').strip()
@@ -499,6 +500,9 @@ class SearchView(ListView):
         
         if publisher:
             queryset = queryset.filter(publisher__icontains=publisher)
+        
+        if retraction_nature:
+            queryset = queryset.filter(retraction_nature__iexact=retraction_nature)
         
         if year_from:
             try:
@@ -574,6 +578,7 @@ class SearchView(ListView):
         context['institution_filter'] = self.request.GET.get('institution', '')
         context['author_filter'] = self.request.GET.get('author', '')
         context['publisher_filter'] = self.request.GET.get('publisher', '')
+        context['retraction_nature_filter'] = self.request.GET.get('retraction_nature', '')
         
         # Advanced filter values
         context['min_citations'] = self.request.GET.get('min_citations', '')
