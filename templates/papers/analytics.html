@@ -712,11 +712,24 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize charts when tabs are shown
     document.getElementById('trends-tab').addEventListener('shown.bs.tab', function() {
+        // Destroy existing charts before reinitializing
+        ['retractionsTimeline', 'citationComparison', 'subjectDistribution'].forEach(chartKey => {
+            if (chartInstances[chartKey]) {
+                chartInstances[chartKey].destroy();
+                delete chartInstances[chartKey];
+            }
+        });
         initializeTrendCharts();
     });
     
     document.getElementById('patterns-tab').addEventListener('shown.bs.tab', function() {
-        // Re-initialize pattern charts when tab is explicitly shown
+        // Destroy existing charts before reinitializing
+        ['citationTiming', 'journalBubble'].forEach(chartKey => {
+            if (chartInstances[chartKey]) {
+                chartInstances[chartKey].destroy();
+                delete chartInstances[chartKey];
+            }
+        });
         initializePatternCharts();
     });
     
@@ -865,19 +878,21 @@ function initializeTrendCharts() {
     const comparisonData = {{ retraction_comparison|safe }} || [];
     
     const citationComparisonData = {
-        labels: comparisonData.map(item => item.year),
+        labels: comparisonData.map(item => item.year || 'Unknown'),
         datasets: [
             {
                 label: 'Pre-Retraction Citations',
-                data: comparisonData.map(item => item.pre_retraction),
+                data: comparisonData.map(item => item.pre_retraction || 0),
                 backgroundColor: 'rgba(40, 167, 69, 0.6)',
-                borderColor: 'rgba(40, 167, 69, 1)'
+                borderColor: 'rgba(40, 167, 69, 1)',
+                borderWidth: 2
             },
             {
-                label: 'Post-Retraction Citations',
-                data: comparisonData.map(item => item.post_retraction),
+                label: 'Post-Retraction Citations', 
+                data: comparisonData.map(item => item.post_retraction || 0),
                 backgroundColor: 'rgba(220, 53, 69, 0.6)',
-                borderColor: 'rgba(220, 53, 69, 1)'
+                borderColor: 'rgba(220, 53, 69, 1)',
+                borderWidth: 2
             }
         ]
     };
@@ -890,13 +905,36 @@ function initializeTrendCharts() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                },
                 scales: {
                     x: {
-                        stacked: false
+                        stacked: false,
+                        title: {
+                            display: true,
+                            text: 'Year'
+                        }
                     },
                     y: {
-                        beginAtZero: true
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Citations'
+                        }
                     }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
                 }
             }
         }
@@ -906,9 +944,9 @@ function initializeTrendCharts() {
     const subjectData = {{ subject_donut_data|safe }} || [];
     
     const subjectDistributionData = {
-        labels: subjectData.map(item => item.subject.substring(0, 20) + (item.subject.length > 20 ? '...' : '')),
+        labels: subjectData.map(item => (item.subject || 'Unknown').substring(0, 20) + ((item.subject || '').length > 20 ? '...' : '')),
         datasets: [{
-            data: subjectData.map(item => item.count),
+            data: subjectData.map(item => item.count || 0),
             backgroundColor: colorSchemes.primary.slice(0, subjectData.length)
         }]
     };
