@@ -154,12 +154,27 @@ class Command(BaseCommand):
                 
                 reader = csv.DictReader(file, delimiter=delimiter)
                 
+                # Debug: Print headers and first row
+                headers = reader.fieldnames
+                if headers:
+                    self.stdout.write(f"DEBUG: Detected {len(headers)} columns: {headers[:5]}...")
+                    if 'Record ID' in headers:
+                        self.stdout.write("DEBUG: 'Record ID' column found ✓")
+                    else:
+                        self.stdout.write(f"DEBUG: 'Record ID' column NOT found! Available columns: {headers}")
+                
                 for row in reader:
                     if limit and records_processed >= limit:
                         break
                     
                     try:
                         record_id = self.clean_field(row.get('Record ID', ''))
+                        
+                        # Debug: Print first few record IDs
+                        if records_processed < 3:
+                            self.stdout.write(f"DEBUG: Row {records_processed + 1} - Raw Record ID: {repr(row.get('Record ID', 'KEY_NOT_FOUND'))}")
+                            self.stdout.write(f"DEBUG: Row {records_processed + 1} - Cleaned Record ID: {repr(record_id)}")
+                        
                         if not record_id:
                             self.stdout.write(
                                 self.style.WARNING(f"Skipping row without Record ID")
