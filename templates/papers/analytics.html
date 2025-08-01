@@ -1043,7 +1043,7 @@ if (citationAnalysisData.length > 0) {
     );
     
     // Subject distribution donut
-    const subjectData = {{ subject_donut_data }};
+    const subjectData = {{ subject_donut_data|safe }};
     console.log('Subject Data:', subjectData);
     
     const subjectDistributionData = {
@@ -1073,7 +1073,7 @@ if (citationAnalysisData.length > 0) {
 
 function initializePatternCharts() {
     // Citation timing distribution
-    const timingData = {{ citation_timing_distribution }};
+    const timingData = {{ citation_timing_distribution|safe }};
     console.log('Timing Data:', timingData);
     
     const citationTimingData = {
@@ -1125,7 +1125,7 @@ function initializePatternCharts() {
     );
     
     // Journal bubble chart
-    const journalBubbleData = {{ journal_bubble_data }};
+    const journalBubbleData = {{ journal_bubble_data|safe }};
     console.log('Journal Bubble Data:', journalBubbleData);
     
     const bubbleChartData = {
@@ -1187,7 +1187,7 @@ function initializePatternCharts() {
     );
     
     // Citation Heatmap Chart - Custom implementation using HTML table
-    const heatmapData = {{ citation_heatmap }};
+    const heatmapData = {{ citation_heatmap|safe }};
     console.log('Heatmap Data:', heatmapData);
     
     if (heatmapData && heatmapData.length > 0) {
@@ -1432,7 +1432,7 @@ function initializePatternCharts() {
 }
 
 // Initialize sunburst chart
-const sunburstData = {{ sunburst_data }};
+const sunburstData = {{ sunburst_data|safe }};
 if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
     initializeSunburstChart(sunburstData);
 } else {
@@ -1440,8 +1440,8 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
 }
     
     // Country analytics chart  
-    const countryData = {{ country_analytics }};
-    const worldMapData = {{ world_map_data }};
+    const countryData = {{ country_analytics|safe }};
+    const worldMapData = {{ world_map_data|safe }};
     
     // Create Plotly choropleth world map
     const worldMapContainer = document.getElementById('countryChart').parentElement;
@@ -1551,7 +1551,7 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
     console.log('Plotly choropleth world map initialized with', plotlyMapData.length, 'countries');
     
     // Article Type Chart
-    const articleTypeData = {{ article_type_data }};
+    const articleTypeData = {{ article_type_data|safe }};
     console.log('Article Type Data:', articleTypeData);
     
     if (articleTypeData.length > 0) {
@@ -1598,7 +1598,7 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
     }
     
     // Publisher Chart
-    const publisherData = {{ publisher_data }};
+    const publisherData = {{ publisher_data|safe }};
     console.log('Publisher Data:', publisherData);
     
     if (publisherData.length > 0) {
@@ -1645,7 +1645,7 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
     }
     
     // Open Access Chart
-    const accessData = {{ access_analytics }};
+    const accessData = {{ access_analytics|safe }};
     console.log('Access Analytics Data:', accessData);
     
     if (accessData.open_access) {
@@ -1689,7 +1689,7 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
 }
 
 function initializeNetworkVisualization() {
-    const networkData = {{ network_data }};
+    const networkData = {{ network_data|safe }};
     
     // Clear any existing visualization
     d3.select("#networkVisualization").selectAll("*").remove();
@@ -1846,7 +1846,7 @@ function updateTrendCharts() {
 
 function updateNetworkChart() {
     const networkType = document.getElementById('networkTypeFilter').value;
-    const networkData = {{ network_data }};
+    const networkData = {{ network_data|safe }};
     
     // Filter nodes and links based on network type
     let filteredNodes = [];
