@@ -32,26 +32,37 @@ class HomeView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
-        # Get summary statistics in one query
-        stats = RetractedPaper.objects.aggregate(
-            total_retracted=Count('id'),
-            recent_retractions=Count('id', filter=Q(
-                retraction_date__gte=timezone.now().date() - timedelta(days=365)
-            )),
-        )
-        context.update(stats)
+        # Use cached data when possible
+        from django.core.cache import cache
+        cache_key = 'home_stats_v1'
+        cached_stats = cache.get(cache_key)
+        
+        if cached_stats is None:
+            # Get summary statistics in one optimized query
+            stats = RetractedPaper.objects.aggregate(
+                total_retracted=Count('id'),
+                recent_retractions=Count('id', filter=Q(
+                    retraction_date__gte=timezone.now().date() - timedelta(days=365)
+                )),
+                avg_citations=Avg('citation_count'),
+                max_citations=Max('citation_count')
+            )
+            
+            # Get citation stats efficiently
+            citation_stats = Citation.objects.aggregate(
+                total_citations=Count('id'),
+                post_retraction_citations=Count('id', filter=Q(days_after_retraction__gt=0))
+            )
+            
+            cached_stats = {**stats, **citation_stats}
+            cache.set(cache_key, cached_stats, 300)  # Cache for 5 minutes
+        
+        context.update(cached_stats)
         context['current_year'] = timezone.now().year
         context['current_date'] = timezone.now().date()
         
-        # Get citation stats efficiently
-        citation_stats = Citation.objects.aggregate(
-            total_citations=Count('id'),
-            post_retraction_citations=Count('id', filter=Q(days_after_retraction__gt=0))
-        )
-        context.update(citation_stats)
-        
-        # Get all sidebar statistics in optimized bulk queries
-        sidebar_stats = self._get_sidebar_statistics()
+        # Get sidebar statistics with caching
+        sidebar_stats = self._get_cached_sidebar_statistics()
         context.update(sidebar_stats)
         
         # Latest citing papers with optimized query
@@ -61,10 +72,34 @@ class HomeView(ListView):
             citing_paper__publication_date__isnull=False
         ).order_by('-citing_paper__publication_date')[:10]
         
-        # Top 3 most problematic papers for home page
-        context['top_problematic_papers'] = self._get_top_problematic_papers()
+        # Top 3 most problematic papers for home page (cached)
+        context['top_problematic_papers'] = self._get_cached_top_problematic_papers()
         
         return context
+    
+    def _get_cached_sidebar_statistics(self):
+        """Get all sidebar statistics with caching"""
+        from django.core.cache import cache
+        cache_key = 'sidebar_stats_v1'
+        cached_data = cache.get(cache_key)
+        
+        if cached_data is None:
+            cached_data = self._get_sidebar_statistics()
+            cache.set(cache_key, cached_data, 600)  # Cache for 10 minutes
+        
+        return cached_data
+    
+    def _get_cached_top_problematic_papers(self):
+        """Get top problematic papers with caching"""
+        from django.core.cache import cache
+        cache_key = 'top_problematic_papers_v1'
+        cached_data = cache.get(cache_key)
+        
+        if cached_data is None:
+            cached_data = self._get_top_problematic_papers()
+            cache.set(cache_key, cached_data, 900)  # Cache for 15 minutes
+        
+        return cached_data
     
     def _get_sidebar_statistics(self):
         """Get all sidebar statistics in optimized bulk queries"""

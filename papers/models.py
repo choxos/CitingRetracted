@@ -66,8 +66,11 @@ class RetractedPaper(models.Model):
             models.Index(fields=['record_id']),
             models.Index(fields=['original_paper_doi']),
             models.Index(fields=['retraction_date']),
+            models.Index(fields=['original_paper_date']),               # For analytics queries
             models.Index(fields=['journal']),
             models.Index(fields=['subject']),
+            models.Index(fields=['citation_count']),                   # For sorting by citations
+            models.Index(fields=['retraction_date', 'citation_count']), # Composite for analytics
         ]
     
     def __str__(self):
@@ -581,6 +584,10 @@ class Citation(models.Model):
         indexes = [
             models.Index(fields=['citation_date']),
             models.Index(fields=['days_after_retraction']),
+            models.Index(fields=['retracted_paper', 'days_after_retraction']),  # Composite for analytics
+            models.Index(fields=['citing_paper', 'days_after_retraction']),     # Composite for analytics
+            models.Index(fields=['created_at']),                                # For recent data queries
+            models.Index(fields=['retracted_paper', 'created_at']),             # Composite for paper-specific queries
         ]
     
     def __str__(self):

@@ -1,12 +1,14 @@
 from django.urls import path
 from . import views
+from .views_performance import PerformanceAnalyticsView
 
 app_name = 'papers'
 
 urlpatterns = [
     path('', views.HomeView.as_view(), name='home'),
     path('search/', views.SearchView.as_view(), name='search'),
-    path('analytics/', views.AnalyticsView.as_view(), name='analytics'),
+    path('analytics/', PerformanceAnalyticsView.as_view(), name='analytics'),  # Use optimized view
+    path('analytics-legacy/', views.AnalyticsView.as_view(), name='analytics_legacy'),  # Keep old for backup
     path('paper/<str:record_id>/', views.PaperDetailView.as_view(), name='detail'),
     path('export-search/', views.ExportSearchView.as_view(), name='export_search'),
     
