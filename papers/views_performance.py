@@ -47,14 +47,16 @@ class PerformanceAnalyticsView(View):
     
     def _get_cached_basic_stats(self):
         """Basic statistics with short-term caching"""
-        cache_key = 'analytics_basic_stats_v2'
+        cache_key = 'analytics_basic_stats_v3_retracted_only'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
             logger.info("Cache miss for basic stats - generating...")
             
-            # Single optimized query for all basic statistics
-            basic_stats = RetractedPaper.objects.aggregate(
+            # Single optimized query for all basic statistics (only retracted papers)
+            basic_stats = RetractedPaper.objects.filter(
+                retraction_nature__iexact='Retraction'
+            ).aggregate(
                 total_papers=Count('id'),
                 recent_retractions=Count('id', filter=Q(
                     retraction_date__gte=timezone.now().date() - timedelta(days=365)
@@ -67,8 +69,10 @@ class PerformanceAnalyticsView(View):
             # Calculate additional statistics (SD, Median, Quartiles) using Django ORM for compatibility
             from django.db.models import StdDev
             
-            # Get all citation counts for percentile calculation
-            citation_counts = list(RetractedPaper.objects.exclude(
+            # Get all citation counts for percentile calculation (only retracted papers)
+            citation_counts = list(RetractedPaper.objects.filter(
+                retraction_nature__iexact='Retraction'
+            ).exclude(
                 citation_count__isnull=True
             ).values_list('citation_count', flat=True).order_by('citation_count'))
             
@@ -80,8 +84,10 @@ class PerformanceAnalyticsView(View):
                 median_index = max(0, int(n * 0.5) - 1)
                 q3_index = max(0, int(n * 0.75) - 1)
                 
-                # Use Django ORM for mean and standard deviation
-                stats = RetractedPaper.objects.exclude(
+                # Use Django ORM for mean and standard deviation (only retracted papers)
+                stats = RetractedPaper.objects.filter(
+                    retraction_nature__iexact='Retraction'
+                ).exclude(
                     citation_count__isnull=True
                 ).aggregate(
                     mean_citations=Avg('citation_count'),
@@ -123,8 +129,10 @@ class PerformanceAnalyticsView(View):
                        f"SD: {basic_stats.get('stdev_citations_per_paper', 0):.1f}, "
                        f"Median: {basic_stats.get('median_citations_per_paper', 0):.1f}")
             
-            # Citation statistics in one query
-            citation_stats = Citation.objects.aggregate(
+            # Citation statistics in one query (only citations to retracted papers)
+            citation_stats = Citation.objects.filter(
+                retracted_paper__retraction_nature__iexact='Retraction'
+            ).aggregate(
                 total_citations=Count('id'),
                 post_retraction_citations=Count('id', filter=Q(days_after_retraction__gt=0)),
                 pre_retraction_citations=Count('id', filter=Q(days_after_retraction__lt=0)),
@@ -138,8 +146,9 @@ class PerformanceAnalyticsView(View):
                 citation_stats['post_retraction_citations'] / total_citations
             ) * 100
             
-            # Post-retraction timeline in one query
+            # Post-retraction timeline in one query (only citations to retracted papers)
             post_retraction_timeline = Citation.objects.filter(
+                retracted_paper__retraction_nature__iexact='Retraction',
                 days_after_retraction__gt=0
             ).aggregate(
                 within_30_days=Count('id', filter=Q(days_after_retraction__lte=30)),
@@ -173,14 +182,15 @@ class PerformanceAnalyticsView(View):
     
     def _get_cached_chart_data(self):
         """Chart data with medium-term caching"""
-        cache_key = 'analytics_chart_data_v2'
+        cache_key = 'analytics_chart_data_v3_retracted_only'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
             logger.info("Cache miss for chart data - generating...")
             
-            # Retraction trends (optimized with single query)
+            # Retraction trends (optimized with single query, only retracted papers)
             retraction_trends_raw = list(RetractedPaper.objects.filter(
+                retraction_nature__iexact='Retraction',
                 retraction_date__isnull=False
             ).annotate(
                 year=TruncYear('retraction_date')
@@ -190,8 +200,9 @@ class PerformanceAnalyticsView(View):
             
             retraction_trends = [(item['year'].year, item['count']) for item in retraction_trends_raw]
             
-            # Citation analysis (optimized with single query)
+            # Citation analysis (optimized with single query, only citations to retracted papers)
             citation_analysis_raw = list(Citation.objects.filter(
+                retracted_paper__retraction_nature__iexact='Retraction',
                 citing_paper__publication_date__isnull=False
             ).annotate(
                 year=TruncYear('citing_paper__publication_date')
@@ -213,8 +224,10 @@ class PerformanceAnalyticsView(View):
                 for item in citation_analysis_raw
             ]
             
-            # Subject distribution (optimized)
-            subject_data = list(RetractedPaper.objects.exclude(
+            # Subject distribution (optimized, only retracted papers)
+            subject_data = list(RetractedPaper.objects.filter(
+                retraction_nature__iexact='Retraction'
+            ).exclude(
                 subject__isnull=True
             ).exclude(
                 subject__exact=''
@@ -254,8 +267,10 @@ class PerformanceAnalyticsView(View):
         """Get top subjects by parsing semicolon-separated subject strings for network visualization"""
         from collections import Counter
         
-        # Get all papers with subjects
-        papers_with_subjects = RetractedPaper.objects.exclude(
+        # Get all papers with subjects (only retracted papers)
+        papers_with_subjects = RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).exclude(
             Q(subject__isnull=True) | Q(subject__exact='')
         ).values('subject', 'country', 'journal')
         
@@ -309,8 +324,10 @@ class PerformanceAnalyticsView(View):
         """Get top countries by parsing semicolon-separated country strings for network visualization"""
         from collections import Counter
         
-        # Get all papers with countries
-        papers_with_countries = RetractedPaper.objects.exclude(
+        # Get all papers with countries (only retracted papers)
+        papers_with_countries = RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).exclude(
             Q(country__isnull=True) | Q(country__exact='')
         ).values('country', 'subject')
         
@@ -352,14 +369,16 @@ class PerformanceAnalyticsView(View):
 
     def _get_cached_complex_data(self):
         """Complex analytics with long-term caching"""
-        cache_key = 'analytics_complex_data_v2'
+        cache_key = 'analytics_complex_data_v3_retracted_only'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
             logger.info("Cache miss for complex data - generating...")
             
-            # Problematic papers (pre-computed and cached)
-            problematic_papers = list(RetractedPaper.objects.select_related().annotate(
+            # Problematic papers (pre-computed and cached, only retracted papers)
+            problematic_papers = list(RetractedPaper.objects.filter(
+                retraction_nature__iexact='Retraction'
+            ).select_related().annotate(
                 post_retraction_count=Count('citations', filter=Q(citations__days_after_retraction__gt=0))
             ).filter(
                 post_retraction_count__gt=0
@@ -367,8 +386,10 @@ class PerformanceAnalyticsView(View):
                 'record_id', 'title', 'journal', 'retraction_date', 'post_retraction_count', 'citation_count'
             ))
             
-            # Journal analysis (optimized)
-            journal_data = list(RetractedPaper.objects.exclude(
+            # Journal analysis (optimized, only retracted papers)
+            journal_data = list(RetractedPaper.objects.filter(
+                retraction_nature__iexact='Retraction'
+            ).exclude(
                 journal__isnull=True
             ).exclude(
                 journal__exact=''
@@ -379,8 +400,10 @@ class PerformanceAnalyticsView(View):
                 'journal', 'retraction_count', 'avg_citations'
             ))
             
-            # Country analysis (simplified and cached)
-            country_data = list(RetractedPaper.objects.exclude(
+            # Country analysis (simplified and cached, only retracted papers)
+            country_data = list(RetractedPaper.objects.filter(
+                retraction_nature__iexact='Retraction'
+            ).exclude(
                 country__isnull=True
             ).exclude(
                 country__exact=''
@@ -394,8 +417,9 @@ class PerformanceAnalyticsView(View):
             # Generate missing template variables with proper data structures
             import math
             
-            # Citation timing distribution with REAL data
+            # Citation timing distribution with REAL data (only citations to retracted papers)
             timing_data = Citation.objects.filter(
+                retracted_paper__retraction_nature__iexact='Retraction',
                 days_after_retraction__isnull=False
             ).aggregate(
                 pre_retraction=Count('id', filter=Q(days_after_retraction__lt=0)),
@@ -428,14 +452,16 @@ class PerformanceAnalyticsView(View):
                 
                 for i, bucket in enumerate(buckets):
                     if bucket == 9999:
-                        # 2+ years after retraction
+                        # 2+ years after retraction (only citations to retracted papers)
                         count = Citation.objects.filter(
+                            retracted_paper__retraction_nature__iexact='Retraction',
                             retracted_paper__retraction_date__month=month,
                             days_after_retraction__gt=730
                         ).count()
                     else:
-                        # Time buckets: 0-30, 30-90, 90-180, 180-365, 365-730 days
+                        # Time buckets: 0-30, 30-90, 90-180, 180-365, 365-730 days (only citations to retracted papers)
                         count = Citation.objects.filter(
+                            retracted_paper__retraction_nature__iexact='Retraction',
                             retracted_paper__retraction_date__month=month,
                             days_after_retraction__gt=prev_bucket,
                             days_after_retraction__lte=bucket
@@ -467,8 +493,9 @@ class PerformanceAnalyticsView(View):
                 if iso_code and retraction_count > 0:
                     log_value = math.log10(max(retraction_count, 1))
                     
-                    # Get additional country statistics
+                    # Get additional country statistics (only retracted papers)
                     country_stats = RetractedPaper.objects.filter(
+                        retraction_nature__iexact='Retraction',
                         country=country_name
                     ).aggregate(
                         post_retraction_citations=Count('citations', filter=Q(citations__days_after_retraction__gt=0)),
@@ -497,8 +524,10 @@ class PerformanceAnalyticsView(View):
             
             logger.info(f"Generated world map data for {len(world_map_data)} countries")
             
-            # Article type data with actual database query
-            article_type_data = list(RetractedPaper.objects.exclude(
+            # Article type data with actual database query (only retracted papers)
+            article_type_data = list(RetractedPaper.objects.filter(
+                retraction_nature__iexact='Retraction'
+            ).exclude(
                 article_type__isnull=True
             ).exclude(
                 article_type__exact=''
@@ -515,7 +544,9 @@ class PerformanceAnalyticsView(View):
                     columns = [row[1] for row in cursor.fetchall()]
                     
                 if 'document_type' in columns:
-                    article_type_data = list(RetractedPaper.objects.exclude(
+                    article_type_data = list(RetractedPaper.objects.filter(
+                        retraction_nature__iexact='Retraction'
+                    ).exclude(
                         document_type__isnull=True
                     ).exclude(
                         document_type__exact=''
@@ -571,8 +602,10 @@ class PerformanceAnalyticsView(View):
             }
             
             # Network data with REAL database relationships for meaningful visualization
-            # Get top retracted papers with most post-retraction citations
-            top_retracted = list(RetractedPaper.objects.annotate(
+            # Get top retracted papers with most post-retraction citations (only retracted papers)
+            top_retracted = list(RetractedPaper.objects.filter(
+                retraction_nature__iexact='Retraction'
+            ).annotate(
                 post_retraction_count=Count('citations', filter=Q(citations__days_after_retraction__gt=0))
             ).filter(
                 post_retraction_count__gt=5  # Only papers with meaningful post-retraction citations
@@ -609,6 +642,7 @@ class PerformanceAnalyticsView(View):
             if top_retracted:
                 retracted_ids = [p['record_id'] for p in top_retracted]
                 citations = list(Citation.objects.filter(
+                    retracted_paper__retraction_nature__iexact='Retraction',
                     retracted_paper__record_id__in=retracted_ids,
                     citing_paper__isnull=False
                 ).select_related('citing_paper', 'retracted_paper').order_by(
@@ -697,8 +731,10 @@ class PerformanceAnalyticsView(View):
             # Get top countries with proper parsing
             top_countries = self._get_parsed_countries_for_network(limit=12)
             
-            # Get top journals 
-            top_journals = list(RetractedPaper.objects.values('journal').annotate(
+            # Get top journals (only retracted papers)
+            top_journals = list(RetractedPaper.objects.filter(
+                retraction_nature__iexact='Retraction'
+            ).values('journal').annotate(
                 paper_count=Count('id'),
                 subject_count=Count('subject', distinct=True),
                 country_count=Count('country', distinct=True),
@@ -757,8 +793,10 @@ class PerformanceAnalyticsView(View):
                     'layer': 'outer'  # Outer layer
                 })
             
-            # Create SUBJECT-COUNTRY connections (strong connections)
-            subject_country_links = list(RetractedPaper.objects.values('subject', 'country').annotate(
+            # Create SUBJECT-COUNTRY connections (strong connections, only retracted papers)
+            subject_country_links = list(RetractedPaper.objects.filter(
+                retraction_nature__iexact='Retraction'
+            ).values('subject', 'country').annotate(
                 collaboration_strength=Count('id')
             ).filter(
                 subject__in=[s['subject'] for s in top_subjects],
@@ -780,8 +818,10 @@ class PerformanceAnalyticsView(View):
                         'weight': min(8, max(2, link['collaboration_strength'] / 5))
                     })
             
-            # Create COUNTRY-JOURNAL connections (medium connections)  
-            country_journal_links = list(RetractedPaper.objects.values('country', 'journal').annotate(
+            # Create COUNTRY-JOURNAL connections (medium connections, only retracted papers)  
+            country_journal_links = list(RetractedPaper.objects.filter(
+                retraction_nature__iexact='Retraction'
+            ).values('country', 'journal').annotate(
                 publication_strength=Count('id')
             ).filter(
                 country__in=[c['country'] for c in top_countries],
@@ -803,8 +843,10 @@ class PerformanceAnalyticsView(View):
                         'weight': min(6, max(1, link['publication_strength'] / 8))
                     })
             
-            # Create SUBJECT-JOURNAL direct connections (specialized connections)
-            subject_journal_links = list(RetractedPaper.objects.values('subject', 'journal').annotate(
+            # Create SUBJECT-JOURNAL direct connections (specialized connections, only retracted papers)
+            subject_journal_links = list(RetractedPaper.objects.filter(
+                retraction_nature__iexact='Retraction'
+            ).values('subject', 'journal').annotate(
                 specialization_strength=Count('id')
             ).filter(
                 subject__in=[s['subject'] for s in top_subjects],
@@ -899,8 +941,10 @@ class PerformanceAnalyticsView(View):
     
     def _generate_sunburst_data(self):
         """Generate comprehensive sunburst data with three-level hierarchy"""
-        # Get all subjects with proper aggregation
-        subject_data = RetractedPaper.objects.exclude(
+        # Get all subjects with proper aggregation (only retracted papers)
+        subject_data = RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).exclude(
             subject__isnull=True
         ).exclude(
             subject__exact=''
