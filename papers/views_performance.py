@@ -210,35 +210,29 @@ class PerformanceAnalyticsView(View):
     
     def _get_cached_chart_data(self):
         """Chart data with medium-term caching"""
-        cache_key = 'analytics_chart_data_v5_ultra_optimized'
+        cache_key = 'analytics_chart_data_v6_complete_history'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
             logger.info("Cache miss for chart data - generating...")
             
-            # OPTIMIZATION: Use database aggregation for comprehensive years
-            from datetime import datetime
-            current_year = datetime.now().year
-            start_year = 2000  # Go back to 2000 for comprehensive coverage
-            
+            # OPTIMIZATION: Use database aggregation for complete historical coverage
             retraction_trends_raw = list(RetractedPaper.objects.filter(
                 retraction_nature__iexact='Retraction',
-                retraction_date__isnull=False,
-                retraction_date__year__gte=start_year
+                retraction_date__isnull=False
             ).annotate(
                 year=TruncYear('retraction_date')
             ).values('year').annotate(
                 count=Count('id')
-            ).order_by('year'))  # Chronological order for charts
+            ).order_by('year'))  # Chronological order showing complete history
             
             retraction_trends = [(item['year'].year, item['count']) for item in retraction_trends_raw]
             
             
-            # OPTIMIZATION: Simplified citation analysis using direct filter
+            # OPTIMIZATION: Simplified citation analysis using direct filter for all historical data
             citation_analysis_raw = list(Citation.objects.filter(
                 retracted_paper__retraction_nature__iexact='Retraction',
-                citing_paper__publication_date__isnull=False,
-                citing_paper__publication_date__year__gte=2000  # Comprehensive coverage from 2000
+                citing_paper__publication_date__isnull=False
             ).annotate(
                 year=TruncYear('citing_paper__publication_date')
             ).values('year').annotate(
@@ -445,7 +439,7 @@ class PerformanceAnalyticsView(View):
 
     def _get_cached_complex_data(self):
         """Complex analytics with long-term caching - OPTIMIZED for large datasets"""
-        cache_key = 'analytics_complex_data_v10_all_charts_fixed'
+        cache_key = 'analytics_complex_data_v11_complete_history'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
