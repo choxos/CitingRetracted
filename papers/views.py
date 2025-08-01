@@ -579,6 +579,39 @@ class SearchView(ListView):
         # Filter to unique papers only (same logic as homepage)
         queryset = self._filter_to_unique_papers(queryset.distinct())
         
+        # Apply sorting
+        sort_by = self.request.GET.get('sort', 'retraction_date')
+        sort_direction = self.request.GET.get('direction', 'desc')
+        
+        # Define sortable fields with their database field names
+        sortable_fields = {
+            'title': 'title',
+            'author': 'author',
+            'journal': 'journal',
+            'retraction_date': 'retraction_date',
+            'citation_count': 'citation_count',
+            'retraction_nature': 'retraction_nature',
+            'publisher': 'publisher',
+            'original_paper_date': 'original_paper_date'
+        }
+        
+        # Validate sort field
+        if sort_by in sortable_fields:
+            field = sortable_fields[sort_by]
+            if sort_direction == 'desc':
+                field = f'-{field}'
+            
+            # Special handling for citation_count (needs annotation)
+            if sort_by == 'citation_count':
+                if not queryset.query.annotations.get('total_citations'):
+                    queryset = queryset.annotate(total_citations=Count('citations'))
+                field = 'total_citations' if sort_direction == 'asc' else '-total_citations'
+            
+            queryset = queryset.order_by(field)
+        else:
+            # Default ordering
+            queryset = queryset.order_by('-retraction_date')
+        
         return queryset
     
     def get_context_data(self, **kwargs):
@@ -617,6 +650,11 @@ class SearchView(ListView):
                 search_query = context['publisher_filter']
         
         context['search_query'] = search_query
+        
+        # Add sorting context
+        context['sort_by'] = self.request.GET.get('sort', 'retraction_date')
+        context['sort_direction'] = self.request.GET.get('direction', 'desc')
+        context['view_mode'] = self.request.GET.get('view', 'cards')  # 'cards' or 'table'
         
         # Get dropdown options efficiently - limit to most common values with proper parsing
         context['subjects'] = self._get_subjects_list()

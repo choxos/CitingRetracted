@@ -1,4 +1,5 @@
 {% extends 'prct_base.html' %}
+{% load json_filters %}
 
 {% block title %}Search - Post-Retraction Citation Tracker{% endblock %}
 
@@ -215,10 +216,27 @@
         <div class="xera-card mb-4">
             <div class="xera-card-header">
                 <h3>Search Results</h3>
-                <div class="d-flex align-items-center">
-                    <span class="text-muted me-3">
-                        {{ papers|length }} of {{ paginator.count }} papers
-                    </span>
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center">
+                        <span class="text-muted me-3">
+                            {{ papers|length }} of {{ paginator.count }} papers
+                        </span>
+                        
+                        <!-- View Toggle -->
+                        <div class="btn-group me-3" role="group" aria-label="View mode">
+                            <a href="{% url_replace view='cards' %}" 
+                               class="btn btn-sm {% if view_mode == 'cards' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+                               title="Card View">
+                                <i class="fas fa-th-large"></i> Cards
+                            </a>
+                            <a href="{% url_replace view='table' %}" 
+                               class="btn btn-sm {% if view_mode == 'table' %}btn-primary{% else %}btn-outline-primary{% endif %}"
+                               title="Table View">
+                                <i class="fas fa-table"></i> Table
+                            </a>
+                        </div>
+                    </div>
+                    
                     <div class="btn-group" role="group">
                         <a href="{% url 'papers:export_search' %}?{{ request.GET.urlencode }}&format=csv" 
                            class="btn btn-outline-success btn-sm" 
@@ -234,21 +252,192 @@
                 </div>
             </div>
         
-        {% for paper in papers %}
-        <div class="xera-card paper-card">
-            <div class="xera-card-body">
-                <div class="row">
-                    <div class="col-lg-8">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h5 class="mb-0">
-                                <a href="{{ paper.get_absolute_url }}" class="text-decoration-none">
-                                    {{ paper.title|truncatechars:120 }}
+        {% if view_mode == 'table' %}
+            <!-- Table View -->
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">
+                                <a href="{% url_replace sort='title' direction='asc' %}" 
+                                   class="text-decoration-none">
+                                    Title 
+                                    {% if sort_by == 'title' %}
+                                        <i class="fas fa-sort-{% if sort_direction == 'asc' %}up{% else %}down{% endif %}"></i>
+                                    {% else %}
+                                        <i class="fas fa-sort text-muted"></i>
+                                    {% endif %}
                                 </a>
-                            </h5>
-                            <span class="prct-retraction-badge {{ paper.retraction_badge_class }} ms-2">
-                                {{ paper.retraction_nature_display }}
-                            </span>
-                        </div>
+                            </th>
+                            <th scope="col">
+                                <a href="{% url_replace sort='author' direction='asc' %}" 
+                                   class="text-decoration-none">
+                                    Author(s)
+                                    {% if sort_by == 'author' %}
+                                        <i class="fas fa-sort-{% if sort_direction == 'asc' %}up{% else %}down{% endif %}"></i>
+                                    {% else %}
+                                        <i class="fas fa-sort text-muted"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th scope="col">
+                                <a href="{% url_replace sort='journal' direction='asc' %}" 
+                                   class="text-decoration-none">
+                                    Journal
+                                    {% if sort_by == 'journal' %}
+                                        <i class="fas fa-sort-{% if sort_direction == 'asc' %}up{% else %}down{% endif %}"></i>
+                                    {% else %}
+                                        <i class="fas fa-sort text-muted"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th scope="col">
+                                <a href="{% url_replace sort='retraction_nature' direction='asc' %}" 
+                                   class="text-decoration-none">
+                                    Nature
+                                    {% if sort_by == 'retraction_nature' %}
+                                        <i class="fas fa-sort-{% if sort_direction == 'asc' %}up{% else %}down{% endif %}"></i>
+                                    {% else %}
+                                        <i class="fas fa-sort text-muted"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th scope="col">
+                                <a href="{% url_replace sort='retraction_date' direction='desc' %}" 
+                                   class="text-decoration-none">
+                                    Retracted
+                                    {% if sort_by == 'retraction_date' %}
+                                        <i class="fas fa-sort-{% if sort_direction == 'asc' %}up{% else %}down{% endif %}"></i>
+                                    {% else %}
+                                        <i class="fas fa-sort text-muted"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th scope="col">
+                                <a href="{% url_replace sort='citation_count' direction='desc' %}" 
+                                   class="text-decoration-none">
+                                    Citations
+                                    {% if sort_by == 'citation_count' %}
+                                        <i class="fas fa-sort-{% if sort_direction == 'asc' %}up{% else %}down{% endif %}"></i>
+                                    {% else %}
+                                        <i class="fas fa-sort text-muted"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for paper in papers %}
+                        <tr>
+                            <td>
+                                <a href="{{ paper.get_absolute_url }}" class="text-decoration-none fw-medium">
+                                    {{ paper.title|truncatechars:80 }}
+                                </a>
+                                {% if paper.formatted_subjects %}
+                                    <br><small class="text-muted">
+                                        <i class="fas fa-tag"></i>
+                                        {% for subject in paper.subject_list|slice:":2" %}
+                                            <span class="badge bg-light text-dark">{{ subject|truncatechars:20 }}</span>
+                                        {% endfor %}
+                                        {% if paper.subject_list|length > 2 %}
+                                            <span class="badge bg-secondary">+{{ paper.subject_list|length|add:"-2" }}</span>
+                                        {% endif %}
+                                    </small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="text-truncate" style="max-width: 150px;">
+                                    {% if paper.author_list %}
+                                        {% for author in paper.author_list|slice:":2" %}
+                                            <a href="{% url 'papers:search' %}?author={{ author|urlencode }}" 
+                                               class="text-decoration-none">{{ author|truncatechars:25 }}</a>{% if not forloop.last %}, {% endif %}
+                                        {% endfor %}
+                                        {% if paper.author_list|length > 2 %}
+                                            <span class="text-muted"> et al.</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">Unknown</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="text-truncate" style="max-width: 180px;" title="{{ paper.journal }}">
+                                    {% if paper.journal %}
+                                        <a href="{% url 'papers:search' %}?journal={{ paper.journal|urlencode }}" 
+                                           class="text-decoration-none">{{ paper.journal|truncatechars:35 }}</a>
+                                        {% if paper.publisher %}
+                                            <br><small class="text-muted">{{ paper.publisher|truncatechars:25 }}</small>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">Unknown</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="prct-retraction-badge {{ paper.retraction_badge_class }}">
+                                    {{ paper.retraction_nature_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="text-nowrap">
+                                    {% if paper.retraction_date %}
+                                        {{ paper.retraction_date|date:"M j, Y" }}
+                                    {% else %}
+                                        <span class="text-muted">Unknown</span>
+                                    {% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-column">
+                                    <span class="fw-bold text-primary">{{ paper.citation_count }}</span>
+                                    {% if paper.post_retraction_citation_count > 0 %}
+                                        <small class="text-danger">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ paper.post_retraction_citation_count }} post
+                                        </small>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="btn-group-vertical btn-group-sm">
+                                    <a href="{{ paper.get_absolute_url }}" 
+                                       class="btn btn-outline-primary btn-sm"
+                                       title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if paper.original_paper_doi %}
+                                        <a href="https://doi.org/{{ paper.original_paper_doi }}" 
+                                           target="_blank" 
+                                           class="btn btn-outline-info btn-sm"
+                                           title="View Original Paper">
+                                            <i class="fas fa-external-link-alt"></i>
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <!-- Card View (Default) -->
+            {% for paper in papers %}
+            <div class="xera-card paper-card">
+                <div class="xera-card-body">
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h5 class="mb-0">
+                                    <a href="{{ paper.get_absolute_url }}" class="text-decoration-none">
+                                        {{ paper.title|truncatechars:120 }}
+                                    </a>
+                                </h5>
+                                <span class="prct-retraction-badge {{ paper.retraction_badge_class }} ms-2">
+                                    {{ paper.retraction_nature_display }}
+                                </span>
+                            </div>
                         
                         {% if paper.author_list %}
                         <div class="text-muted mb-2">
@@ -397,10 +586,11 @@
                         </div>
                         {% endif %}
                     </div>
+                    </div>
                 </div>
             </div>
-        </div>
-        {% endfor %}
+            {% endfor %}
+        {% endif %}
         
         <!-- Pagination -->
         {% if is_paginated %}
@@ -408,10 +598,10 @@
             <ul class="pagination justify-content-center">
                 {% if page_obj.has_previous %}
                     <li class="page-item">
-                        <a class="page-link" href="?q={{ search_query }}&journal={{ journal_filter }}&reason={{ reason_filter }}&year_from={{ year_from }}&year_to={{ year_to }}&subject={{ subject_filter }}&page=1">First</a>
+                        <a class="page-link" href="{% url_replace page=1 %}">First</a>
                     </li>
                     <li class="page-item">
-                        <a class="page-link" href="?q={{ search_query }}&journal={{ journal_filter }}&reason={{ reason_filter }}&year_from={{ year_from }}&year_to={{ year_to }}&subject={{ subject_filter }}&page={{ page_obj.previous_page_number }}">Previous</a>
+                        <a class="page-link" href="{% url_replace page=page_obj.previous_page_number %}">Previous</a>
                     </li>
                 {% endif %}
                 
@@ -421,10 +611,10 @@
                 
                 {% if page_obj.has_next %}
                     <li class="page-item">
-                        <a class="page-link" href="?q={{ search_query }}&journal={{ journal_filter }}&reason={{ reason_filter }}&year_from={{ year_from }}&year_to={{ year_to }}&subject={{ subject_filter }}&page={{ page_obj.next_page_number }}">Next</a>
+                        <a class="page-link" href="{% url_replace page=page_obj.next_page_number %}">Next</a>
                     </li>
                     <li class="page-item">
-                        <a class="page-link" href="?q={{ search_query }}&journal={{ journal_filter }}&reason={{ reason_filter }}&year_from={{ year_from }}&year_to={{ year_to }}&subject={{ subject_filter }}&page={{ page_obj.paginator.num_pages }}">Last</a>
+                        <a class="page-link" href="{% url_replace page=page_obj.paginator.num_pages %}">Last</a>
                     </li>
                 {% endif %}
             </ul>

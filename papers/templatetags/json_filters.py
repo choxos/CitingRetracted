@@ -2,6 +2,7 @@ import json
 from datetime import date, datetime
 from django import template
 from django.utils.safestring import mark_safe
+from urllib.parse import urlencode
 
 register = template.Library()
 
@@ -30,27 +31,35 @@ def safe_json(value):
         if isinstance(value, dict) and not value:
             return mark_safe('{}')
         
-        # Serialize to JSON with custom serializer
-        json_str = json.dumps(value, default=json_serializer)
+        # Serialize with custom serializer
+        json_str = json.dumps(value, default=json_serializer, ensure_ascii=False)
         return mark_safe(json_str)
-        
-    except (TypeError, ValueError) as e:
-        # If serialization fails, provide a safe fallback
-        if isinstance(value, list):
-            return mark_safe('[]')
-        elif isinstance(value, dict):
-            return mark_safe('{}')
-        else:
-            return mark_safe('null')
+    except Exception as e:
+        # If JSON serialization fails, return a safe fallback
+        return mark_safe('null')
 
 @register.filter
-def json_fallback(value, fallback='null'):
+def safe_json_with_fallback(value, fallback='null'):
     """
-    JSON filter with custom fallback value for failed serialization
+    Safely serialize a value to JSON with a custom fallback value.
     """
     try:
         if value is None:
             return mark_safe(fallback)
         return safe_json(value)
     except:
-        return mark_safe(fallback) 
+        return mark_safe(fallback)
+
+@register.simple_tag(takes_context=True)
+def url_replace(context, **kwargs):
+    """Replace or add URL parameters while preserving existing ones."""
+    request = context['request']
+    query_dict = request.GET.copy()
+    
+    for key, value in kwargs.items():
+        if value is None:
+            query_dict.pop(key, None)
+        else:
+            query_dict[key] = value
+    
+    return '?' + urlencode(query_dict) 
