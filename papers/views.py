@@ -61,7 +61,16 @@ class HomeView(ListView):
                 post_retraction_citations=Count('id', filter=Q(days_after_retraction__gt=0))
             )
             
-            cached_stats = {**stats, **citation_stats}
+            # Get unique paper statistics by nature
+            unique_stats = RetractedPaper.get_unique_papers_by_nature()
+            total_unique_papers = sum(unique_stats.values())
+            
+            cached_stats = {
+                **stats, 
+                **citation_stats,
+                'unique_papers_by_nature': unique_stats,
+                'total_unique_papers': total_unique_papers
+            }
             cache.set(cache_key, cached_stats, 300)  # Cache for 5 minutes
         
         context.update(cached_stats)
@@ -979,6 +988,11 @@ class AnalyticsView(View):
             )),
             avg_citations_per_paper=Avg('citation_count')
         )
+        
+        # Add unique paper statistics
+        unique_stats = RetractedPaper.get_unique_papers_by_nature()
+        paper_stats['unique_papers_by_nature'] = unique_stats
+        paper_stats['total_unique_papers'] = sum(unique_stats.values())
         
         # Calculate statistics for papers with citations only (to avoid the 0-skew)
         citation_counts_nonzero = list(RetractedPaper.objects.filter(citation_count__gt=0).values_list('citation_count', flat=True))

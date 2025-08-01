@@ -15,9 +15,17 @@
                         <li class="breadcrumb-item active">{{ paper.record_id }}</li>
                     </ol>
                 </nav>
-                <span class="prct-retraction-badge retracted">
-                    <i class="fas fa-ban"></i> Retracted Paper
-                </span>
+                                    <span class="prct-retraction-badge {{ paper.retraction_badge_class }}">
+                        {% if 'expression of concern' in paper.retraction_nature_display|lower %}
+                            <i class="fas fa-exclamation-triangle"></i> {{ paper.retraction_nature_display }}
+                        {% elif 'correction' in paper.retraction_nature_display|lower %}
+                            <i class="fas fa-edit"></i> {{ paper.retraction_nature_display }}
+                        {% elif 'reinstatement' in paper.retraction_nature_display|lower %}
+                            <i class="fas fa-check-circle"></i> {{ paper.retraction_nature_display }}
+                        {% else %}
+                            <i class="fas fa-ban"></i> {{ paper.retraction_nature_display }}
+                        {% endif %}
+                    </span>
             </div>
             
             <h1 class="prct-chart-title mb-0">{{ paper.title }}</h1>
@@ -259,10 +267,44 @@
                 </div>
             </div>
             
+            <!-- Related Records Alert -->
+            {% if paper.has_related_records %}
+            <div class="xera-card mb-4 border-warning">
+                <div class="xera-card-header bg-warning bg-opacity-10">
+                    <h5 class="mb-0"><i class="fas fa-link"></i> Related Records</h5>
+                </div>
+                <div class="xera-card-body">
+                    <p class="mb-3">This article has multiple records in the database due to different notices:</p>
+                    <div class="list-group list-group-flush">
+                        {% for related in paper.related_records %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">
+                                        <a href="{{ related.get_absolute_url }}" class="text-decoration-none">
+                                            Record #{{ related.record_id }}
+                                        </a>
+                                    </h6>
+                                    <small class="text-muted">
+                                        <i class="fas fa-calendar"></i> 
+                                        {{ related.retraction_date|date:"M d, Y"|default:"Unknown date" }}
+                                    </small>
+                                </div>
+                                <span class="prct-retraction-badge {{ related.retraction_badge_class }}">
+                                    {{ related.retraction_nature_display }}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Retraction Details -->
             <div class="xera-card mb-4">
                 <div class="xera-card-header">
-                    <h4><i class="fas fa-exclamation-triangle"></i> Retraction Details</h4>
+                    <h4><i class="fas fa-exclamation-triangle"></i> {{ paper.retraction_nature_display }} Details</h4>
                 </div>
                 <div class="xera-card-body">
                     {% if paper.reason %}

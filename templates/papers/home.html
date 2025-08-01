@@ -45,7 +45,8 @@
                         <div class="text-center h-100 d-flex flex-column justify-content-center">
                             <i class="fas fa-ban fa-3x text-danger mb-3"></i>
                             <h3 class="prct-stat-number">{{ total_retracted|default:0 }}</h3>
-                            <p class="prct-stat-label">Retracted Papers</p>
+                            <p class="prct-stat-label">Total Records</p>
+                            <small class="text-muted">{{ total_unique_papers|default:0 }} unique papers</small>
                         </div>
                     </div>
                 </a>
@@ -80,6 +81,40 @@
                     </div>
                 </a>
             </div>
+            
+            <!-- Nature of Notice Breakdown -->
+            {% if unique_papers_by_nature %}
+            <div class="row mt-5">
+                <div class="col-12">
+                    <h3 class="text-center mb-4">Breakdown by Nature of Notice</h3>
+                    <div class="row">
+                        {% for nature, count in unique_papers_by_nature.items %}
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body text-center">
+                                    {% if nature == 'Expression of Concern' %}
+                                        <i class="fas fa-exclamation-triangle fa-2x text-warning mb-2"></i>
+                                        <span class="prct-retraction-badge retraction-badge-warning mb-2 d-block">{{ nature }}</span>
+                                    {% elif nature == 'Correction' %}
+                                        <i class="fas fa-edit fa-2x text-info mb-2"></i>
+                                        <span class="prct-retraction-badge retraction-badge-info mb-2 d-block">{{ nature }}</span>
+                                    {% elif nature == 'Reinstatement' %}
+                                        <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                                        <span class="prct-retraction-badge retraction-badge-success mb-2 d-block">{{ nature }}</span>
+                                    {% else %}
+                                        <i class="fas fa-ban fa-2x text-danger mb-2"></i>
+                                        <span class="prct-retraction-badge retraction-badge mb-2 d-block">{{ nature }}</span>
+                                    {% endif %}
+                                    <h4 class="card-title mb-0">{{ count }}</h4>
+                                    <small class="text-muted">unique papers</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 </section>
@@ -120,9 +155,9 @@
                                                     {{ paper.title|truncatechars:120 }}
                                                 </a>
                                             </h5>
-                                            <span class="prct-retraction-badge retracted">
-                                                {{ paper.retraction_nature_display }}
-                                            </span>
+                                                                        <span class="prct-retraction-badge {{ paper.retraction_badge_class }}">
+                                {{ paper.retraction_nature_display }}
+                            </span>
                                         </div>
                                         
                                         <div class="row mb-2">

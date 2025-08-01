@@ -65,13 +65,70 @@ class RetractedPaper(models.Model):
         indexes = [
             models.Index(fields=['record_id']),
             models.Index(fields=['original_paper_doi']),
+            models.Index(fields=['original_paper_pubmed_id']),
             models.Index(fields=['retraction_date']),
             models.Index(fields=['original_paper_date']),               # For analytics queries
             models.Index(fields=['journal']),
             models.Index(fields=['subject']),
             models.Index(fields=['citation_count']),                   # For sorting by citations
             models.Index(fields=['retraction_date', 'citation_count']), # Composite for analytics
+            models.Index(fields=['retraction_nature']),                 # For nature-based filtering
         ]
+    
+    @classmethod
+    def get_unique_papers_count(cls):
+        """Get count of unique papers (by PMID/DOI combination)"""
+        from django.db.models import Q, Count
+        
+        # Create a query that groups by PMID or DOI
+        unique_papers = cls.objects.values(
+            'original_paper_pubmed_id', 
+            'original_paper_doi'
+        ).annotate(count=Count('id')).count()
+        
+        return unique_papers
+    
+    @classmethod
+    def get_unique_papers_by_nature(cls):
+        """Get count of unique papers grouped by retraction nature"""
+        from django.db.models import Q, Count
+        from django.db.models.functions import Lower
+        
+        # Group by nature and unique identifiers
+        nature_counts = {}
+        
+        # Get all papers and group them by their identifying characteristics
+        seen_identifiers = set()
+        
+        for paper in cls.objects.all():
+            # Create a unique identifier for this paper
+            identifier = None
+            if paper.original_paper_pubmed_id:
+                identifier = f"pmid:{paper.original_paper_pubmed_id}"
+            elif paper.original_paper_doi:
+                identifier = f"doi:{paper.original_paper_doi}"
+            else:
+                identifier = f"record:{paper.record_id}"  # Fallback to record ID
+            
+            # Only count if we haven't seen this paper before
+            if identifier not in seen_identifiers:
+                seen_identifiers.add(identifier)
+                
+                # Categorize the nature
+                nature = paper.retraction_nature_display.lower() if paper.retraction_nature else 'retracted'
+                
+                if 'expression of concern' in nature:
+                    category = 'Expression of Concern'
+                elif 'correction' in nature or 'corrigendum' in nature:
+                    category = 'Correction'
+                elif 'reinstatement' in nature:
+                    category = 'Reinstatement'
+                else:
+                    category = 'Retraction'
+                
+                nature_counts[category] = nature_counts.get(category, 0) + 1
+        
+        return nature_counts
     
     def __str__(self):
         return f"{self.title[:100]}..." if len(self.title) > 100 else self.title
@@ -136,6 +193,35 @@ class RetractedPaper(models.Model):
             return 'retraction-badge-success'
         else:  # Retraction or default
             return 'retraction-badge'
+    
+    @property
+    def related_records(self):
+        """Find other records with the same PMID or DOI"""
+        related = []
+        
+        # Find by PMID
+        if self.original_paper_pubmed_id:
+            pmid_matches = RetractedPaper.objects.filter(
+                original_paper_pubmed_id=self.original_paper_pubmed_id
+            ).exclude(id=self.id)
+            related.extend(pmid_matches)
+        
+        # Find by DOI
+        if self.original_paper_doi:
+            doi_matches = RetractedPaper.objects.filter(
+                original_paper_doi=self.original_paper_doi
+            ).exclude(id=self.id)
+            # Avoid duplicates if both PMID and DOI match
+            for doi_match in doi_matches:
+                if doi_match not in related:
+                    related.append(doi_match)
+        
+        return related
+    
+    @property
+    def has_related_records(self):
+        """Check if this paper has related records"""
+        return len(self.related_records) > 0
     
     @property
     def years_since_retraction(self):

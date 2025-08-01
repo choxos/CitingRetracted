@@ -51,6 +51,9 @@ export DJANGO_SETTINGS_MODULE=citing_retracted.settings_production
 '
 ```
 
+./venv/bin/python prct_auto_updater.py --continuous-citations --citation-limit 100000
+
+
 **Alternative (if above still has issues):**
 ```bash
 # Step-by-step approach (standard mode)
