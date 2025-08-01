@@ -742,22 +742,24 @@ class AnalyticsView(View):
         """Get analytics data with optimized queries"""
         data = {}
         
-        # Retractions by year - use publication_year since retraction_date seems empty
+        # Retractions by year - use original_paper_date to extract year
         from django.db.models.functions import TruncYear
         
-        # First try with publication_year since retraction_date appears to be empty in database
-        publication_years = RetractedPaper.objects.filter(
-            publication_year__isnull=False
-        ).values('publication_year').annotate(
+        # First try with original_paper_date since that field exists
+        original_paper_years = RetractedPaper.objects.filter(
+            original_paper_date__isnull=False
+        ).annotate(
+            year=TruncYear('original_paper_date')
+        ).values('year').annotate(
             count=Count('id')
-        ).order_by('publication_year')[:30]
+        ).order_by('year')[:30]
         
         data['retraction_years'] = [
             {
-                'year': item['publication_year'],
+                'year': item['year'].year if item['year'] else 'Unknown',
                 'count': item['count']
             }
-            for item in publication_years if item['publication_year']
+            for item in original_paper_years if item['year']
         ]
         
         # If still no data, try retraction_date as fallback
