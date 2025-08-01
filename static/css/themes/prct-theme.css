@@ -168,3 +168,120 @@
 .xera-logo-icon i:before {
   content: "\f071"; /* fa-exclamation-triangle */
 } 
+
+/* Retraction nature badges */
+.prct-retraction-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    border: 1px solid transparent;
+}
+
+.prct-retraction-badge.retracted {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border-color: #fca5a5;
+}
+
+.prct-retraction-badge.retraction-badge-warning {
+    background-color: #fef3c7;
+    color: #92400e;
+    border-color: #fcd34d;
+}
+
+.prct-retraction-badge.retraction-badge-info {
+    background-color: #dbeafe;
+    color: #1e40af;
+    border-color: #93c5fd;
+}
+
+.prct-retraction-badge.retraction-badge-success {
+    background-color: #dcfce7;
+    color: #166534;
+    border-color: #86efac;
+}
+
+/* Search table view styles */
+.table-responsive {
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.table th a {
+    color: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    white-space: nowrap;
+}
+
+.table th a:hover {
+    color: #2563eb;
+}
+
+.table th a i {
+    margin-left: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.table tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+/* Search view toggle buttons */
+.btn-group .btn {
+    border-color: #e5e7eb;
+}
+
+.btn-group .btn:hover {
+    background-color: #f3f4f6;
+    border-color: #d1d5db;
+}
+
+.btn-group .btn.btn-primary {
+    background-color: #2563eb;
+    border-color: #2563eb;
+}
+
+/* Citation count styling in table */
+.table .text-primary {
+    color: #2563eb !important;
+}
+
+.table .text-danger {
+    color: #dc2626 !important;
+}
+
+/* Action buttons in table */
+.btn-group-vertical .btn {
+    margin-bottom: 0.125rem;
+}
+
+.btn-group-vertical .btn:last-child {
+    margin-bottom: 0;
+}
+
+/* Mobile responsiveness for table */
+@media (max-width: 768px) {
+    .table th,
+    .table td {
+        padding: 0.5rem 0.25rem;
+        font-size: 0.875rem;
+    }
+    
+    .table th a {
+        font-size: 0.875rem;
+    }
+    
+    .btn-group-vertical .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
+} 
