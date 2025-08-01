@@ -488,13 +488,7 @@
                                                 {% endif %}
                                             </h5>
                                             <div class="text-end">
-                                                {% if citation.days_after_retraction > 0 %}
-                                                    <span class="prct-retraction-badge retracted mb-1">Post-Retraction</span>
-                                                {% elif citation.days_after_retraction < 0 %}
-                                                    <span class="xera-badge xera-badge-success mb-1">Pre-Retraction</span>
-                                                {% else %}
-                                                    <span class="prct-retraction-badge concern mb-1">Same Day</span>
-                                                {% endif %}
+                                                <span class="{{ citation.citation_badge_class }} mb-1">{{ citation.citation_type_display }}</span>
                                                 <br>
                                                 {% if citation.citing_paper.is_open_access %}
                                                     <span class="xera-badge xera-badge-info">Open Access</span>
@@ -522,9 +516,15 @@
                                                 <small class="text-muted">
                                                     <i class="fas fa-calendar"></i>
                                                     Published: {{ citation.citing_paper.publication_date|date:"M d, Y" }}
-                                                    {% if citation.days_after_retraction %}
+                                                    {% if citation.days_after_retraction is not None %}
                                                         <br><i class="fas fa-clock"></i>
-                                                        <strong>{{ citation.days_after_retraction }} days after retraction</strong>
+                                                        {% if citation.days_after_retraction > 0 %}
+                                                            <strong>{{ citation.days_after_retraction }} days after {{ citation.retracted_paper.retraction_nature_display|lower }}</strong>
+                                                        {% elif citation.days_after_retraction < 0 %}
+                                                            <strong>{{ citation.days_after_retraction|floatformat:0|cut:"-" }} days before {{ citation.retracted_paper.retraction_nature_display|lower }}</strong>
+                                                        {% else %}
+                                                            <strong>Same day as {{ citation.retracted_paper.retraction_nature_display|lower }}</strong>
+                                                        {% endif %}
                                                     {% endif %}
                                                 </small>
                                             </div>
@@ -534,6 +534,10 @@
                                                     Cites: <a href="{{ citation.retracted_paper.get_absolute_url }}" class="text-decoration-none">
                                                         {{ citation.retracted_paper.title|truncatechars:60 }}
                                                     </a>
+                                                    <br>
+                                                    <span class="prct-retraction-badge {{ citation.retracted_paper.retraction_badge_class }} small">
+                                                        {{ citation.retracted_paper.retraction_nature_display }}
+                                                    </span>
                                                 </small>
                                             </div>
                                         </div>

@@ -707,6 +707,48 @@ class Citation(models.Model):
     def __str__(self):
         return f"Citation: {self.citing_paper.title[:50]}... → {self.retracted_paper.title[:50]}..."
     
+    @property
+    def citation_type_display(self):
+        """Return citation type based on the retracted paper's nature"""
+        if self.days_after_retraction is None:
+            return "Unknown timing"
+        
+        if self.days_after_retraction < 0:
+            return "Pre-notice"
+        elif self.days_after_retraction == 0:
+            return "Same day"
+        else:  # Post-notice citation
+            nature = self.retracted_paper.retraction_nature_display.lower()
+            if 'expression of concern' in nature:
+                return "Post-expression of concern"
+            elif 'correction' in nature:
+                return "Post-correction"
+            elif 'reinstatement' in nature:
+                return "Post-reinstatement"
+            else:  # Retraction or default
+                return "Post-retraction"
+    
+    @property
+    def citation_badge_class(self):
+        """Return appropriate CSS class based on citation type"""
+        if self.days_after_retraction is None:
+            return 'badge bg-secondary'
+        
+        if self.days_after_retraction < 0:
+            return 'xera-badge xera-badge-success'
+        elif self.days_after_retraction == 0:
+            return 'xera-badge xera-badge-warning'
+        else:  # Post-notice citation
+            nature = self.retracted_paper.retraction_nature_display.lower()
+            if 'expression of concern' in nature:
+                return 'prct-retraction-badge retraction-badge-warning'
+            elif 'correction' in nature:
+                return 'prct-retraction-badge retraction-badge-info'
+            elif 'reinstatement' in nature:
+                return 'prct-retraction-badge retraction-badge-success'
+            else:  # Retraction or default
+                return 'prct-retraction-badge retraction-badge'
+    
     def save(self, *args, **kwargs):
         # Calculate days after retraction if both dates are available
         if (self.retracted_paper.retraction_date and 
