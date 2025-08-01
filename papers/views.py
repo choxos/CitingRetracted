@@ -1014,11 +1014,11 @@ class AnalyticsView(View):
             
             # Map country name to ISO alpha-3 code for Plotly choropleth
             country_name = item['country']
-            iso_code = country_iso_mapping.get(country_name, None)
+            iso_code = country_iso_mapping.get(country_name)  # Remove explicit None
             
             world_map_data.append({
                 'country': country_name,  # Original name for display
-                'iso_alpha': iso_code,    # ISO alpha-3 code for Plotly
+                'iso_alpha': iso_code if iso_code else '',  # Convert None to empty string
                 'value': retraction_count,
                 'log_value': log_value,
                 'post_retraction_citations': item['post_retraction_citations'],
