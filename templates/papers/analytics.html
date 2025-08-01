@@ -1635,7 +1635,7 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
             {
                 type: 'bar',
                 data: {
-                    labels: articleTypeData.map(item => item.type || 'Unknown'),
+                    labels: articleTypeData.map(item => item.article_type || 'Unknown'),
                     datasets: [{
                         label: 'Count',
                         data: articleTypeData.map(item => item.count || 0),
