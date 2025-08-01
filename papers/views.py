@@ -1359,17 +1359,17 @@ class AnalyticsView(View):
         import logging
         logger = logging.getLogger(__name__)
         
-        # First try the original approach but with debugging
-        retraction_years = RetractedPaper.objects.filter(
-            retraction_date__isnull=False
+        # Group citations by citation year (publication year of citing papers), not retraction year
+        retraction_years = Citation.objects.filter(
+            citing_paper__publication_year__isnull=False
         ).annotate(
-            year=TruncYear('retraction_date')
+            year=F('citing_paper__publication_year')
         ).values('year').annotate(
-            retracted_count=Count('id'),
-            pre_retraction_citations=Count('citations', filter=Q(citations__days_after_retraction__lt=0)),
-            post_retraction_citations=Count('citations', filter=Q(citations__days_after_retraction__gt=0)),
-            same_day_citations=Count('citations', filter=Q(citations__days_after_retraction=0))
-        ).order_by('year')[:10]
+            retracted_count=Count('retracted_paper', distinct=True),
+            pre_retraction_citations=Count('id', filter=Q(days_after_retraction__lt=0)),
+            post_retraction_citations=Count('id', filter=Q(days_after_retraction__gt=0)),
+            same_day_citations=Count('id', filter=Q(days_after_retraction=0))
+        ).order_by('year')[:15]
         
         logger.info(f"Retraction years query count: {retraction_years.count()}")
         logger.info(f"Sample retraction years data: {list(retraction_years[:3])}")
@@ -1390,32 +1390,12 @@ class AnalyticsView(View):
                     'same_day': max(1, i)
                 })
         else:
-            # Use original approach but fall back to simple counts if days_after_retraction is null
+            # Use the corrected data that groups by citation year (not retraction year)
             for item in retraction_years:
-                # Try to get actual citation counts for this year
-                year_value = item['year'].year if item['year'] else 2020
-                
-                # Get papers from this retraction year
-                papers_this_year = RetractedPaper.objects.filter(
-                    retraction_date__year=year_value
-                )
-                
-                # Count all citations for papers from this year
-                total_citations_this_year = Citation.objects.filter(
-                    retracted_paper__in=papers_this_year
-                ).count()
-                
-                # If we have citations, split them approximately
-                if total_citations_this_year > 0:
-                    # Estimate: ~70% pre-retraction, ~25% post-retraction, ~5% same day
-                    pre_count = int(total_citations_this_year * 0.7)
-                    post_count = int(total_citations_this_year * 0.25)
-                    same_count = total_citations_this_year - pre_count - post_count
-                else:
-                    # Use original query results or defaults
-                    pre_count = item['pre_retraction_citations'] or max(1, year_value - 1920)
-                    post_count = item['post_retraction_citations'] or max(1, (year_value - 1950) // 2)
-                    same_count = item['same_day_citations'] or 1
+                year_value = item['year']
+                pre_count = item['pre_retraction_citations'] or 0
+                post_count = item['post_retraction_citations'] or 0
+                same_count = item['same_day_citations'] or 0
                 
                 retraction_comparison.append({
                     'year': year_value,
