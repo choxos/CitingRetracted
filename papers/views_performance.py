@@ -464,23 +464,24 @@ class PerformanceAnalyticsView(View):
                         })
             
             # Add some cross-references between retracted papers (from actual database)
-            if len(top_retracted) > 1:
-                cross_refs = Citation.objects.filter(
-                    retracted_paper__record_id__in=[p['record_id'] for p in top_retracted[:10]],
-                    citing_paper__in=RetractedPaper.objects.filter(record_id__in=[p['record_id'] for p in top_retracted[:10]])
-                ).values(
-                    'retracted_paper__record_id', 'citing_paper__record_id'
-                )[:5]
-                
-                for ref in cross_refs:
-                    if ref['retracted_paper__record_id'] != ref['citing_paper__record_id']:
-                        network_links.append({
-                            'source': f"retracted_{ref['citing_paper__record_id']}",
-                            'target': f"retracted_{ref['retracted_paper__record_id']}",
-                            'type': 'cross_reference',
-                            'color': '#8b5cf6',  # Purple for cross-references
-                            'strength': 3
-                        })
+            # Temporarily disabled to fix model relationship error - can be re-implemented later
+            # if len(top_retracted) > 1:
+            #     cross_refs = Citation.objects.filter(
+            #         retracted_paper__record_id__in=[p['record_id'] for p in top_retracted[:10]],
+            #         citing_paper__in=RetractedPaper.objects.filter(record_id__in=[p['record_id'] for p in top_retracted[:10]])
+            #     ).values(
+            #         'retracted_paper__record_id', 'citing_paper__record_id'
+            #     )[:5]
+            #     
+            #     for ref in cross_refs:
+            #         if ref['retracted_paper__record_id'] != ref['citing_paper__record_id']:
+            #             network_links.append({
+            #                 'source': f"retracted_{ref['citing_paper__record_id']}",
+            #                 'target': f"retracted_{ref['retracted_paper__record_id']}",
+            #                 'type': 'cross_reference',
+            #                 'color': '#8b5cf6',  # Purple for cross-references
+            #                 'strength': 3
+            #             })
             
             network_data = {
                 'nodes': network_nodes,
