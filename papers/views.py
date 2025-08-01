@@ -1084,9 +1084,10 @@ class AnalyticsView(View):
         
         # Retractions by year - use original_paper_date to extract year
         
-        # First try with original_paper_date since that field exists
+        # First try with original_paper_date since that field exists - only retracted papers
         original_paper_years = RetractedPaper.objects.filter(
-            original_paper_date__isnull=False
+            original_paper_date__isnull=False,
+            retraction_nature__iexact='Retraction'
         ).annotate(
             year=TruncYear('original_paper_date')
         ).values('year').annotate(
@@ -1112,12 +1113,14 @@ class AnalyticsView(View):
         
         # If still empty, try different approaches
         if not data['retraction_years']:
-            # Try just counting all papers by creation year
-            total_papers = RetractedPaper.objects.count()
+            # Try just counting retracted papers by creation year
+            total_papers = RetractedPaper.objects.filter(retraction_nature__iexact='Retraction').count()
             logger.info(f"Total papers in database: {total_papers}")
             
-            # Try with created_at field as last resort
-            created_years = RetractedPaper.objects.extra(
+            # Try with created_at field as last resort - only retracted papers
+            created_years = RetractedPaper.objects.filter(
+                retraction_nature__iexact='Retraction'
+            ).extra(
                 select={'year': "EXTRACT(year FROM created_at)"}
             ).values('year').annotate(
                 count=Count('id')
@@ -1155,10 +1158,11 @@ class AnalyticsView(View):
                 ]
                 logger.info("Created absolute fallback retraction_years data")
         
-        # If still no data, try retraction_date as fallback
+        # If still no data, try retraction_date as fallback - only retracted papers
         if not data['retraction_years']:
             retraction_years = RetractedPaper.objects.filter(
-                retraction_date__isnull=False
+                retraction_date__isnull=False,
+                retraction_nature__iexact='Retraction'
             ).annotate(
                 year=TruncYear('retraction_date')
             ).values('year').annotate(
@@ -1173,8 +1177,10 @@ class AnalyticsView(View):
                 for item in retraction_years
             ]
         
-        # Top journals with efficient query (limit complexity)
-        data['top_journals'] = RetractedPaper.objects.values(
+        # Top journals with efficient query (limit complexity) - only retracted papers
+        data['top_journals'] = RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).values(
             'journal'
         ).annotate(
             retraction_count=Count('id'),
@@ -1190,8 +1196,10 @@ class AnalyticsView(View):
         # Top subjects with efficient query (parsed from semicolon-separated values)
         data['top_subjects'] = self._get_parsed_subjects_with_citations(limit=10)
         
-        # Papers with most post-retraction citations (optimized)
-        data['most_cited_post_retraction'] = RetractedPaper.objects.annotate(
+        # Papers with most post-retraction citations (optimized) - only retracted papers
+        data['most_cited_post_retraction'] = RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).annotate(
             post_retraction_count=Count(
                 'citations', filter=Q(citations__days_after_retraction__gt=0)
             )
@@ -1232,8 +1240,10 @@ class AnalyticsView(View):
         """Get additional chart data that was removed"""
         chart_data = {}
         
-        # Access analytics for open access chart
-        access_stats = RetractedPaper.objects.aggregate(
+        # Access analytics for open access chart - only retracted papers
+        access_stats = RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).aggregate(
             open_access_count=Count('id', filter=Q(is_open_access=True)),
             paywalled_count=Count('id', filter=Q(paywalled=True)),
             unknown_count=Count('id', filter=Q(is_open_access=False, paywalled=False))
@@ -1555,13 +1565,14 @@ class AnalyticsView(View):
         chart_data.setdefault('publisher_data', [])
         chart_data.setdefault('access_analytics', {'open_access': {'count': 0}, 'paywalled': {'count': 0}, 'unknown': {'count': 0}})
         
-        # Create full retraction trends dataset using ALL papers in database
+        # Create full retraction trends dataset using only retracted papers
         # Get retraction counts by year from all available date fields
         retraction_timeline = {}
         
-        # Try original_paper_date first (if available)
+        # Try original_paper_date first (if available) - only retracted papers
         original_paper_years = RetractedPaper.objects.filter(
-            original_paper_date__isnull=False
+            original_paper_date__isnull=False,
+            retraction_nature__iexact='Retraction'
         ).annotate(
             year=TruncYear('original_paper_date')
         ).values('year').annotate(
@@ -1573,9 +1584,10 @@ class AnalyticsView(View):
             if isinstance(year, int):
                 retraction_timeline[year] = retraction_timeline.get(year, 0) + item['count']
         
-        # Also try retraction_date 
+        # Also try retraction_date - only retracted papers
         retraction_date_years = RetractedPaper.objects.filter(
-            retraction_date__isnull=False
+            retraction_date__isnull=False,
+            retraction_nature__iexact='Retraction'
         ).annotate(
             year=TruncYear('retraction_date')
         ).values('year').annotate(
@@ -1633,7 +1645,7 @@ class AnalyticsView(View):
         
         # Fallback only if no real data exists
         if not chart_data.get('retraction_years'):
-            total_papers = RetractedPaper.objects.count()
+            total_papers = RetractedPaper.objects.filter(retraction_nature__iexact='Retraction').count()
             chart_data['retraction_years'] = [
                 {'year': 2020, 'count': max(15, total_papers // 8)},
                 {'year': 2021, 'count': max(23, total_papers // 6)},
@@ -1705,9 +1717,10 @@ class AnalyticsView(View):
         missing_data['retraction_comparison'] = retraction_comparison
         logger.info(f"Final retraction_comparison: {retraction_comparison[:3]}")
         
-        # NEW: Separate data for retraction trends by retraction year
+        # NEW: Separate data for retraction trends by retraction year - only retracted papers
         retraction_trends_by_year = RetractedPaper.objects.filter(
-            retraction_date__isnull=False
+            retraction_date__isnull=False,
+            retraction_nature__iexact='Retraction'
         ).annotate(
             year=TruncYear('retraction_date')
         ).values('year').annotate(
@@ -1746,8 +1759,10 @@ class AnalyticsView(View):
         logger.info(f"Retraction trends years: {len(missing_data['retraction_trends_by_year'])}")
         logger.info(f"Citation analysis years: {len(missing_data['citation_analysis_by_year'])}")
         
-        # Subject donut data for distribution chart
-        subjects = RetractedPaper.objects.values('subject').annotate(
+        # Subject donut data for distribution chart - only retracted papers
+        subjects = RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).values('subject').annotate(
             count=Count('id')
         ).filter(
             subject__isnull=False
@@ -1789,8 +1804,10 @@ class AnalyticsView(View):
         network_nodes = []
         network_links = []
         
-        # Add journal nodes
-        top_journals = RetractedPaper.objects.values('journal').annotate(
+        # Add journal nodes - only retracted papers
+        top_journals = RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).values('journal').annotate(
             count=Count('id'),
             post_retraction_citations=Count('citations', filter=Q(citations__days_after_retraction__gt=0))
         ).filter(journal__isnull=False).exclude(journal__exact='').order_by('-count')[:12]
@@ -1806,8 +1823,10 @@ class AnalyticsView(View):
                 'post_retraction_citations': journal['post_retraction_citations']
             })
         
-        # Add country nodes
-        top_countries = RetractedPaper.objects.values('country').annotate(
+        # Add country nodes - only retracted papers
+        top_countries = RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).values('country').annotate(
             count=Count('id')
         ).filter(country__isnull=False).exclude(country__exact='').order_by('-count')[:8]
         
@@ -1823,8 +1842,10 @@ class AnalyticsView(View):
                 'retraction_count': country['count']
             })
         
-        # Add subject nodes
-        top_subjects = RetractedPaper.objects.values('subject').annotate(
+        # Add subject nodes - only retracted papers
+        top_subjects = RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).values('subject').annotate(
             count=Count('id')
         ).filter(subject__isnull=False).exclude(subject__exact='').order_by('-count')[:6]
         
@@ -1913,8 +1934,10 @@ class AnalyticsView(View):
             })
         missing_data['citation_heatmap'] = citation_heatmap
         
-        # Add article type analysis
-        article_type_data = RetractedPaper.objects.values('article_type').annotate(
+        # Add article type analysis - only retracted papers
+        article_type_data = RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).values('article_type').annotate(
             count=Count('id')
         ).filter(article_type__isnull=False).exclude(article_type__exact='').order_by('-count')[:10]
         
@@ -1926,8 +1949,10 @@ class AnalyticsView(View):
             for item in article_type_data
         ]
         
-        # Add publisher analysis  
-        publisher_data = RetractedPaper.objects.values('publisher').annotate(
+        # Add publisher analysis - only retracted papers
+        publisher_data = RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).values('publisher').annotate(
             count=Count('id'),
             post_retraction_citations=Count('citations', filter=Q(citations__days_after_retraction__gt=0))
         ).filter(publisher__isnull=False).exclude(publisher__exact='').order_by('-count')[:10]
@@ -1941,8 +1966,10 @@ class AnalyticsView(View):
             for item in publisher_data
         ]
         
-        # Add open access analysis
-        access_data = RetractedPaper.objects.aggregate(
+        # Add open access analysis - only retracted papers
+        access_data = RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).aggregate(
             open_access=Count('id', filter=Q(is_open_access=True)),
             paywalled=Count('id', filter=Q(is_open_access=False)),
             total=Count('id')
