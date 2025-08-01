@@ -434,7 +434,16 @@
             <div class="row mb-5">
                 <div class="col-lg-8 mb-4">
                     <div class="prct-chart-container">
-                        <h5 class="prct-chart-title"><i class="fas fa-globe"></i> Geographic Distribution</h5>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="prct-chart-title mb-0"><i class="fas fa-globe"></i> Geographic Distribution</h5>
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Map scale options">
+                                <input type="radio" class="btn-check" name="mapScale" id="scaleLinear" value="linear" checked>
+                                <label class="btn btn-outline-primary" for="scaleLinear">Linear</label>
+                                
+                                <input type="radio" class="btn-check" name="mapScale" id="scaleLog" value="log">
+                                <label class="btn btn-outline-primary" for="scaleLog">Log Scale</label>
+                            </div>
+                        </div>
                         <small class="text-muted">Retractions by country with open access rates</small>
                         <div class="chart-container">
                             <canvas id="countryChart"></canvas>
@@ -1455,30 +1464,51 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
     // Prepare data for Plotly choropleth
     const plotlyMapData = worldMapData.filter(country => country.iso_alpha); // Only countries with ISO codes
     
-    const choroplethData = [{
-        type: 'choropleth',
-        locations: plotlyMapData.map(country => country.iso_alpha),
-        z: plotlyMapData.map(country => country.value),
-        text: plotlyMapData.map(country => 
-            `${country.country}<br>` +
-            `Retractions: ${country.value.toLocaleString()}<br>` +
-            `Post-retraction citations: ${country.post_retraction_citations.toLocaleString()}<br>` +
-            `Open access rate: ${country.open_access_percentage.toFixed(1)}%`
-        ),
-        hovertemplate: '%{text}<extra></extra>',
-        colorscale: [
-            [0, '#fff5f5'],
-            [0.2, '#fecaca'],
-            [0.4, '#f87171'],
-            [0.6, '#ef4444'],
-            [0.8, '#dc2626'],
-            [1, '#b91c1c']
-        ],
-        colorbar: {
-            title: 'Retractions',
-            titleside: 'right'
+    // Function to generate choropleth data based on scale
+    function generateChoroplethData(scale = 'linear') {
+        const values = plotlyMapData.map(country => country.value);
+        let transformedValues, colorbarTitle;
+        
+        if (scale === 'log') {
+            // Apply log10 transformation, handle zero values
+            transformedValues = values.map(value => value > 0 ? Math.log10(value) : 0);
+            colorbarTitle = 'Log₁₀(Retractions)';
+        } else {
+            transformedValues = values;
+            colorbarTitle = 'Retractions';
         }
-    }];
+        
+        return [{
+            type: 'choropleth',
+            locations: plotlyMapData.map(country => country.iso_alpha),
+            z: transformedValues,
+            text: plotlyMapData.map(country => 
+                `${country.country}<br>` +
+                `Retractions: ${country.value.toLocaleString()}<br>` +
+                `Post-retraction citations: ${country.post_retraction_citations.toLocaleString()}<br>` +
+                `Open access rate: ${country.open_access_percentage.toFixed(1)}%`
+            ),
+            hovertemplate: '%{text}<extra></extra>',
+            colorscale: [
+                [0, '#fff5f5'],
+                [0.2, '#fecaca'],
+                [0.4, '#f87171'],
+                [0.6, '#ef4444'],
+                [0.8, '#dc2626'],
+                [1, '#b91c1c']
+            ],
+            colorbar: {
+                title: colorbarTitle,
+                titleside: 'right'
+            }
+        }];
+    }
+    
+    // Function to update the choropleth map
+    function updateChoroplethMap(scale = 'linear') {
+        const newData = generateChoroplethData(scale);
+        Plotly.react('plotlyWorldMap', newData, choroplethLayout, config);
+    }
     
     const choroplethLayout = {
         title: false,
@@ -1504,8 +1534,19 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
         displaylogo: false
     };
     
-    // Create the Plotly choropleth map
-    Plotly.newPlot('plotlyWorldMap', choroplethData, choroplethLayout, config);
+    // Create the initial Plotly choropleth map
+    const initialChoroplethData = generateChoroplethData('linear');
+    Plotly.newPlot('plotlyWorldMap', initialChoroplethData, choroplethLayout, config);
+    
+    // Add event listeners for scale toggle
+    document.querySelectorAll('input[name="mapScale"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.checked) {
+                updateChoroplethMap(this.value);
+                console.log('Map scale changed to:', this.value);
+            }
+        });
+    });
     
     console.log('Plotly choropleth world map initialized with', plotlyMapData.length, 'countries');
     
