@@ -14,6 +14,7 @@ from django.utils import timezone
 from django.views.generic import View
 from django.views.decorators.cache import cache_page
 import calendar
+from django.utils.safestring import mark_safe
 
 
 class HomeView(ListView):
@@ -667,15 +668,10 @@ class AnalyticsView(View):
         # Get analytics data efficiently
         context.update(self._get_analytics_data())
         
-        # Ensure all data is JSON-safe
-        context = self._make_json_safe(context)
-        
-        return context
-    
-    def _make_json_safe(self, data):
-        """Ensure all data is JSON-serializable and safe for template rendering"""
+        # Convert all data to JSON strings for safe template rendering
         import json
         from datetime import date, datetime
+        from django.utils.safestring import mark_safe
         
         def json_serializer(obj):
             """Custom JSON serializer for datetime objects"""
@@ -683,23 +679,27 @@ class AnalyticsView(View):
                 return obj.isoformat()
             return str(obj)
         
-        # Convert data to JSON and back to ensure it's properly serialized
-        json_safe_data = {}
-        for key, value in data.items():
-            try:
-                # Test JSON serialization
-                json_str = json.dumps(value, default=json_serializer)
-                json_safe_data[key] = json.loads(json_str)
-            except (TypeError, ValueError) as e:
-                # If serialization fails, provide a safe fallback
-                if isinstance(value, list):
-                    json_safe_data[key] = []
-                elif isinstance(value, dict):
-                    json_safe_data[key] = {}
-                else:
-                    json_safe_data[key] = None
-                    
-        return json_safe_data
+        # Convert chart data to JSON strings
+        json_context = {}
+        for key, value in context.items():
+            if key in ['retraction_years', 'combined_trends', 'retraction_comparison', 
+                      'subject_donut_data', 'citation_timing_distribution', 'journal_bubble_data',
+                      'citation_heatmap', 'sunburst_data', 'country_analytics', 'world_map_data',
+                      'article_type_data', 'publisher_data', 'access_analytics', 'network_data']:
+                try:
+                    json_context[key] = mark_safe(json.dumps(value, default=json_serializer))
+                except (TypeError, ValueError):
+                    # Provide safe fallbacks
+                    if isinstance(value, list):
+                        json_context[key] = mark_safe('[]')
+                    elif isinstance(value, dict):
+                        json_context[key] = mark_safe('{}')
+                    else:
+                        json_context[key] = mark_safe('null')
+            else:
+                json_context[key] = value
+        
+        return json_context
     
     def _get_basic_stats(self):
         """Get basic statistics in efficient bulk queries"""
