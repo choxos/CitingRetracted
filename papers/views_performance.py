@@ -139,6 +139,12 @@ class PerformanceAnalyticsView(View):
                 'post_retraction_timeline': post_retraction_timeline
             }
             
+            # Debug logging to check statistics
+            logger.info(f"Basic stats calculated: {basic_stats}")
+            logger.info(f"Mean citations: {basic_stats.get('mean_citations', 'MISSING')}")
+            logger.info(f"Std citations: {basic_stats.get('std_citations', 'MISSING')}")
+            logger.info(f"Median citations: {basic_stats.get('median_citations', 'MISSING')}")
+            
             cache.set(cache_key, cached_data, CACHE_TIMEOUT_SHORT)
             logger.info("Basic stats cached successfully")
         
@@ -330,15 +336,22 @@ class PerformanceAnalyticsView(View):
                     total_papers = country_stats['total_papers'] or 1
                     open_access_percentage = (country_stats['open_access_count'] / total_papers) * 100
                     
-                    world_map_data.append({
+                    map_entry = {
                         'country': country_name,
                         'iso_alpha': iso_code,
-                        'value': retraction_count,
-                        'log_value': log_value,
+                        'value': float(retraction_count),  # Ensure it's a number
+                        'log_value': float(log_value),     # Ensure it's a number
                         'post_retraction_citations': country_stats['post_retraction_citations'] or 0,
                         'open_access_percentage': round(open_access_percentage, 1),
                         'total_papers': total_papers
-                    })
+                    }
+                    world_map_data.append(map_entry)
+                    
+                    # Debug logging for first few countries
+                    if len(world_map_data) <= 3:
+                        logger.info(f"Country {country_name}: value={retraction_count}, log_value={log_value}, iso={iso_code}")
+            
+            logger.info(f"Generated world map data for {len(world_map_data)} countries")
             
             # Article type data with proper structure
             article_type_data = [
@@ -391,6 +404,10 @@ class PerformanceAnalyticsView(View):
                 'record_id', 'title', 'post_retraction_count', 'citation_count', 'journal', 'retraction_date'
             ))
             
+            logger.info(f"Found {len(top_retracted)} retracted papers with >5 post-retraction citations")
+            if top_retracted:
+                logger.info(f"Top paper: {top_retracted[0]['title'][:50]}... with {top_retracted[0]['post_retraction_count']} post-retraction citations")
+            
             # Get citing papers for these retracted papers
             network_nodes = []
             network_links = []
@@ -417,10 +434,12 @@ class PerformanceAnalyticsView(View):
                     citing_paper__isnull=False
                 ).select_related('citing_paper', 'retracted_paper').order_by(
                     '-days_after_retraction'
-                )[:50].values(
+                )[:100].values(  # Increased to 100 for richer network
                     'citing_paper__title', 'citing_paper__journal', 'citing_paper__publication_date',
                     'retracted_paper__record_id', 'days_after_retraction', 'citing_paper__cited_by_count'
                 ))
+                
+                logger.info(f"Found {len(citations)} actual citations for network visualization")
                 
                 # Add citing paper nodes and links
                 for i, citation in enumerate(citations):
@@ -495,6 +514,10 @@ class PerformanceAnalyticsView(View):
                 }
             }
             
+            logger.info(f"Network: {len(network_nodes)} nodes, {len(network_links)} links")
+            logger.info(f"Network breakdown: {network_data['metadata']['retracted_papers']} retracted, {network_data['metadata']['citing_papers']} citing papers")
+            logger.info(f"Post-retraction links: {network_data['metadata']['post_retraction_links']}")
+            
             cached_data = {
                 'problematic_papers_detailed': [
                     {
@@ -547,134 +570,183 @@ class PerformanceAnalyticsView(View):
             count=Count('id')
         ).order_by('-count')
         
-        # Enhanced three-level categorization
+        logger.info(f"Found {len(subject_counts)} unique subjects for sunburst")
+        
+        # Enhanced categorization with more comprehensive coverage
         categories = {
-            'Life Sciences': {
-                'Biology & Biochemistry': [],
-                'Genetics & Molecular Biology': [],
-                'Environmental Sciences': [],
-                'Agriculture & Food Science': []
+            'Biological Sciences': {
+                'Cell & Molecular Biology': [],
+                'Genetics & Genomics': [],
+                'Ecology & Evolution': [],
+                'Biochemistry': [],
+                'Microbiology': []
             },
             'Medical Sciences': {
                 'Clinical Medicine': [],
-                'Public Health & Epidemiology': [],
-                'Pharmacology & Toxicology': [],
-                'Neuroscience & Psychology': []
+                'Public Health': [],
+                'Pharmacology': [],
+                'Neuroscience': [],
+                'Immunology': []
             },
             'Physical Sciences': {
                 'Chemistry': [],
-                'Physics & Astronomy': [],
-                'Mathematics & Statistics': [],
-                'Earth & Atmospheric Sciences': []
+                'Physics': [],
+                'Mathematics': [],
+                'Earth Sciences': [],
+                'Materials Science': []
             },
             'Engineering & Technology': {
-                'Computer Science & IT': [],
+                'Computer Science': [],
                 'Engineering': [],
-                'Materials Science': [],
-                'Technology & Innovation': []
+                'Technology': [],
+                'Data Science': [],
+                'Electronics': []
             },
-            'Social Sciences & Humanities': {
-                'Economics & Business': [],
-                'Education & Pedagogy': [],
-                'Social Sciences': [],
-                'Arts & Humanities': []
+            'Social Sciences': {
+                'Psychology': [],
+                'Economics': [],
+                'Education': [],
+                'Sociology': [],
+                'Business': []
+            },
+            'Applied Sciences': {
+                'Agriculture': [],
+                'Environmental Science': [],
+                'Food Science': [],
+                'Energy': [],
+                'Biotechnology': []
             }
         }
         
-        # Process each subject with its count
+        # Process each subject with more detailed categorization
+        total_papers = 0
         for item in subject_counts:
             subject_string = item['subject']
             count = item['count']
+            total_papers += count
             
             # Split multiple subjects and process each
             subjects = [s.strip() for s in subject_string.split(';')]
             
             for subject in subjects[:2]:  # Take first 2 subjects to avoid over-counting
                 subject_lower = subject.lower()
-                subject_short = subject[:25] + ('...' if len(subject) > 25 else '')
+                subject_short = subject[:30] + ('...' if len(subject) > 30 else '')
                 placed = False
                 
-                # Life Sciences categorization
-                if any(word in subject_lower for word in ['biology', 'bio-', 'cell', 'molecular', 'organism', 'biochem', 'protein', 'enzyme']):
-                    categories['Life Sciences']['Biology & Biochemistry'].append({'name': subject_short, 'value': count})
+                # More comprehensive categorization
+                # Biological Sciences
+                if any(word in subject_lower for word in ['cell', 'molecular', 'protein', 'enzyme', 'biochem']):
+                    categories['Biological Sciences']['Cell & Molecular Biology'].append({'name': subject_short, 'value': count})
                     placed = True
-                elif any(word in subject_lower for word in ['genetic', 'gene', 'genome', 'dna', 'rna', 'molecular biology']):
-                    categories['Life Sciences']['Genetics & Molecular Biology'].append({'name': subject_short, 'value': count})
+                elif any(word in subject_lower for word in ['genetic', 'gene', 'genome', 'dna', 'rna', 'heredity']):
+                    categories['Biological Sciences']['Genetics & Genomics'].append({'name': subject_short, 'value': count})
                     placed = True
-                elif any(word in subject_lower for word in ['ecology', 'environment', 'climate', 'conservation', 'marine', 'forest']):
-                    categories['Life Sciences']['Environmental Sciences'].append({'name': subject_short, 'value': count})
+                elif any(word in subject_lower for word in ['ecology', 'evolution', 'species', 'population', 'ecosystem']):
+                    categories['Biological Sciences']['Ecology & Evolution'].append({'name': subject_short, 'value': count})
                     placed = True
-                elif any(word in subject_lower for word in ['agriculture', 'food', 'nutrition', 'crop', 'livestock', 'farming']):
-                    categories['Life Sciences']['Agriculture & Food Science'].append({'name': subject_short, 'value': count})
+                elif any(word in subject_lower for word in ['biochem', 'metabolism', 'biolog']):
+                    categories['Biological Sciences']['Biochemistry'].append({'name': subject_short, 'value': count})
+                    placed = True
+                elif any(word in subject_lower for word in ['microb', 'bacteria', 'virus', 'pathogen']):
+                    categories['Biological Sciences']['Microbiology'].append({'name': subject_short, 'value': count})
                     placed = True
                 
                 # Medical Sciences
-                elif any(word in subject_lower for word in ['medical', 'clinical', 'medicine', 'health', 'disease', 'therapy', 'treatment']):
+                elif any(word in subject_lower for word in ['medical', 'clinical', 'medicine', 'health', 'disease', 'therapy', 'treatment', 'diagnosis']):
                     categories['Medical Sciences']['Clinical Medicine'].append({'name': subject_short, 'value': count})
                     placed = True
-                elif any(word in subject_lower for word in ['public health', 'epidemiology', 'population', 'outbreak', 'prevention']):
-                    categories['Medical Sciences']['Public Health & Epidemiology'].append({'name': subject_short, 'value': count})
+                elif any(word in subject_lower for word in ['public health', 'epidemiology', 'population health', 'prevention']):
+                    categories['Medical Sciences']['Public Health'].append({'name': subject_short, 'value': count})
                     placed = True
                 elif any(word in subject_lower for word in ['pharmacology', 'drug', 'pharmaceutical', 'toxicology', 'medication']):
-                    categories['Medical Sciences']['Pharmacology & Toxicology'].append({'name': subject_short, 'value': count})
+                    categories['Medical Sciences']['Pharmacology'].append({'name': subject_short, 'value': count})
                     placed = True
-                elif any(word in subject_lower for word in ['neuroscience', 'brain', 'neural', 'cognitive', 'psychology', 'behavioral']):
-                    categories['Medical Sciences']['Neuroscience & Psychology'].append({'name': subject_short, 'value': count})
+                elif any(word in subject_lower for word in ['neuro', 'brain', 'neural', 'cognitive']):
+                    categories['Medical Sciences']['Neuroscience'].append({'name': subject_short, 'value': count})
+                    placed = True
+                elif any(word in subject_lower for word in ['immun', 'antibody', 'vaccine']):
+                    categories['Medical Sciences']['Immunology'].append({'name': subject_short, 'value': count})
                     placed = True
                 
                 # Physical Sciences
                 elif any(word in subject_lower for word in ['chemistry', 'chemical', 'organic', 'inorganic', 'analytical']):
                     categories['Physical Sciences']['Chemistry'].append({'name': subject_short, 'value': count})
                     placed = True
-                elif any(word in subject_lower for word in ['physics', 'quantum', 'mechanics', 'thermal', 'optics', 'astronomy']):
-                    categories['Physical Sciences']['Physics & Astronomy'].append({'name': subject_short, 'value': count})
+                elif any(word in subject_lower for word in ['physics', 'quantum', 'mechanics', 'thermal', 'optics']):
+                    categories['Physical Sciences']['Physics'].append({'name': subject_short, 'value': count})
                     placed = True
                 elif any(word in subject_lower for word in ['math', 'statistics', 'algebra', 'calculus', 'probability']):
-                    categories['Physical Sciences']['Mathematics & Statistics'].append({'name': subject_short, 'value': count})
+                    categories['Physical Sciences']['Mathematics'].append({'name': subject_short, 'value': count})
                     placed = True
-                elif any(word in subject_lower for word in ['geology', 'earth', 'geophysics', 'atmospheric', 'climate science']):
-                    categories['Physical Sciences']['Earth & Atmospheric Sciences'].append({'name': subject_short, 'value': count})
+                elif any(word in subject_lower for word in ['geology', 'earth', 'geophysics', 'atmospheric', 'climate']):
+                    categories['Physical Sciences']['Earth Sciences'].append({'name': subject_short, 'value': count})
+                    placed = True
+                elif any(word in subject_lower for word in ['materials', 'nanotechnology', 'polymer']):
+                    categories['Physical Sciences']['Materials Science'].append({'name': subject_short, 'value': count})
                     placed = True
                 
                 # Engineering & Technology
-                elif any(word in subject_lower for word in ['computer', 'software', 'algorithm', 'data', 'artificial intelligence', 'machine learning']):
-                    categories['Engineering & Technology']['Computer Science & IT'].append({'name': subject_short, 'value': count})
+                elif any(word in subject_lower for word in ['computer', 'software', 'algorithm', 'programming', 'artificial intelligence']):
+                    categories['Engineering & Technology']['Computer Science'].append({'name': subject_short, 'value': count})
                     placed = True
-                elif any(word in subject_lower for word in ['engineering', 'mechanical', 'electrical', 'civil', 'industrial']):
+                elif any(word in subject_lower for word in ['engineering', 'mechanical', 'electrical', 'civil']):
                     categories['Engineering & Technology']['Engineering'].append({'name': subject_short, 'value': count})
                     placed = True
-                elif any(word in subject_lower for word in ['materials', 'nanotechnology', 'polymer', 'semiconductor']):
-                    categories['Engineering & Technology']['Materials Science'].append({'name': subject_short, 'value': count})
+                elif any(word in subject_lower for word in ['technology', 'innovation', 'robotics']):
+                    categories['Engineering & Technology']['Technology'].append({'name': subject_short, 'value': count})
                     placed = True
-                elif any(word in subject_lower for word in ['technology', 'tech', 'innovation', 'robotics', 'automation']):
-                    categories['Engineering & Technology']['Technology & Innovation'].append({'name': subject_short, 'value': count})
+                elif any(word in subject_lower for word in ['data', 'machine learning', 'analytics']):
+                    categories['Engineering & Technology']['Data Science'].append({'name': subject_short, 'value': count})
                     placed = True
-                
-                # Social Sciences & Humanities
-                elif any(word in subject_lower for word in ['economics', 'economic', 'finance', 'business', 'management']):
-                    categories['Social Sciences & Humanities']['Economics & Business'].append({'name': subject_short, 'value': count})
-                    placed = True
-                elif any(word in subject_lower for word in ['education', 'teaching', 'learning', 'pedagogy', 'curriculum']):
-                    categories['Social Sciences & Humanities']['Education & Pedagogy'].append({'name': subject_short, 'value': count})
-                    placed = True
-                elif any(word in subject_lower for word in ['sociology', 'social', 'anthropology', 'political', 'law']):
-                    categories['Social Sciences & Humanities']['Social Sciences'].append({'name': subject_short, 'value': count})
-                    placed = True
-                elif any(word in subject_lower for word in ['literature', 'history', 'philosophy', 'art', 'language', 'culture']):
-                    categories['Social Sciences & Humanities']['Arts & Humanities'].append({'name': subject_short, 'value': count})
+                elif any(word in subject_lower for word in ['electronic', 'semiconductor', 'circuit']):
+                    categories['Engineering & Technology']['Electronics'].append({'name': subject_short, 'value': count})
                     placed = True
                 
-                # Default placement for unmatched subjects
+                # Social Sciences
+                elif any(word in subject_lower for word in ['psychology', 'behavioral', 'cognitive']):
+                    categories['Social Sciences']['Psychology'].append({'name': subject_short, 'value': count})
+                    placed = True
+                elif any(word in subject_lower for word in ['economics', 'economic', 'finance']):
+                    categories['Social Sciences']['Economics'].append({'name': subject_short, 'value': count})
+                    placed = True
+                elif any(word in subject_lower for word in ['education', 'teaching', 'learning', 'pedagogy']):
+                    categories['Social Sciences']['Education'].append({'name': subject_short, 'value': count})
+                    placed = True
+                elif any(word in subject_lower for word in ['sociology', 'social', 'anthropology']):
+                    categories['Social Sciences']['Sociology'].append({'name': subject_short, 'value': count})
+                    placed = True
+                elif any(word in subject_lower for word in ['business', 'management', 'marketing']):
+                    categories['Social Sciences']['Business'].append({'name': subject_short, 'value': count})
+                    placed = True
+                
+                # Applied Sciences
+                elif any(word in subject_lower for word in ['agriculture', 'farming', 'crop']):
+                    categories['Applied Sciences']['Agriculture'].append({'name': subject_short, 'value': count})
+                    placed = True
+                elif any(word in subject_lower for word in ['environment', 'conservation', 'sustainability']):
+                    categories['Applied Sciences']['Environmental Science'].append({'name': subject_short, 'value': count})
+                    placed = True
+                elif any(word in subject_lower for word in ['food', 'nutrition']):
+                    categories['Applied Sciences']['Food Science'].append({'name': subject_short, 'value': count})
+                    placed = True
+                elif any(word in subject_lower for word in ['energy', 'renewable', 'solar', 'wind']):
+                    categories['Applied Sciences']['Energy'].append({'name': subject_short, 'value': count})
+                    placed = True
+                elif any(word in subject_lower for word in ['biotech', 'biotechnology']):
+                    categories['Applied Sciences']['Biotechnology'].append({'name': subject_short, 'value': count})
+                    placed = True
+                
+                # Default placement
                 if not placed:
-                    categories['Life Sciences']['Biology & Biochemistry'].append({'name': subject_short, 'value': count})
+                    categories['Biological Sciences']['Cell & Molecular Biology'].append({'name': subject_short, 'value': count})
         
-        # Convert to hierarchical sunburst format with pruning
+        # Convert to hierarchical sunburst format
         children = []
         for broad_cat, mid_cats in categories.items():
             mid_children = []
             for mid_cat, subjects in mid_cats.items():
                 if subjects:  # Only include categories with data
-                    # Aggregate subjects with same name and sort by value
+                    # Aggregate subjects with same name
                     subject_dict = {}
                     for subj in subjects:
                         name = subj['name']
@@ -684,7 +756,7 @@ class PerformanceAnalyticsView(View):
                             subject_dict[name] = subj['value']
                     
                     # Take top subjects for this subcategory
-                    top_subjects = sorted(subject_dict.items(), key=lambda x: x[1], reverse=True)[:8]
+                    top_subjects = sorted(subject_dict.items(), key=lambda x: x[1], reverse=True)[:10]
                     
                     if top_subjects:
                         subcat_children = [{'name': name, 'value': value} for name, value in top_subjects]
@@ -694,7 +766,7 @@ class PerformanceAnalyticsView(View):
                             'children': subcat_children
                         })
             
-            if mid_children:  # Only add broad category if it has subcategories
+            if mid_children:
                 children.append({
                     'name': broad_cat,
                     'value': sum(cat['value'] for cat in mid_children),
@@ -702,6 +774,10 @@ class PerformanceAnalyticsView(View):
                 })
         
         total_value = sum(cat['value'] for cat in children)
+        
+        logger.info(f"Sunburst: {len(children)} broad categories, total value: {total_value}, from {total_papers} papers")
+        for cat in children[:3]:
+            logger.info(f"Category {cat['name']}: {cat['value']} papers, {len(cat['children'])} subcategories")
         
         return {
             'name': 'Research Fields',
