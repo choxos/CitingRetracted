@@ -443,6 +443,7 @@ class SearchView(ListView):
         min_post_retraction = self.request.GET.get('min_post_retraction', '').strip()
         has_post_retraction = self.request.GET.get('has_post_retraction', '').strip()
         
+        # Start with all papers and apply filters
         queryset = RetractedPaper.objects.all()
         
         if query:
@@ -561,7 +562,10 @@ class SearchView(ListView):
                 )
             ).filter(post_retraction_citations=0)
         
-        return queryset.distinct()
+        # Filter to unique papers only (same logic as homepage)
+        queryset = self._filter_to_unique_papers(queryset.distinct())
+        
+        return queryset
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -727,6 +731,37 @@ class SearchView(ListView):
         # Return sorted list of reasons (sorted by count, then alphabetically)
         sorted_reasons = sorted(reason_counter.items(), key=lambda x: (-x[1], x[0]))
         return [reason for reason, count in sorted_reasons[:100]]  # Limit to top 100
+    
+    def _filter_to_unique_papers(self, queryset):
+        """Filter queryset to unique papers using same logic as homepage"""
+        # Convert queryset to list to work with
+        all_papers = list(queryset)
+        
+        # Filter to unique papers using same logic as get_unique_papers_by_nature
+        seen_identifiers = set()
+        unique_papers = []
+        
+        for paper in all_papers:
+            # Create a unique identifier for this paper (same logic as model method)
+            identifier = None
+            if paper.original_paper_pubmed_id:
+                identifier = f"pmid:{paper.original_paper_pubmed_id}"
+            elif paper.original_paper_doi:
+                identifier = f"doi:{paper.original_paper_doi}"
+            else:
+                identifier = f"record:{paper.record_id}"  # Fallback to record ID
+            
+            # Only include if we haven't seen this paper before
+            if identifier not in seen_identifiers:
+                seen_identifiers.add(identifier)
+                unique_papers.append(paper)
+        
+        # Convert back to queryset for pagination
+        if unique_papers:
+            paper_ids = [p.id for p in unique_papers]
+            return RetractedPaper.objects.filter(id__in=paper_ids).order_by('-retraction_date')
+        else:
+            return RetractedPaper.objects.none()
 
 
 class ExportSearchView(View):

@@ -73,17 +73,18 @@ class PerformanceAnalyticsView(View):
     
     def _get_cached_basic_stats(self):
         """Basic statistics with short-term caching"""
-        cache_key = 'analytics_basic_stats_v4_unique_retracted_only'
+        cache_key = 'analytics_basic_stats_v5_homepage_consistent'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
             logger.info("Cache miss for basic stats - generating...")
             
-            # Get unique retracted papers using the model method
-            unique_retracted_papers = self._get_unique_retracted_papers()
+            # Use the same method as homepage for consistency
+            unique_stats_by_nature = RetractedPaper.get_unique_papers_by_nature()
+            total_unique_retracted = unique_stats_by_nature.get('Retraction', 0)
             
-            # Calculate statistics from unique papers
-            total_papers = len(unique_retracted_papers)
+            # Get unique retracted papers for detailed calculations
+            unique_retracted_papers = self._get_unique_retracted_papers()
             recent_retractions = len([p for p in unique_retracted_papers 
                                     if p.retraction_date and p.retraction_date >= timezone.now().date() - timedelta(days=365)])
             
@@ -91,7 +92,7 @@ class PerformanceAnalyticsView(View):
             citation_counts = [p.citation_count for p in unique_retracted_papers if p.citation_count is not None]
             
             basic_stats = {
-                'total_papers': total_papers,
+                'total_papers': total_unique_retracted,  # Use same count as homepage
                 'recent_retractions': recent_retractions,
                 'total_citation_sum': sum(citation_counts) if citation_counts else 0,
                 'avg_citations_per_paper': sum(citation_counts) / len(citation_counts) if citation_counts else 0,
