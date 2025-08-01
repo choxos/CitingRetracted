@@ -439,7 +439,7 @@ class PerformanceAnalyticsView(View):
 
     def _get_cached_complex_data(self):
         """Complex analytics with long-term caching - OPTIMIZED for large datasets"""
-        cache_key = 'analytics_complex_data_v11_complete_history'
+        cache_key = 'analytics_complex_data_v12_fixed_charts'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
@@ -619,8 +619,13 @@ class PerformanceAnalyticsView(View):
                 'links': links,
                 'node_count': len(nodes),
                 'link_count': len(links),
-                'design_info': {
-                    'color_scheme': 'viridis',
+                'design': {
+                    'color_scheme': {
+                        'subjects': '#ff6b6b',
+                        'journals': '#4ecdc4',
+                        'authors': '#45b7d1',
+                        'institutions': '#96ceb4'
+                    },
                     'node_size_range': [10, 25],
                     'link_strength_range': [1, 10]
                 }
@@ -659,10 +664,14 @@ class PerformanceAnalyticsView(View):
                 'access_analytics': access_analytics,
                 'network_data': network_data,
                 'sunburst_data': sunburst_data,
-                # Missing template variables
+                # Additional template variables for frontend
                 'journal_bubble_data': journal_bubble_data,
                 'country_analytics': country_analytics,
-                'publisher_data': publisher_data
+                'publisher_data': publisher_data,
+                # Ensure these are properly passed through
+                'network_visualization_data': network_data,  # Alternative name
+                'subject_hierarchy_data': sunburst_data,     # Alternative name
+                'most_problematic_papers': problematic_papers  # Alternative name
             }
             
             # Cache for longer (2 hours) since it's expensive to generate
