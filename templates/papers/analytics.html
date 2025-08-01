@@ -638,23 +638,138 @@
         
         <!-- Network Tab -->
         <div class="tab-pane fade" id="network" role="tabpanel">
-            <!-- Network Controls -->
-            <div class="xera-card mb-4">
-                <div class="xera-card-body">
-                    <div class="filter-group">
-                        <label><strong>Network View:</strong></label>
-                        <select class="xera-form-control xera-form-control-sm" id="networkTypeFilter" style="width: auto;">
-                            <option value="combined">Complete Network</option>
-                            <option value="subjects">Subject Areas Focus</option>
-                            <option value="countries">Countries Focus</option>
-                            <option value="journals">Journals Focus</option>
-                        </select>
-                        <button class="xera-btn xera-btn-sm xera-btn-primary" onclick="updateNetworkChart()">
-                            <i class="fas fa-project-diagram"></i> Update Network
-                        </button>
+                            <!-- Enhanced Network Controls -->
+                <div class="xera-card mb-4">
+                    <div class="xera-card-body">
+                        <h6 class="mb-3"><i class="fas fa-sliders-h"></i> Network Customization</h6>
+                        
+                        <!-- Basic View Controls -->
+                        <div class="row align-items-center mb-3">
+                            <div class="col-md-6">
+                                <label><strong>Network View:</strong></label>
+                                <select class="xera-form-control xera-form-control-sm" id="networkTypeFilter" style="width: auto;">
+                                    <option value="combined">Complete Network</option>
+                                    <option value="subjects">Subject Areas Focus</option>
+                                    <option value="countries">Countries Focus</option>
+                                    <option value="journals">Journals Focus</option>
+                                    <option value="authors">Authors Focus</option>
+                                    <option value="citations">Citation Networks</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <button class="xera-btn xera-btn-sm xera-btn-primary" onclick="updateNetworkChart()">
+                                    <i class="fas fa-project-diagram"></i> Update Network
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Advanced Size Controls -->
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="border-top pt-3">
+                                    <h6 class="text-muted mb-3">Network Size Controls</h6>
+                                    <div class="row">
+                                        <!-- Subject Controls -->
+                                        <div class="col-lg-3 mb-3">
+                                            <label class="form-label">
+                                                <i class="fas fa-tag text-danger"></i> Subjects
+                                                <small class="text-muted">({{ network_data.available_subjects|default:0 }} available)</small>
+                                            </label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="range" class="form-range" id="subjectCount" 
+                                                       min="10" max="{{ network_data.available_subjects|default:100 }}" 
+                                                       value="{{ network_data.current_config.subjects_shown|default:50 }}"
+                                                       oninput="updateNetworkSize()">
+                                                <span class="input-group-text" id="subjectCountValue">{{ network_data.current_config.subjects_shown|default:50 }}</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Journal Controls -->
+                                        <div class="col-lg-3 mb-3">
+                                            <label class="form-label">
+                                                <i class="fas fa-journal-whills text-info"></i> Journals
+                                                <small class="text-muted">({{ network_data.available_journals|default:0 }} available)</small>
+                                            </label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="range" class="form-range" id="journalCount"
+                                                       min="5" max="{{ network_data.available_journals|default:50 }}"
+                                                       value="{{ network_data.current_config.journals_shown|default:25 }}"
+                                                       oninput="updateNetworkSize()">
+                                                <span class="input-group-text" id="journalCountValue">{{ network_data.current_config.journals_shown|default:25 }}</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Country Controls -->
+                                        <div class="col-lg-3 mb-3">
+                                            <label class="form-label">
+                                                <i class="fas fa-globe text-success"></i> Countries
+                                                <small class="text-muted">({{ network_data.available_countries|default:0 }} available)</small>
+                                            </label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="range" class="form-range" id="countryCount"
+                                                       min="5" max="{{ network_data.available_countries|default:50 }}"
+                                                       value="{{ network_data.current_config.countries_shown|default:20 }}"
+                                                       oninput="updateNetworkSize()">
+                                                <span class="input-group-text" id="countryCountValue">{{ network_data.current_config.countries_shown|default:20 }}</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Author Controls -->
+                                        <div class="col-lg-3 mb-3">
+                                            <label class="form-label">
+                                                <i class="fas fa-user text-primary"></i> Authors
+                                                <small class="text-muted">({{ network_data.available_authors|default:0 }} available)</small>
+                                            </label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="range" class="form-range" id="authorCount"
+                                                       min="0" max="{{ network_data.available_authors|default:100 }}"
+                                                       value="{{ network_data.current_config.authors_shown|default:20 }}"
+                                                       oninput="updateNetworkSize()">
+                                                <span class="input-group-text" id="authorCountValue">{{ network_data.current_config.authors_shown|default:20 }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Quick Presets -->
+                                    <div class="row mt-2">
+                                        <div class="col-12">
+                                            <div class="d-flex gap-2 flex-wrap">
+                                                <button class="btn btn-outline-secondary btn-sm" onclick="setNetworkPreset('small')">
+                                                    Small (50 nodes)
+                                                </button>
+                                                <button class="btn btn-outline-secondary btn-sm" onclick="setNetworkPreset('medium')">
+                                                    Medium (200 nodes)
+                                                </button>
+                                                <button class="btn btn-outline-secondary btn-sm" onclick="setNetworkPreset('large')">
+                                                    Large (500 nodes)
+                                                </button>
+                                                <button class="btn btn-outline-danger btn-sm" onclick="setNetworkPreset('maximum')">
+                                                    Maximum (1000+ nodes)
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Network Stats -->
+                                    <div class="row mt-3">
+                                        <div class="col-12">
+                                            <div class="alert alert-info py-2 mb-0">
+                                                <small>
+                                                    <strong>Current Network:</strong> 
+                                                    <span id="currentNodeCount">{{ network_data.node_count|default:0 }}</span> nodes, 
+                                                    <span id="currentLinkCount">{{ network_data.link_count|default:0 }}</span> links
+                                                    | <strong>Performance:</strong> 
+                                                    <span id="performanceIndicator">{% if network_data.node_count < 100 %}Excellent{% elif network_data.node_count < 300 %}Good{% elif network_data.node_count < 600 %}Fair{% else %}Heavy{% endif %}</span>
+                                                    | <strong>Relationships:</strong> <span id="relationshipTypes">Subject-Journal, Country-Subject, Journal Citations</span>
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
             
             <!-- Interactive Network Visualization -->
             <div class="row">

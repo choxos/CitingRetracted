@@ -439,7 +439,7 @@ class PerformanceAnalyticsView(View):
 
     def _get_cached_complex_data(self):
         """Complex analytics with long-term caching - OPTIMIZED for large datasets"""
-        cache_key = 'analytics_complex_data_v15_fixed_template_vars'
+        cache_key = 'analytics_complex_data_v16_enhanced_relationships'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
@@ -775,28 +775,107 @@ class PerformanceAnalyticsView(View):
                                     if j >= 4:
                                         break
             
-            # Country-Subject relationships (research focus by geography)
-            for i, country_item in enumerate(network_country_data[:30]):
-                country_string = country_item['country']
-                if country_string:
+            # Enhanced Country-Subject relationships (research focus by geography)
+            # Get actual country-subject co-occurrences from database
+            country_subject_pairs = RetractedPaper.objects.filter(
+                retraction_nature__iexact='Retraction'
+            ).exclude(
+                country__isnull=True
+            ).exclude(
+                country__exact=''
+            ).exclude(
+                subject__isnull=True
+            ).exclude(
+                subject__exact=''
+            ).values('country', 'subject').annotate(
+                cooccurrence_count=Count('id')
+            ).order_by('-cooccurrence_count')[:100]  # Top 100 country-subject pairs
+            
+            for pair in country_subject_pairs:
+                country_string = pair['country']
+                subject_string = pair['subject']
+                cooccurrence = pair['cooccurrence_count']
+                
+                if country_string and subject_string:
+                    # Parse countries and subjects
+                    countries = [c.strip() for c in country_string.split(';') if c.strip()][:1]  # Primary country
+                    subjects = [s.strip() for s in subject_string.split(';') if s.strip()][:1]   # Primary subject
+                    
+                    for country in countries:
+                        for subject in subjects[:30]:  # Limit subject length
+                            if country in country_nodes and subject in subject_nodes:
+                                strength = max(2, min(8, cooccurrence * 2))  # Strength based on actual co-occurrence
+                                links.append({
+                                    'source': country_nodes[country],
+                                    'target': subject_nodes[subject],
+                                    'strength': strength,
+                                    'type': 'country-subject',
+                                    'cooccurrence': cooccurrence
+                                })
+            
+            # Country-Country collaboration networks (papers with multiple countries)
+            multi_country_papers = RetractedPaper.objects.filter(
+                retraction_nature__iexact='Retraction',
+                country__contains=';'  # Papers with multiple countries
+            ).values('country').annotate(
+                count=Count('id')
+            ).order_by('-count')[:50]
+            
+            for paper in multi_country_papers:
+                country_string = paper['country']
+                if country_string and ';' in country_string:
                     countries = [c.strip() for c in country_string.split(';') if c.strip()]
-                    for country in countries[:1]:  # Just primary country
-                        if country in country_nodes:
-                            # Link to relevant subjects
-                            for j, subject_item in enumerate(network_subject_data[:20]):
-                                subject = subject_item['subject'][:30]
-                                if subject in subject_nodes:
-                                    strength = max(1, min(6, (country_item['count'] + subject_item['count']) / 30))
-                                    links.append({
-                                        'source': country_nodes[country],
-                                        'target': subject_nodes[subject],
-                                        'strength': strength,
-                                        'type': 'country-subject'
-                                    })
-                                    
-                                    # Limit links per country
-                                    if j >= 2:
-                                        break
+                    # Create links between collaborating countries
+                    for i, country1 in enumerate(countries):
+                        for country2 in countries[i+1:]:
+                            if country1 in country_nodes and country2 in country_nodes and country1 != country2:
+                                strength = max(1, min(5, paper['count']))
+                                links.append({
+                                    'source': country_nodes[country1],
+                                    'target': country_nodes[country2],
+                                    'strength': strength,
+                                    'type': 'country-country',
+                                    'collaboration_type': 'international'
+                                })
+            
+            # Journal-Journal citation networks (citations between journals)
+            journal_citation_pairs = Citation.objects.filter(
+                retracted_paper__retraction_nature__iexact='Retraction'
+            ).exclude(
+                retracted_paper__journal__isnull=True
+            ).exclude(
+                retracted_paper__journal__exact=''
+            ).exclude(
+                citing_paper__journal__isnull=True
+            ).exclude(
+                citing_paper__journal__exact=''
+            ).values(
+                'retracted_paper__journal', 'citing_paper__journal'
+            ).annotate(
+                citation_count=Count('id')
+            ).order_by('-citation_count')[:200]  # Top 200 journal-journal citation pairs
+            
+            journal_citation_network = {}
+            for pair in journal_citation_pairs:
+                source_journal = pair['retracted_paper__journal'][:25]  # Retracted paper's journal
+                target_journal = pair['citing_paper__journal'][:25]     # Citing paper's journal
+                citations = pair['citation_count']
+                
+                if (source_journal in journal_nodes and target_journal in journal_nodes 
+                    and source_journal != target_journal):  # Avoid self-links
+                    
+                    link_key = f"{source_journal}->{target_journal}"
+                    if link_key not in journal_citation_network:
+                        strength = max(1, min(10, citations))
+                        links.append({
+                            'source': journal_nodes[source_journal],
+                            'target': journal_nodes[target_journal],
+                            'strength': strength,
+                            'type': 'journal-citation',
+                            'citation_count': citations,
+                            'direction': 'cites_retracted_from'
+                        })
+                        journal_citation_network[link_key] = True
             
             network_data = {
                 'nodes': nodes,
