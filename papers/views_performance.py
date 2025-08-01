@@ -115,16 +115,18 @@ class PerformanceAnalyticsView(View):
             logger.info("Cache miss for chart data - generating...")
             
             # Retraction trends (optimized with single query)
-            retraction_trends = list(RetractedPaper.objects.filter(
+            retraction_trends_raw = list(RetractedPaper.objects.filter(
                 retraction_date__isnull=False
             ).annotate(
                 year=TruncYear('retraction_date')
             ).values('year').annotate(
                 count=Count('id')
-            ).order_by('year').values_list('year__year', 'count'))
+            ).order_by('year').values('year', 'count'))
+            
+            retraction_trends = [(item['year'].year, item['count']) for item in retraction_trends_raw]
             
             # Citation analysis (optimized with single query)
-            citation_analysis = list(Citation.objects.filter(
+            citation_analysis_raw = list(Citation.objects.filter(
                 citing_paper__publication_date__isnull=False
             ).annotate(
                 year=TruncYear('citing_paper__publication_date')
@@ -133,8 +135,18 @@ class PerformanceAnalyticsView(View):
                 post_retraction_citations=Count('id', filter=Q(days_after_retraction__gt=0)),
                 pre_retraction_citations=Count('id', filter=Q(days_after_retraction__lt=0))
             ).order_by('year').values(
-                'year__year', 'total_citations', 'post_retraction_citations', 'pre_retraction_citations'
+                'year', 'total_citations', 'post_retraction_citations', 'pre_retraction_citations'
             ))
+            
+            citation_analysis = [
+                {
+                    'year': item['year'].year,
+                    'total_citations': item['total_citations'],
+                    'post_retraction_citations': item['post_retraction_citations'],
+                    'pre_retraction_citations': item['pre_retraction_citations']
+                }
+                for item in citation_analysis_raw
+            ]
             
             # Subject distribution (optimized)
             subject_data = list(RetractedPaper.objects.exclude(
@@ -149,15 +161,7 @@ class PerformanceAnalyticsView(View):
                 'retraction_trends_by_year': [
                     {'year': year, 'count': count} for year, count in retraction_trends
                 ],
-                'citation_analysis_by_year': [
-                    {
-                        'year': item['year__year'],
-                        'total_citations': item['total_citations'],
-                        'post_retraction_citations': item['post_retraction_citations'],
-                        'pre_retraction_citations': item['pre_retraction_citations']
-                    }
-                    for item in citation_analysis
-                ],
+                'citation_analysis_by_year': citation_analysis,
                 'subject_donut_data': [
                     {'subject': subject[:30], 'count': count} for subject, count in subject_data
                 ]
