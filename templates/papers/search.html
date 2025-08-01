@@ -260,7 +260,7 @@
                     <thead class="table-light">
                         <tr>
                             <th scope="col">
-                                <a href="{% url_replace sort='title' direction='asc' %}" 
+                                <a href="{% url_replace sort='title' direction='asc' view='table' %}" 
                                    class="text-decoration-none">
                                     Title 
                                     {% if sort_by == 'title' %}
@@ -271,7 +271,7 @@
                                 </a>
                             </th>
                             <th scope="col">
-                                <a href="{% url_replace sort='author' direction='asc' %}" 
+                                <a href="{% url_replace sort='author' direction='asc' view='table' %}" 
                                    class="text-decoration-none">
                                     Author(s)
                                     {% if sort_by == 'author' %}
@@ -282,7 +282,7 @@
                                 </a>
                             </th>
                             <th scope="col">
-                                <a href="{% url_replace sort='journal' direction='asc' %}" 
+                                <a href="{% url_replace sort='journal' direction='asc' view='table' %}" 
                                    class="text-decoration-none">
                                     Journal
                                     {% if sort_by == 'journal' %}
@@ -293,7 +293,7 @@
                                 </a>
                             </th>
                             <th scope="col">
-                                <a href="{% url_replace sort='retraction_nature' direction='asc' %}" 
+                                <a href="{% url_replace sort='retraction_nature' direction='asc' view='table' %}" 
                                    class="text-decoration-none">
                                     Nature
                                     {% if sort_by == 'retraction_nature' %}
@@ -304,7 +304,7 @@
                                 </a>
                             </th>
                             <th scope="col">
-                                <a href="{% url_replace sort='retraction_date' direction='desc' %}" 
+                                <a href="{% url_replace sort='retraction_date' direction='desc' view='table' %}" 
                                    class="text-decoration-none">
                                     Retracted
                                     {% if sort_by == 'retraction_date' %}
@@ -315,7 +315,7 @@
                                 </a>
                             </th>
                             <th scope="col">
-                                <a href="{% url_replace sort='citation_count' direction='desc' %}" 
+                                <a href="{% url_replace sort='citation_count' direction='desc' view='table' %}" 
                                    class="text-decoration-none">
                                     Citations
                                     {% if sort_by == 'citation_count' %}
