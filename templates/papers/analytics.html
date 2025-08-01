@@ -825,7 +825,7 @@ function initializeOverviewCharts() {
 
 function initializeTrendCharts() {
     // Retraction trends over time
-    const retractionYearsData = {{ retraction_years|safe }};
+    const retractionYearsData = {{ retraction_years|safe }} || [];
     
     const retractionsTimelineData = {
         labels: retractionYearsData.map(item => item.year),
@@ -862,7 +862,7 @@ function initializeTrendCharts() {
     );
     
     // Citation comparison chart
-    const comparisonData = {{ retraction_comparison|safe }};
+    const comparisonData = {{ retraction_comparison|safe }} || [];
     
     const citationComparisonData = {
         labels: comparisonData.map(item => item.year),
@@ -903,7 +903,7 @@ function initializeTrendCharts() {
     );
     
     // Subject distribution donut
-    const subjectData = {{ subject_donut_data|safe }};
+    const subjectData = {{ subject_donut_data|safe }} || [];
     
     const subjectDistributionData = {
         labels: subjectData.map(item => item.subject.substring(0, 20) + (item.subject.length > 20 ? '...' : '')),
@@ -933,7 +933,7 @@ function initializeTrendCharts() {
 
 function initializePatternCharts() {
     // Citation timing distribution
-    const timingData = {{ citation_timing_distribution|safe }};
+    const timingData = {{ citation_timing_distribution|safe }} || [];
     
     const citationTimingData = {
         labels: timingData.map(item => item.days + ' days'),
@@ -972,7 +972,7 @@ function initializePatternCharts() {
     );
     
     // Journal bubble chart
-    const journalBubbleData = {{ journal_bubble_data|safe }};
+    const journalBubbleData = {{ journal_bubble_data|safe }} || [];
     
     const bubbleChartData = {
         datasets: [{
@@ -1033,7 +1033,7 @@ function initializePatternCharts() {
     );
     
     // Citation Heatmap Chart - Custom implementation using HTML table
-    const heatmapData = {{ citation_heatmap|safe }};
+    const heatmapData = {{ citation_heatmap|safe }} || [];
     
     if (heatmapData && heatmapData.length > 0) {
         const heatmapContainer = document.getElementById('citationHeatmapChart').parentElement;
@@ -1277,7 +1277,7 @@ function initializePatternCharts() {
 }
 
 // Initialize sunburst chart
-const sunburstData = {{ sunburst_data|safe }};
+const sunburstData = {{ sunburst_data|safe }} || {};
 if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
     initializeSunburstChart(sunburstData);
 } else {
@@ -1365,7 +1365,7 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
 }
 
 function initializeNetworkVisualization() {
-    const networkData = {{ network_data|safe }};
+    const networkData = {{ network_data|safe }} || {nodes: [], links: []};
     
     // Clear any existing visualization
     d3.select("#networkVisualization").selectAll("*").remove();
@@ -1522,7 +1522,7 @@ function updateTrendCharts() {
 
 function updateNetworkChart() {
     const networkType = document.getElementById('networkTypeFilter').value;
-    const networkData = {{ network_data|safe }};
+    const networkData = {{ network_data|safe }} || {nodes: [], links: []};
     
     // Filter nodes and links based on network type
     let filteredNodes = [];
