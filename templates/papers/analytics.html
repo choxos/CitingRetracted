@@ -839,6 +839,7 @@ function initializeOverviewCharts() {
 function initializeTrendCharts() {
     // Retraction trends over time
     const retractionYearsData = {{ retraction_years|safe }} || [];
+    console.log('Retraction Years Data:', retractionYearsData);
     
     const retractionsTimelineData = {
         labels: retractionYearsData.map(item => item.year),
@@ -876,6 +877,7 @@ function initializeTrendCharts() {
     
     // Citation comparison chart
     const comparisonData = {{ retraction_comparison|safe }} || [];
+    console.log('Comparison Data:', comparisonData);
     
     const citationComparisonData = {
         labels: comparisonData.map(item => item.year || 'Unknown'),
@@ -942,6 +944,7 @@ function initializeTrendCharts() {
     
     // Subject distribution donut
     const subjectData = {{ subject_donut_data|safe }} || [];
+    console.log('Subject Data:', subjectData);
     
     const subjectDistributionData = {
         labels: subjectData.map(item => (item.subject || 'Unknown').substring(0, 20) + ((item.subject || '').length > 20 ? '...' : '')),
@@ -972,6 +975,7 @@ function initializeTrendCharts() {
 function initializePatternCharts() {
     // Citation timing distribution
     const timingData = {{ citation_timing_distribution|safe }} || [];
+    console.log('Timing Data:', timingData);
     
     const citationTimingData = {
         labels: timingData.map(item => item.days + ' days'),

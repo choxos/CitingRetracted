@@ -1193,8 +1193,8 @@ class AnalyticsView(View):
         
         missing_data['subject_donut_data'] = [
             {
-                'label': item['subject'][:30] + '...' if len(item['subject']) > 30 else item['subject'],
-                'value': item['count'],
+                'subject': item['subject'][:30] + '...' if len(item['subject']) > 30 else item['subject'],
+                'count': item['count'],
                 'full_subject': item['subject']
             }
             for item in subjects
@@ -1213,12 +1213,12 @@ class AnalyticsView(View):
         )
         
         missing_data['citation_timing_distribution'] = [
-            {'label': 'Pre-Retraction', 'value': timing_data['pre_retraction']},
-            {'label': 'Same Day', 'value': timing_data['same_day']},
-            {'label': 'Within 30 Days', 'value': timing_data['within_30_days']},
-            {'label': 'Within 6 Months', 'value': timing_data['within_6_months']},
-            {'label': 'Within 1 Year', 'value': timing_data['within_1_year']},
-            {'label': 'After 1 Year', 'value': timing_data['after_1_year']}
+            {'days': -30, 'count': timing_data['pre_retraction']},
+            {'days': 0, 'count': timing_data['same_day']},
+            {'days': 30, 'count': timing_data['within_30_days']},
+            {'days': 180, 'count': timing_data['within_6_months']},
+            {'days': 365, 'count': timing_data['within_1_year']},
+            {'days': 730, 'count': timing_data['after_1_year']}
         ]
         
         # Network data with connections
@@ -1348,6 +1348,47 @@ class AnalyticsView(View):
                 'data': month_data
             })
         missing_data['citation_heatmap'] = citation_heatmap
+        
+        # Add article type analysis
+        article_type_data = RetractedPaper.objects.values('article_type').annotate(
+            count=Count('id')
+        ).filter(article_type__isnull=False).exclude(article_type__exact='').order_by('-count')[:10]
+        
+        missing_data['article_type_data'] = [
+            {
+                'type': item['article_type'],
+                'count': item['count']
+            }
+            for item in article_type_data
+        ]
+        
+        # Add publisher analysis  
+        publisher_data = RetractedPaper.objects.values('publisher').annotate(
+            count=Count('id'),
+            post_retraction_citations=Count('citations', filter=Q(citations__days_after_retraction__gt=0))
+        ).filter(publisher__isnull=False).exclude(publisher__exact='').order_by('-count')[:10]
+        
+        missing_data['publisher_data'] = [
+            {
+                'publisher': item['publisher'],
+                'count': item['count'],
+                'post_retraction_citations': item['post_retraction_citations']
+            }
+            for item in publisher_data
+        ]
+        
+        # Add open access analysis
+        access_data = RetractedPaper.objects.aggregate(
+            open_access=Count('id', filter=Q(is_open_access=True)),
+            paywalled=Count('id', filter=Q(is_open_access=False)),
+            total=Count('id')
+        )
+        
+        missing_data['access_analytics'] = {
+            'open_access': {'count': access_data['open_access']},
+            'paywalled': {'count': access_data['paywalled']},
+            'unknown': {'count': access_data['total'] - access_data['open_access'] - access_data['paywalled']}
+        }
         
         # Sunburst chart data for subject hierarchy
         sunburst_data = self._get_sunburst_subject_data()
