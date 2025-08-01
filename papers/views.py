@@ -742,39 +742,40 @@ class AnalyticsView(View):
         """Get analytics data with optimized queries"""
         data = {}
         
-        # Retractions by year (optimized)
+        # Retractions by year - use publication_year since retraction_date seems empty
         from django.db.models.functions import TruncYear
-        retraction_years = RetractedPaper.objects.filter(
-            retraction_date__isnull=False
-        ).annotate(
-            year=TruncYear('retraction_date')
-        ).values('year').annotate(
+        
+        # First try with publication_year since retraction_date appears to be empty in database
+        publication_years = RetractedPaper.objects.filter(
+            publication_year__isnull=False
+        ).values('publication_year').annotate(
             count=Count('id')
-        ).order_by('year')[:50]  # Limit to prevent huge datasets
+        ).order_by('publication_year')[:30]
         
         data['retraction_years'] = [
             {
-                'year': item['year'].year if item['year'] else 'Unknown',
+                'year': item['publication_year'],
                 'count': item['count']
             }
-            for item in retraction_years
+            for item in publication_years if item['publication_year']
         ]
         
-        # If no data from main query, generate from available papers  
+        # If still no data, try retraction_date as fallback
         if not data['retraction_years']:
-            # Try using publication_year as fallback if retraction_date is missing
-            publication_years = RetractedPaper.objects.filter(
-                publication_year__isnull=False
-            ).values('publication_year').annotate(
+            retraction_years = RetractedPaper.objects.filter(
+                retraction_date__isnull=False
+            ).annotate(
+                year=TruncYear('retraction_date')
+            ).values('year').annotate(
                 count=Count('id')
-            ).order_by('publication_year')[:20]
+            ).order_by('year')[:30]
             
             data['retraction_years'] = [
                 {
-                    'year': item['publication_year'],
+                    'year': item['year'].year if item['year'] else 'Unknown',
                     'count': item['count']
                 }
-                for item in publication_years
+                for item in retraction_years
             ]
         
         # Top journals with efficient query (limit complexity)
