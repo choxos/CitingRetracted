@@ -962,7 +962,7 @@ if (citationAnalysisData.length > 0) {
 }
     
     // Citation comparison chart
-    const comparisonData = {{ retraction_comparison }};
+    const comparisonData = {{ retraction_comparison|safe }};
     console.log('Comparison Data:', comparisonData);
     console.log('Comparison Data Length:', comparisonData.length);
     console.log('Comparison Data Sample:', comparisonData.slice(0, 3));
