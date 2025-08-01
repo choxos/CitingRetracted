@@ -1,11 +1,108 @@
 from django.core.cache import cache, caches
 from django.conf import settings
-from django.db.models import Count, Sum, Avg, Q, F
+from django.db.models import Count, Sum, Avg, Q, F, TruncYear
 from django.utils import timezone
 from functools import wraps
 import hashlib
 import json
 from datetime import timedelta
+from papers.models import RetractedPaper, Citation, CitingPaper
+from collections import Counter
+
+def _get_parsed_subjects_for_cache(limit=10):
+    """Get top subjects by parsing semicolon-separated subject strings"""
+    
+    # Get all papers with subjects
+    papers_with_subjects = RetractedPaper.objects.exclude(
+        Q(subject__isnull=True) | Q(subject__exact='')
+    ).values_list('subject', flat=True)
+    
+    # Parse and count individual subjects
+    subject_counter = Counter()
+    for subject_string in papers_with_subjects:
+        if subject_string:
+            # Split by semicolon and clean up each subject
+            subjects = [s.strip() for s in subject_string.split(';') if s.strip()]
+            for subject in subjects:
+                # Clean up the subject (remove prefix codes if present)
+                clean_subject = subject
+                if ')' in subject and subject.startswith('('):
+                    # Remove codes like (PHY), (B/T) etc.
+                    clean_subject = subject.split(')', 1)[1].strip()
+                
+                # Only count meaningful subjects
+                if len(clean_subject) > 2:  # Filter out very short entries
+                    subject_counter[clean_subject] += 1
+    
+    # Convert to the expected format
+    top_subjects = []
+    for subject, count in subject_counter.most_common(limit):
+        top_subjects.append({
+            'subject': subject,
+            'count': count
+        })
+    
+    return top_subjects
+
+def _get_parsed_countries_for_cache(limit=50):
+    """Get top countries by parsing semicolon-separated country strings"""
+    from collections import Counter
+    
+    # Get all papers with countries and their stats
+    papers_with_countries = RetractedPaper.objects.exclude(
+        Q(country__isnull=True) | Q(country__exact='')
+    ).values('country', 'is_open_access', 'citation_count')
+    
+    # Parse and aggregate country data
+    country_data = {}
+    invalid_entries = {'', 'Unknown', 'unknown', 'N/A', 'n/a', 'None', 'null', 'NA'}
+    
+    for paper in papers_with_countries:
+        country_string = paper['country']
+        if country_string:
+            # Split by semicolon and clean up each country
+            countries = [c.strip() for c in country_string.split(';') if c.strip()]
+            for country in countries:
+                # Only count valid countries
+                if country and country not in invalid_entries and len(country) > 1:
+                    if country not in country_data:
+                        country_data[country] = {
+                            'country': country,
+                            'count': 0,
+                            'open_access_count': 0,
+                            'citation_sum': 0,
+                            'citation_count': 0
+                        }
+                    
+                    country_data[country]['count'] += 1
+                    if paper['is_open_access']:
+                        country_data[country]['open_access_count'] += 1
+                    if paper['citation_count']:
+                        country_data[country]['citation_sum'] += paper['citation_count']
+                        country_data[country]['citation_count'] += 1
+    
+    # Convert to the expected format with calculated averages
+    result = []
+    for country, data in country_data.items():
+        avg_citations = 0
+        if data['citation_count'] > 0:
+            avg_citations = data['citation_sum'] / data['citation_count']
+        
+        open_access_percentage = 0
+        if data['count'] > 0:
+            open_access_percentage = (data['open_access_count'] / data['count']) * 100
+        
+        result.append({
+            'country': country,
+            'count': data['count'],
+            'open_access_count': data['open_access_count'],
+            'avg_citations': round(avg_citations, 2),
+            'open_access_percentage': round(open_access_percentage, 2)
+        })
+    
+    # Sort by count and return top results
+    result.sort(key=lambda x: x['count'], reverse=True)
+    return result[:limit]
 
 def get_cache_key(prefix, *args, **kwargs):
     """Generate a unique cache key from arguments"""
@@ -33,7 +130,6 @@ def cached_function(timeout=300, cache_alias='default', key_prefix=''):
 @cached_function(timeout=3600, cache_alias='analytics', key_prefix='analytics_overview')
 def get_analytics_overview():
     """Get cached analytics overview data"""
-    from papers.models import RetractedPaper, Citation, CitingPaper
     
     total_papers = RetractedPaper.objects.count()
     total_citations = Citation.objects.count()
@@ -50,14 +146,8 @@ def get_analytics_overview():
         retraction_date__gte=thirty_days_ago
     ).count()
     
-    # Top subjects
-    top_subjects = list(RetractedPaper.objects.exclude(
-        subject__isnull=True
-    ).exclude(
-        subject__exact=''
-    ).values('subject').annotate(
-        count=Count('id')
-    ).order_by('-count')[:10])
+    # Top subjects (parsed from semicolon-separated values)
+    top_subjects = _get_parsed_subjects_for_cache(limit=10)
     
     return {
         'total_papers': total_papers,
@@ -127,15 +217,8 @@ def get_subject_analysis():
     """Get cached subject analysis data"""
     from papers.models import RetractedPaper
     
-    # Subject distribution
-    subjects = list(RetractedPaper.objects.exclude(
-        subject__isnull=True
-    ).exclude(
-        subject__exact=''
-    ).values('subject').annotate(
-        count=Count('id'),
-        avg_citations=Avg('citation_count')
-    ).order_by('-count')[:20])
+    # Subject distribution (parsed from semicolon-separated values)
+    subjects = _get_parsed_subjects_for_cache(limit=20)
     
     # Broad subjects
     broad_subjects = list(RetractedPaper.objects.exclude(
@@ -156,24 +239,7 @@ def get_geographic_analysis():
     """Get cached geographic analysis data"""
     from papers.models import RetractedPaper
     
-    countries = list(RetractedPaper.objects.exclude(
-        country__isnull=True
-    ).exclude(
-        country__exact=''
-    ).values('country').annotate(
-        count=Count('id'),
-        open_access_count=Count('id', filter=Q(is_open_access=True)),
-        avg_citations=Avg('citation_count')
-    ).order_by('-count')[:50])
-    
-    # Add open access percentage
-    for country in countries:
-        if country['count'] > 0:
-            country['open_access_percentage'] = (
-                country['open_access_count'] / country['count'] * 100
-            )
-        else:
-            country['open_access_percentage'] = 0
+    countries = _get_parsed_countries_for_cache(limit=50)
     
     return countries
 

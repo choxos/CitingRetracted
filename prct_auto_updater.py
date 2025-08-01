@@ -208,6 +208,139 @@ class PRCTAutoUpdater:
             self.log(f"❌ Citation fetching error: {e}", "ERROR")
             return False
     
+    def fetch_citations_continuous(self, limit=100, batch_size=10, clear_cache_interval=20):
+        """
+        Fetch citations continuously with real-time database updates
+        
+        Args:
+            limit: Maximum number of papers to process
+            batch_size: Number of papers to process before showing progress
+            clear_cache_interval: Clear cache every N papers for real-time updates
+        """
+        self.log(f"🔗 Starting continuous citation fetching for up to {limit} papers...")
+        self.log(f"   📦 Batch size: {batch_size} papers")
+        self.log(f"   🔄 Cache clear interval: every {clear_cache_interval} papers")
+        
+        try:
+            total_processed = 0
+            total_citations_found = 0
+            total_new_citations = 0
+            
+            # Process in batches for continuous updates
+            for start_idx in range(0, limit, batch_size):
+                batch_limit = min(batch_size, limit - start_idx)
+                
+                self.log(f"📊 Processing batch {start_idx // batch_size + 1}: papers {start_idx + 1}-{start_idx + batch_limit}")
+                
+                # Fetch citations for this batch
+                success, batch_stats = self._fetch_citations_batch(batch_limit, start_idx)
+                
+                if success:
+                    batch_processed = batch_stats.get('papers_processed', 0)
+                    batch_citations = batch_stats.get('citations_found', 0)
+                    batch_new = batch_stats.get('new_citations', 0)
+                    
+                    total_processed += batch_processed
+                    total_citations_found += batch_citations
+                    total_new_citations += batch_new
+                    
+                    self.log(f"   ✅ Batch completed: {batch_processed} papers, {batch_citations} citations ({batch_new} new)")
+                    
+                    # Clear cache periodically for real-time visibility
+                    if total_processed % clear_cache_interval == 0:
+                        self.log(f"   🔄 Clearing cache for real-time updates (processed {total_processed} papers)")
+                        self.clear_analytics_cache()
+                    
+                    # Small delay to prevent overwhelming the APIs
+                    if start_idx + batch_size < limit:  # Don't sleep after last batch
+                        import time
+                        time.sleep(2)
+                else:
+                    self.log(f"   ❌ Batch failed, continuing with next batch...", "WARNING")
+                
+                # Show progress
+                progress_pct = min(100, (total_processed / limit) * 100)
+                self.log(f"📈 Progress: {progress_pct:.1f}% ({total_processed}/{limit} papers, {total_new_citations} new citations)")
+            
+            # Final cache clear and summary
+            self.log("🔄 Final cache clear for complete data refresh...")
+            self.clear_analytics_cache()
+            
+            self.log(f"✅ Continuous citation fetching completed!")
+            self.log(f"   📄 Total papers processed: {total_processed}")
+            self.log(f"   📈 Total citations found: {total_citations_found}")
+            self.log(f"   ✨ New citations added: {total_new_citations}")
+            self.log(f"   🌐 Citations are now visible in real-time on the website!")
+            
+            return True
+            
+        except Exception as e:
+            self.log(f"❌ Continuous citation fetching error: {e}", "ERROR")
+            return False
+    
+    def _fetch_citations_batch(self, batch_size, offset=0):
+        """Fetch citations for a specific batch of papers"""
+        try:
+            # Use a custom Django command that processes one paper at a time
+            cmd = [
+                str(self.venv_python),
+                str(self.manage_py),
+                "fetch_citations_realtime",
+                "--batch-size", str(batch_size),
+                "--offset", str(offset)
+            ]
+            
+            # Set environment
+            env = os.environ.copy()
+            env["DJANGO_SETTINGS_MODULE"] = "citing_retracted.settings_production"
+            
+            # Run citation fetching for this batch
+            result = subprocess.run(
+                cmd,
+                cwd=self.prct_path,
+                capture_output=True,
+                text=True,
+                env=env,
+                timeout=600  # 10 minute timeout per batch
+            )
+            
+            if result.returncode == 0:
+                # Parse statistics from output
+                stats = {
+                    'papers_processed': 0,
+                    'citations_found': 0,
+                    'new_citations': 0
+                }
+                
+                for line in result.stdout.split('\n'):
+                    if 'papers processed:' in line.lower():
+                        try:
+                            stats['papers_processed'] = int(line.split(':')[1].strip())
+                        except:
+                            pass
+                    elif 'citations found:' in line.lower():
+                        try:
+                            stats['citations_found'] = int(line.split(':')[1].strip())
+                        except:
+                            pass
+                    elif 'new citations:' in line.lower():
+                        try:
+                            stats['new_citations'] = int(line.split(':')[1].strip())
+                        except:
+                            pass
+                
+                return True, stats
+            else:
+                self.log(f"Batch fetch error: {result.stderr}", "ERROR")
+                return False, {}
+                
+        except subprocess.TimeoutExpired:
+            self.log("⏰ Batch citation fetching timed out", "WARNING")
+            return False, {}
+        except Exception as e:
+            self.log(f"❌ Batch citation fetching error: {e}", "ERROR")
+            return False, {}
+    
     def clear_analytics_cache(self):
         """Clear analytics cache to show updated data"""
         self.log("🔄 Clearing analytics cache...")
@@ -248,7 +381,7 @@ print('✅ Analytics cache cleared!')
             self.log(f"❌ Cache clearing error: {e}", "WARNING")
             return False
     
-    def run_full_update(self, citation_limit=100, force_download=False, import_limit=None):
+    def run_full_update(self, citation_limit=100, force_download=False, import_limit=None, continuous_citations=False):
         """Run complete update process"""
         self.log("🚀 Starting PRCT automatic update process...")
         
@@ -275,13 +408,22 @@ print('✅ Analytics cache cleared!')
             self.log("❌ No RWD file available for import", "ERROR")
             return False
         
-        # 3. Fetch citations
-        if self.fetch_citations(limit=citation_limit):
-            success_count += 1
+        # 3. Fetch citations (choose method based on continuous_citations flag)
+        if continuous_citations:
+            self.log("🔄 Using continuous citation fetching for real-time updates...")
+            if self.fetch_citations_continuous(limit=citation_limit):
+                success_count += 1
+        else:
+            self.log("📦 Using standard citation fetching...")
+            if self.fetch_citations(limit=citation_limit):
+                success_count += 1
         
-        # 4. Clear analytics cache
-        if self.clear_analytics_cache():
-            success_count += 1
+        # 4. Clear analytics cache (only if not continuous, as continuous already clears cache)
+        if not continuous_citations:
+            if self.clear_analytics_cache():
+                success_count += 1
+        else:
+            success_count += 1  # Already cleared during continuous process
         
         # 5. Summary
         self.log(f"📈 Update process completed: {success_count}/4 steps successful")
@@ -308,6 +450,8 @@ def main():
                        help='Force download even if recent file exists')
     parser.add_argument('--cleanup-only', action='store_true',
                        help='Only clean up old files, no update')
+    parser.add_argument('--continuous-citations', action='store_true',
+                       help='Use continuous citation fetching for real-time website updates')
     
     args = parser.parse_args()
     
@@ -320,8 +464,18 @@ def main():
     success = updater.run_full_update(
         citation_limit=args.citation_limit,
         force_download=args.force_download,
-        import_limit=args.import_limit
+        import_limit=args.import_limit,
+        continuous_citations=args.continuous_citations
     )
+    
+    if success:
+        if args.continuous_citations:
+            print("✅ PRCT update completed successfully with real-time citations!")
+            print("🌐 Citations are updated continuously on the website!")
+        else:
+            print("✅ PRCT update completed successfully!")
+    else:
+        print("❌ PRCT update completed with errors!")
     
     sys.exit(0 if success else 1)
 

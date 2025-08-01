@@ -132,32 +132,50 @@
                     {% endif %}
                     
                     {% if paper.institution %}
-                    <div class="row mb-3">
-                        <div class="col-md-3"><strong>Institution:</strong></div>
-                        <div class="col-md-9">
-                            <a href="{% url 'papers:search' %}?institution={{ paper.institution|urlencode }}" 
-                               class="text-decoration-none"
-                               title="Find other papers from this institution">
-                                {{ paper.institution }}
-                                <i class="fas fa-search fa-sm ms-2"></i>
-                            </a>
-                        </div>
-                    </div>
-                    {% endif %}
-                    
-                    {% if paper.country %}
-                    <div class="row mb-3">
-                        <div class="col-md-3"><strong>Country:</strong></div>
-                        <div class="col-md-9">
-                            <a href="{% url 'papers:search' %}?country={{ paper.primary_country|urlencode }}" 
-                               class="text-decoration-none"
-                               title="Find other papers from this country">
-                                {{ paper.country }}
-                                <i class="fas fa-search fa-sm ms-2"></i>
-                            </a>
-                        </div>
-                    </div>
-                    {% endif %}
+            <div class="detail-item">
+                <h6><i class="fas fa-university text-warning me-2"></i>Institution{{ paper.institution_list|length|pluralize }}:</h6>
+                {% if paper.institution_list|length > 1 %}
+                <ul class="list-unstyled ms-3">
+                    {% for institution in paper.institution_list %}
+                    <li>
+                        <a href="{% url 'papers:search' %}?institution={{ institution|urlencode }}"
+                           class="text-decoration-none text-primary">
+                            <i class="fas fa-search me-1"></i>{{ institution }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <a href="{% url 'papers:search' %}?institution={{ paper.primary_institution|urlencode }}"
+                   class="text-decoration-none text-primary ms-3">
+                    <i class="fas fa-search me-1"></i>{{ paper.primary_institution }}
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if paper.country %}
+            <div class="detail-item">
+                <h6><i class="fas fa-globe text-success me-2"></i>Countr{{ paper.country_list|length|pluralize:"y,ies" }}:</h6>
+                {% if paper.country_list|length > 1 %}
+                <ul class="list-unstyled ms-3">
+                    {% for country in paper.country_list %}
+                    <li>
+                        <a href="{% url 'papers:search' %}?country={{ country|urlencode }}"
+                           class="text-decoration-none text-success">
+                            <i class="fas fa-search me-1"></i>{{ country }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <a href="{% url 'papers:search' %}?country={{ paper.primary_country|urlencode }}"
+                   class="text-decoration-none text-success ms-3">
+                    <i class="fas fa-search me-1"></i>{{ paper.primary_country }}
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
                     
                     {% if paper.article_type %}
                     <div class="row mb-3">

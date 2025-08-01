@@ -249,6 +249,107 @@ class PerformanceAnalyticsView(View):
         
         return cached_data
     
+    @staticmethod
+    def _get_parsed_subjects_for_network(limit=8):
+        """Get top subjects by parsing semicolon-separated subject strings for network visualization"""
+        from collections import Counter
+        
+        # Get all papers with subjects
+        papers_with_subjects = RetractedPaper.objects.exclude(
+            Q(subject__isnull=True) | Q(subject__exact='')
+        ).values('subject', 'country', 'journal')
+        
+        # Parse and count individual subjects with additional stats
+        subject_data = {}
+        
+        for paper in papers_with_subjects:
+            subject_string = paper['subject']
+            if subject_string:
+                # Split by semicolon and clean up each subject
+                subjects = [s.strip() for s in subject_string.split(';') if s.strip()]
+                for subject in subjects:
+                    # Clean up the subject (remove prefix codes if present)
+                    clean_subject = subject
+                    if ')' in subject and subject.startswith('('):
+                        # Remove codes like (PHY), (B/T) etc.
+                        clean_subject = subject.split(')', 1)[1].strip()
+                    
+                    # Only count meaningful subjects
+                    if len(clean_subject) > 2:  # Filter out very short entries
+                        if clean_subject not in subject_data:
+                            subject_data[clean_subject] = {
+                                'subject': clean_subject,
+                                'paper_count': 0,
+                                'countries': set(),
+                                'journals': set()
+                            }
+                        
+                        subject_data[clean_subject]['paper_count'] += 1
+                        if paper['country']:
+                            subject_data[clean_subject]['countries'].add(paper['country'])
+                        if paper['journal']:
+                            subject_data[clean_subject]['journals'].add(paper['journal'])
+        
+        # Convert sets to counts and sort
+        result = []
+        for subject, data in subject_data.items():
+            result.append({
+                'subject': subject,
+                'paper_count': data['paper_count'],
+                'country_count': len(data['countries']),
+                'journal_count': len(data['journals'])
+            })
+        
+        # Sort by paper count and return top results
+        result.sort(key=lambda x: x['paper_count'], reverse=True)
+        return result[:limit]
+    
+    @staticmethod
+    def _get_parsed_countries_for_network(limit=12):
+        """Get top countries by parsing semicolon-separated country strings for network visualization"""
+        from collections import Counter
+        
+        # Get all papers with countries
+        papers_with_countries = RetractedPaper.objects.exclude(
+            Q(country__isnull=True) | Q(country__exact='')
+        ).values('country', 'subject')
+        
+        # Parse and count individual countries with additional stats
+        country_data = {}
+        invalid_entries = {'', 'Unknown', 'unknown', 'N/A', 'n/a', 'None', 'null', 'NA'}
+        
+        for paper in papers_with_countries:
+            country_string = paper['country']
+            if country_string:
+                # Split by semicolon and clean up each country
+                countries = [c.strip() for c in country_string.split(';') if c.strip()]
+                for country in countries:
+                    # Only count valid countries
+                    if country and country not in invalid_entries and len(country) > 1:
+                        if country not in country_data:
+                            country_data[country] = {
+                                'country': country,
+                                'paper_count': 0,
+                                'subjects': set()
+                            }
+                        
+                        country_data[country]['paper_count'] += 1
+                        if paper['subject']:
+                            country_data[country]['subjects'].add(paper['subject'])
+        
+        # Convert sets to counts and sort
+        result = []
+        for country, data in country_data.items():
+            result.append({
+                'country': country,
+                'paper_count': data['paper_count'],
+                'subject_count': len(data['subjects'])
+            })
+        
+        # Sort by paper count and return top results
+        result.sort(key=lambda x: x['paper_count'], reverse=True)
+        return result[:limit]
+
     def _get_cached_complex_data(self):
         """Complex analytics with long-term caching"""
         cache_key = 'analytics_complex_data_v2'
@@ -590,26 +691,11 @@ class PerformanceAnalyticsView(View):
             network_nodes = []
             network_links = []
             
-            # Get top subjects as the central organizing principle
-            top_subjects = list(RetractedPaper.objects.values('subject').annotate(
-                paper_count=Count('id'),
-                country_count=Count('country', distinct=True),
-                journal_count=Count('journal', distinct=True)
-            ).filter(
-                subject__isnull=False
-            ).exclude(
-                subject__exact=''
-            ).order_by('-paper_count')[:8])
+            # Get top subjects as the central organizing principle (parsed from semicolon-separated values)
+            top_subjects = self._get_parsed_subjects_for_network(limit=8)
             
-            # Get top countries
-            top_countries = list(RetractedPaper.objects.values('country').annotate(
-                paper_count=Count('id'),
-                subject_count=Count('subject', distinct=True)
-            ).filter(
-                country__isnull=False
-            ).exclude(
-                country__exact=''
-            ).order_by('-paper_count')[:12])
+            # Get top countries with proper parsing
+            top_countries = self._get_parsed_countries_for_network(limit=12)
             
             # Get top journals 
             top_journals = list(RetractedPaper.objects.values('journal').annotate(

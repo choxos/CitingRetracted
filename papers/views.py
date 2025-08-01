@@ -1,5 +1,5 @@
 from django.shortcuts import render, get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse, Http404
 from django.core.paginator import Paginator
 from django.db.models import Q, Count, Avg, Case, When, IntegerField, F, Max, Sum
 from django.db.models.functions import TruncYear, TruncMonth
@@ -15,6 +15,13 @@ from django.views.generic import View
 from django.views.decorators.cache import cache_page
 import calendar
 from django.utils.safestring import mark_safe
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+import logging
+from django.db.models.functions import TruncMonth, TruncYear
+
+logger = logging.getLogger(__name__)
 
 
 class HomeView(ListView):
@@ -110,27 +117,19 @@ class HomeView(ListView):
         
 
         
-        # Exclude "NA" from institutions specifically
-        stats['top_institutions'] = RetractedPaper.objects.exclude(
-            Q(institution__isnull=True) | Q(institution__exact='') | Q(institution__exact='NA')
-        ).values('institution').annotate(
-            count=Count('id')
-        ).order_by('-count')[:5]
+        # Get top institutions with proper parsing of semicolon-separated values
+        stats['top_institutions'] = self._get_top_institutions_parsed()
         
-
-        
-        # Get top publishers, countries, subjects, journals efficiently
+        # Get top publishers, countries, journals efficiently
         stats['top_publishers'] = RetractedPaper.objects.exclude(
             Q(publisher__isnull=True) | Q(publisher__exact='')
         ).values('publisher').annotate(count=Count('id')).order_by('-count')[:5]
         
-        stats['top_countries'] = RetractedPaper.objects.exclude(
-            Q(country__isnull=True) | Q(country__exact='')
-        ).values('country').annotate(count=Count('id')).order_by('-count')[:5]
+        # Get top countries with proper parsing of semicolon-separated values
+        stats['top_countries'] = self._get_top_countries_parsed()
         
-        stats['top_subjects'] = RetractedPaper.objects.exclude(
-            Q(subject__isnull=True) | Q(subject__exact='')
-        ).values('subject').annotate(count=Count('id')).order_by('-count')[:5]
+        # Get top subjects with proper parsing of semicolon-separated values
+        stats['top_subjects'] = self._get_top_subjects_parsed()
         
         stats['top_journals'] = RetractedPaper.objects.exclude(
             Q(journal__isnull=True) | Q(journal__exact='')
@@ -140,6 +139,158 @@ class HomeView(ListView):
         stats['top_authors'] = self._get_top_authors_optimized()
         
         return stats
+    
+    def _get_top_subjects_parsed(self):
+        """Get top subjects by parsing semicolon-separated subject strings"""
+        from collections import Counter
+        
+        # Get all papers with subjects
+        papers_with_subjects = RetractedPaper.objects.exclude(
+            Q(subject__isnull=True) | Q(subject__exact='')
+        ).values_list('subject', flat=True)
+        
+        # Parse and count individual subjects
+        subject_counter = Counter()
+        for subject_string in papers_with_subjects:
+            if subject_string:
+                # Split by semicolon and clean up each subject
+                subjects = [s.strip() for s in subject_string.split(';') if s.strip()]
+                for subject in subjects:
+                    # Clean up the subject (remove prefix codes if present)
+                    clean_subject = subject
+                    if ')' in subject and subject.startswith('('):
+                        # Remove codes like (PHY), (B/T) etc.
+                        clean_subject = subject.split(')', 1)[1].strip()
+                    
+                    # Only count meaningful subjects
+                    if len(clean_subject) > 2:  # Filter out very short entries
+                        subject_counter[clean_subject] += 1
+        
+        # Convert to the expected format and return top 5
+        top_subjects = []
+        for subject, count in subject_counter.most_common(5):
+            top_subjects.append({
+                'subject': subject,
+                'count': count
+            })
+        
+        return top_subjects
+    
+    def _get_top_countries_parsed(self):
+        """Get top countries by parsing semicolon-separated country strings"""
+        from collections import Counter
+        
+        # Get all papers with countries
+        papers_with_countries = RetractedPaper.objects.exclude(
+            Q(country__isnull=True) | Q(country__exact='')
+        ).values_list('country', flat=True)
+        
+        # Parse and count individual countries
+        country_counter = Counter()
+        invalid_entries = {'', 'Unknown', 'unknown', 'N/A', 'n/a', 'None', 'null', 'NA'}
+        
+        for country_string in papers_with_countries:
+            if country_string:
+                # Split by semicolon and clean up each country
+                countries = [c.strip() for c in country_string.split(';') if c.strip()]
+                for country in countries:
+                    # Only count valid countries
+                    if country and country not in invalid_entries and len(country) > 1:
+                        country_counter[country] += 1
+        
+        # Convert to the expected format and return top 5
+        top_countries = []
+        for country, count in country_counter.most_common(5):
+            top_countries.append({
+                'country': country,
+                'count': count
+            })
+        
+        return top_countries
+    
+    def _get_top_institutions_parsed(self):
+        """Get top institutions by parsing semicolon-separated institution strings"""
+        from collections import Counter
+        
+        # Get all papers with institutions
+        papers_with_institutions = RetractedPaper.objects.exclude(
+            Q(institution__isnull=True) | Q(institution__exact='')
+        ).values_list('institution', flat=True)
+        
+        # Parse and count individual institutions
+        institution_counter = Counter()
+        invalid_entries = {
+            '', 'Unknown', 'unknown', 'N/A', 'n/a', 'None', 'null', 'NA',
+            'unavailable', 'Unavailable', 'not available', 'Not Available'
+        }
+        
+        for institution_string in papers_with_institutions:
+            if institution_string:
+                # Split by semicolon and clean up each institution
+                institutions = [i.strip() for i in institution_string.split(';') if i.strip()]
+                for institution in institutions:
+                    # Only count valid institutions
+                    if institution and institution not in invalid_entries and len(institution) > 2:
+                        institution_counter[institution] += 1
+        
+        # Convert to the expected format and return top 5
+        top_institutions = []
+        for institution, count in institution_counter.most_common(5):
+            top_institutions.append({
+                'institution': institution,
+                'count': count
+            })
+        
+        return top_institutions
+    
+    @staticmethod
+    def _get_parsed_subjects_with_citations(limit=10):
+        """Get top subjects by parsing semicolon-separated subject strings with citation counts"""
+        from collections import defaultdict
+        
+        # Get all papers with subjects and their citation data
+        papers_data = RetractedPaper.objects.exclude(
+            Q(subject__isnull=True) | Q(subject__exact='')
+        ).values('subject', 'id').prefetch_related('citations')
+        
+        # Parse and count individual subjects with citations
+        subject_data = defaultdict(lambda: {'count': 0, 'post_retraction_citations': 0})
+        
+        for paper in papers_data:
+            subject_string = paper['subject']
+            if subject_string:
+                # Split by semicolon and clean up each subject
+                subjects = [s.strip() for s in subject_string.split(';') if s.strip()]
+                for subject in subjects:
+                    # Clean up the subject (remove prefix codes if present)
+                    clean_subject = subject
+                    if ')' in subject and subject.startswith('('):
+                        # Remove codes like (PHY), (B/T) etc.
+                        clean_subject = subject.split(')', 1)[1].strip()
+                    
+                    # Only count meaningful subjects
+                    if len(clean_subject) > 2:  # Filter out very short entries
+                        subject_data[clean_subject]['count'] += 1
+                        
+                        # Count post-retraction citations for this paper
+                        post_retraction_count = Citation.objects.filter(
+                            retracted_paper_id=paper['id'],
+                            days_after_retraction__gt=0
+                        ).count()
+                        subject_data[clean_subject]['post_retraction_citations'] += post_retraction_count
+        
+        # Convert to list and sort by post-retraction citations
+        top_subjects = []
+        for subject, data in subject_data.items():
+            top_subjects.append({
+                'subject': subject,
+                'count': data['count'],
+                'post_retraction_citations': data['post_retraction_citations']
+            })
+        
+        # Sort by post-retraction citations and return top results
+        top_subjects.sort(key=lambda x: x['post_retraction_citations'], reverse=True)
+        return top_subjects[:limit]
     
     def _get_top_reasons(self):
         """Get top retraction reasons with optimized processing"""
@@ -417,20 +568,10 @@ class SearchView(ListView):
         
         context['search_query'] = search_query
         
-        # Get dropdown options efficiently - limit to most common values
-        context['subjects'] = RetractedPaper.objects.values_list(
-            'subject', flat=True
-        ).distinct().exclude(
-            Q(subject__isnull=True) | Q(subject__exact='')
-        ).order_by('subject')[:100]  # Limit to prevent huge dropdowns
-        
-        context['reasons'] = RetractedPaper.objects.values_list(
-            'reason', flat=True
-        ).distinct().exclude(
-            Q(reason__isnull=True) | Q(reason__exact='')
-        ).order_by('reason')[:100]  # Limit to prevent huge dropdowns
-        
-        # Get countries efficiently with caching
+        # Get dropdown options efficiently - limit to most common values with proper parsing
+        context['subjects'] = self._get_subjects_list()
+        context['reasons'] = self._get_reasons_list()
+        context['institutions'] = self._get_institutions_list()
         context['countries'] = self._get_countries_list()
         
         # Publishers - limit to most common ones
@@ -443,25 +584,117 @@ class SearchView(ListView):
         return context
     
     def _get_countries_list(self):
-        """Get list of countries efficiently"""
-        # Use database aggregation to get unique countries
-        country_data = RetractedPaper.objects.exclude(
+        """Get list of countries efficiently with proper parsing"""
+        from collections import Counter
+        
+        # Get all papers with countries
+        papers_with_countries = RetractedPaper.objects.exclude(
             Q(country__isnull=True) | Q(country__exact='')
-        ).values('country').annotate(
-            count=Count('id')
-        ).order_by('-count')[:50]  # Limit to top 50 countries
+        ).values_list('country', flat=True)
         
-        # Extract individual countries from semicolon-separated strings
-        all_countries = set()
-        for item in country_data:
-            if item['country']:
-                countries = [c.strip() for c in item['country'].split(';')]
-                all_countries.update(countries)
+        # Parse and count individual countries
+        country_counter = Counter()
+        invalid_entries = {'', 'Unknown', 'unknown', 'N/A', 'n/a', 'None', 'null', 'NA'}
         
-        # Remove invalid entries and sort
-        invalid_entries = {'', 'Unknown', 'unknown', 'N/A', 'n/a', 'None', 'null'}
-        clean_countries = sorted(list(all_countries - invalid_entries))[:100]
-        return clean_countries
+        for country_string in papers_with_countries:
+            if country_string:
+                # Split by semicolon and clean up each country
+                countries = [c.strip() for c in country_string.split(';') if c.strip()]
+                for country in countries:
+                    # Only count valid countries
+                    if country and country not in invalid_entries and len(country) > 1:
+                        country_counter[country] += 1
+        
+        # Return sorted list of countries (sorted by count, then alphabetically)
+        sorted_countries = sorted(country_counter.items(), key=lambda x: (-x[1], x[0]))
+        return [country for country, count in sorted_countries[:100]]  # Limit to top 100
+    
+    def _get_subjects_list(self):
+        """Get list of subjects efficiently with proper parsing"""
+        from collections import Counter
+        
+        # Get all papers with subjects
+        papers_with_subjects = RetractedPaper.objects.exclude(
+            Q(subject__isnull=True) | Q(subject__exact='')
+        ).values_list('subject', flat=True)
+        
+        # Parse and count individual subjects
+        subject_counter = Counter()
+        
+        for subject_string in papers_with_subjects:
+            if subject_string:
+                # Split by semicolon and clean up each subject
+                subjects = [s.strip() for s in subject_string.split(';') if s.strip()]
+                for subject in subjects:
+                    # Clean up the subject (remove prefix codes if present)
+                    clean_subject = subject
+                    if ')' in subject and subject.startswith('('):
+                        # Remove codes like (PHY), (B/T) etc.
+                        clean_subject = subject.split(')', 1)[1].strip()
+                    
+                    # Only count meaningful subjects
+                    if len(clean_subject) > 2:  # Filter out very short entries
+                        subject_counter[clean_subject] += 1
+        
+        # Return sorted list of subjects (sorted by count, then alphabetically)
+        sorted_subjects = sorted(subject_counter.items(), key=lambda x: (-x[1], x[0]))
+        return [subject for subject, count in sorted_subjects[:100]]  # Limit to top 100
+    
+    def _get_institutions_list(self):
+        """Get list of institutions efficiently with proper parsing"""
+        from collections import Counter
+        
+        # Get all papers with institutions
+        papers_with_institutions = RetractedPaper.objects.exclude(
+            Q(institution__isnull=True) | Q(institution__exact='')
+        ).values_list('institution', flat=True)
+        
+        # Parse and count individual institutions
+        institution_counter = Counter()
+        invalid_entries = {
+            '', 'Unknown', 'unknown', 'N/A', 'n/a', 'None', 'null', 'NA',
+            'unavailable', 'Unavailable', 'not available', 'Not Available'
+        }
+        
+        for institution_string in papers_with_institutions:
+            if institution_string:
+                # Split by semicolon and clean up each institution
+                institutions = [i.strip() for i in institution_string.split(';') if i.strip()]
+                for institution in institutions:
+                    # Only count valid institutions
+                    if institution and institution not in invalid_entries and len(institution) > 2:
+                        institution_counter[institution] += 1
+        
+        # Return sorted list of institutions (sorted by count, then alphabetically)
+        sorted_institutions = sorted(institution_counter.items(), key=lambda x: (-x[1], x[0]))
+        return [institution for institution, count in sorted_institutions[:100]]  # Limit to top 100
+    
+    def _get_reasons_list(self):
+        """Get list of reasons efficiently with proper parsing"""
+        from collections import Counter
+        
+        # Get all papers with reasons
+        papers_with_reasons = RetractedPaper.objects.exclude(
+            Q(reason__isnull=True) | Q(reason__exact='')
+        ).values_list('reason', flat=True)
+        
+        # Parse and count individual reasons
+        reason_counter = Counter()
+        
+        for reason_string in papers_with_reasons:
+            if reason_string:
+                # Split by semicolon and clean up each reason
+                reasons = [r.strip().lstrip('+').strip() for r in reason_string.split(';') if r.strip()]
+                for reason in reasons:
+                    # Capitalize first letter if not already capitalized
+                    if reason and not reason[0].isupper():
+                        reason = reason[0].upper() + reason[1:]
+                    if reason and len(reason) > 2:  # Filter out very short entries
+                        reason_counter[reason] += 1
+        
+        # Return sorted list of reasons (sorted by count, then alphabetically)
+        sorted_reasons = sorted(reason_counter.items(), key=lambda x: (-x[1], x[0]))
+        return [reason for reason, count in sorted_reasons[:100]]  # Limit to top 100
 
 
 class ExportSearchView(View):
@@ -915,19 +1148,8 @@ class AnalyticsView(View):
             journal__exact=''
         ).order_by('-post_retraction_citations')[:10]
         
-        # Top subjects with efficient query
-        data['top_subjects'] = RetractedPaper.objects.values(
-            'subject'
-        ).annotate(
-            count=Count('id'),
-            post_retraction_citations=Count(
-                'citations', filter=Q(citations__days_after_retraction__gt=0)
-            )
-        ).exclude(
-            subject__isnull=True
-        ).exclude(
-            subject__exact=''
-        ).order_by('-post_retraction_citations')[:10]
+        # Top subjects with efficient query (parsed from semicolon-separated values)
+        data['top_subjects'] = self._get_parsed_subjects_with_citations(limit=10)
         
         # Papers with most post-retraction citations (optimized)
         data['most_cited_post_retraction'] = RetractedPaper.objects.annotate(
@@ -1768,98 +1990,402 @@ class AnalyticsView(View):
         return sunburst_data
 
 
-class PostRetractionAnalyticsAPIView(View):
-    """API endpoint for post-retraction citation analytics."""
-    
-    def get(self, request):
-        # Get filter parameters
-        time_filter = request.GET.get('time_filter', 'all')
-        journal_filter = request.GET.get('journal', '')
-        subject_filter = request.GET.get('subject', '')
-        
-        # Base queryset with filters
-        citations_qs = Citation.objects.filter(days_after_retraction__gt=0)
-        
-        if time_filter != 'all':
-            cutoff_days = {
-                '1y': 365,
-                '3y': 1095,
-                '5y': 1825
-            }.get(time_filter, 365)
-            cutoff_date = timezone.now().date() - timedelta(days=cutoff_days)
-            citations_qs = citations_qs.filter(created_at__date__gte=cutoff_date)
-        
-        if journal_filter:
-            citations_qs = citations_qs.filter(retracted_paper__journal__icontains=journal_filter)
-            
-        if subject_filter:
-            citations_qs = citations_qs.filter(retracted_paper__subject__icontains=subject_filter)
-        
-        # Calculate metrics
-        total_post_retraction = citations_qs.count()
-        
-        # Time distribution
-        time_distribution = {
-            'within_30_days': citations_qs.filter(days_after_retraction__lte=30).count(),
-            'within_6_months': citations_qs.filter(days_after_retraction__lte=180).count(),
-            'within_1_year': citations_qs.filter(days_after_retraction__lte=365).count(),
-            'within_2_years': citations_qs.filter(days_after_retraction__lte=730).count(),
-            'after_2_years': citations_qs.filter(days_after_retraction__gt=730).count(),
+def api_error_response(message, status_code=400, error_code=None):
+    """Helper function to return standardized API error responses"""
+    error_data = {
+        "status": "error",
+        "error": {
+            "message": message,
+            "code": error_code or "API_ERROR"
+        },
+        "meta": {
+            "timestamp": timezone.now().isoformat(),
+            "version": "1.0"
         }
+    }
+    return JsonResponse(error_data, status=status_code)
+
+def api_success_response(data, status_code=200):
+    """Helper function to return standardized API success responses"""
+    response_data = {
+        "status": "success",
+        "data": data,
+        "meta": {
+            "timestamp": timezone.now().isoformat(),
+            "version": "1.0"
+        }
+    }
+    return JsonResponse(response_data, status=status_code)
+
+@require_http_methods(["GET"])
+def search_autocomplete(request):
+    """Enhanced AJAX endpoint for search autocomplete with validation"""
+    try:
+        query = request.GET.get('q', '').strip()
         
-        # Monthly trend data
-        monthly_trend = citations_qs.annotate(
-            month=TruncMonth('created_at')
-        ).values('month').annotate(
-            count=Count('id')
-        ).order_by('month')
+        if not query:
+            return api_error_response("Query parameter 'q' is required", 400, "MISSING_PARAMETER")
         
-        monthly_data = [
-            {
-                'month': item['month'].strftime('%Y-%m') if item['month'] else 'Unknown',
-                'count': item['count']
+        if len(query) < 3:
+            return api_success_response({'suggestions': []})
+        
+        # Search in titles and authors with improved query
+        papers = RetractedPaper.objects.filter(
+            Q(title__icontains=query) | Q(author__icontains=query)
+        ).select_related().prefetch_related('citations')[:10]
+        
+        suggestions = []
+        for paper in papers:
+            post_retraction_count = paper.citations.filter(days_after_retraction__gt=0).count()
+            suggestions.append({
+                'title': paper.title or '',
+                'author': paper.author or '',
+                'journal': paper.journal or '',
+                'record_id': paper.record_id,
+                'url': paper.get_absolute_url(),
+                'post_retraction_citations': post_retraction_count,
+                'retraction_date': paper.retraction_date.isoformat() if paper.retraction_date else None
+            })
+        
+        return api_success_response({'suggestions': suggestions})
+        
+    except Exception as e:
+        logger.error(f"Search autocomplete error: {e}")
+        return api_error_response("Internal server error", 500, "INTERNAL_ERROR")
+
+
+def paper_citations_json(request, record_id):
+    """Enhanced AJAX endpoint for paper citations data with improved error handling"""
+    try:
+        if not record_id:
+            return api_error_response("Record ID is required", 400, "MISSING_RECORD_ID")
+        
+        try:
+            paper = RetractedPaper.objects.get(record_id=record_id)
+        except RetractedPaper.DoesNotExist:
+            return api_error_response(f"Paper with record ID '{record_id}' not found", 404, "PAPER_NOT_FOUND")
+        
+        citations = Citation.objects.filter(retracted_paper=paper).select_related('citing_paper')
+        
+        # Group by year with post-retraction breakdown
+        citations_by_year = {}
+        post_retraction_by_year = {}
+        
+        for citation in citations:
+            year = citation.citing_paper.publication_year or 'Unknown'
+            if year not in citations_by_year:
+                citations_by_year[year] = 0
+                post_retraction_by_year[year] = 0
+            
+            citations_by_year[year] += 1
+            if citation.days_after_retraction and citation.days_after_retraction > 0:
+                post_retraction_by_year[year] += 1
+        
+        # Timeline data for post-retraction analysis
+        timeline_data = []
+        post_retraction_timeline = []
+        
+        for citation in citations:
+            citation_data = {
+                'days_after': citation.days_after_retraction,
+                'citing_paper': citation.citing_paper.title or '',
+                'publication_date': citation.citing_paper.publication_date.isoformat() if citation.citing_paper.publication_date else None,
+                'is_post_retraction': citation.days_after_retraction and citation.days_after_retraction > 0
             }
-            for item in monthly_trend
-        ]
+            timeline_data.append(citation_data)
+            
+            if citation.days_after_retraction and citation.days_after_retraction > 0:
+                post_retraction_timeline.append(citation_data)
+        
+        # Post-retraction statistics
+        post_retraction_stats = {
+            'within_30_days': len([c for c in post_retraction_timeline if c['days_after'] <= 30]),
+            'within_1_year': len([c for c in post_retraction_timeline if c['days_after'] <= 365]),
+            'within_2_years': len([c for c in post_retraction_timeline if c['days_after'] <= 730]),
+            'after_2_years': len([c for c in post_retraction_timeline if c['days_after'] > 730]),
+        }
         
         data = {
-            'total_post_retraction': total_post_retraction,
-            'time_distribution': time_distribution,
-            'monthly_trend': monthly_data,
-            'filters_applied': {
-                'time_filter': time_filter,
-                'journal_filter': journal_filter,
-                'subject_filter': subject_filter
+            'citations_by_year': citations_by_year,
+            'post_retraction_by_year': post_retraction_by_year,
+            'timeline_data': timeline_data,
+            'post_retraction_timeline': post_retraction_timeline,
+            'post_retraction_stats': post_retraction_stats,
+            'total_citations': citations.count(),
+            'post_retraction_count': len(post_retraction_timeline),
+            'paper_info': {
+                'record_id': paper.record_id,
+                'title': paper.title or '',
+                'journal': paper.journal or '',
+                'retraction_date': paper.retraction_date.isoformat() if paper.retraction_date else None
             }
         }
         
-        return JsonResponse(data)
+        return api_success_response(data)
+        
+    except Exception as e:
+        logger.error(f"Paper citations error for {record_id}: {e}")
+        return api_error_response("Internal server error", 500, "INTERNAL_ERROR")
+
+
+@method_decorator(cache_page(300), name='dispatch')  # 5 minute cache
+class PostRetractionAnalyticsAPIView(View):
+    """Enhanced API endpoint for post-retraction citation analytics with validation"""
+    
+    def get(self, request):
+        try:
+            # Get and validate filter parameters
+            time_filter = request.GET.get('time_filter', 'all')
+            journal_filter = request.GET.get('journal', '').strip()
+            subject_filter = request.GET.get('subject', '').strip()
+            
+            # Validate time_filter
+            valid_time_filters = ['all', '1y', '3y', '5y']
+            if time_filter not in valid_time_filters:
+                return api_error_response(
+                    f"Invalid time_filter. Must be one of: {', '.join(valid_time_filters)}", 
+                    400, "INVALID_TIME_FILTER"
+                )
+            
+            # Base queryset with filters
+            citations_qs = Citation.objects.filter(days_after_retraction__gt=0)
+            
+            if time_filter != 'all':
+                cutoff_days = {
+                    '1y': 365,
+                    '3y': 1095,
+                    '5y': 1825
+                }.get(time_filter, 365)
+                cutoff_date = timezone.now().date() - timedelta(days=cutoff_days)
+                citations_qs = citations_qs.filter(created_at__date__gte=cutoff_date)
+            
+            if journal_filter:
+                citations_qs = citations_qs.filter(retracted_paper__journal__icontains=journal_filter)
+                
+            if subject_filter:
+                citations_qs = citations_qs.filter(retracted_paper__subject__icontains=subject_filter)
+            
+            # Calculate metrics
+            total_post_retraction = citations_qs.count()
+            
+            # Time distribution
+            time_distribution = {
+                'within_30_days': citations_qs.filter(days_after_retraction__lte=30).count(),
+                'within_6_months': citations_qs.filter(days_after_retraction__lte=180).count(),
+                'within_1_year': citations_qs.filter(days_after_retraction__lte=365).count(),
+                'within_2_years': citations_qs.filter(days_after_retraction__lte=730).count(),
+                'after_2_years': citations_qs.filter(days_after_retraction__gt=730).count(),
+            }
+            
+            # Monthly trend data (limited to prevent large responses)
+            monthly_trend = citations_qs.annotate(
+                month=TruncMonth('created_at')
+            ).values('month').annotate(
+                count=Count('id')
+            ).order_by('month')[:24]  # Limit to 24 months
+            
+            monthly_data = [
+                {
+                    'month': item['month'].strftime('%Y-%m') if item['month'] else 'Unknown',
+                    'count': item['count']
+                }
+                for item in monthly_trend
+            ]
+            
+            data = {
+                'total_post_retraction': total_post_retraction,
+                'time_distribution': time_distribution,
+                'monthly_trend': monthly_data,
+                'filters_applied': {
+                    'time_filter': time_filter,
+                    'journal_filter': journal_filter,
+                    'subject_filter': subject_filter
+                },
+                'summary': {
+                    'total_papers_affected': citations_qs.values('retracted_paper').distinct().count(),
+                    'average_days_after_retraction': citations_qs.aggregate(
+                        avg_days=Avg('days_after_retraction')
+                    )['avg_days'] or 0
+                }
+            }
+            
+            return api_success_response(data)
+            
+        except Exception as e:
+            logger.error(f"Post-retraction analytics error: {e}")
+            return api_error_response("Internal server error", 500, "INTERNAL_ERROR")
+
+
+@require_http_methods(["GET"])
+def export_data(request):
+    """Enhanced export functionality with pagination and validation"""
+    try:
+        # Get and validate parameters
+        try:
+            limit = int(request.GET.get('limit', 1000))
+            offset = int(request.GET.get('offset', 0))
+        except ValueError:
+            return api_error_response("Limit and offset must be integers", 400, "INVALID_PARAMETER")
+        
+        # Validate limits
+        if limit > 10000:
+            return api_error_response("Maximum limit is 10000 records", 400, "LIMIT_EXCEEDED")
+        
+        if limit < 1:
+            return api_error_response("Limit must be at least 1", 400, "INVALID_LIMIT")
+        
+        # Get papers with pagination
+        papers_qs = RetractedPaper.objects.all().select_related().prefetch_related('citations')
+        total_count = papers_qs.count()
+        papers = papers_qs[offset:offset + limit]
+        
+        data = []
+        for paper in papers:
+            post_retraction_count = paper.citations.filter(days_after_retraction__gt=0).count()
+            total_citations = paper.citation_count or 0
+            
+            data.append({
+                'record_id': paper.record_id,
+                'title': paper.title or '',
+                'author': paper.author or '',
+                'journal': paper.journal or '',
+                'publisher': paper.publisher or '',
+                'country': paper.country or '',
+                'subject': paper.subject or '',
+                'retraction_date': paper.retraction_date.isoformat() if paper.retraction_date else None,
+                'original_paper_date': paper.original_paper_date.isoformat() if paper.original_paper_date else None,
+                'total_citations': total_citations,
+                'post_retraction_citations': post_retraction_count,
+                'post_retraction_percentage': (post_retraction_count / max(total_citations, 1)) * 100,
+                'reason': paper.reason or '',
+                'doi': paper.original_paper_doi or '',
+                'urls': paper.urls or ''
+            })
+        
+        response_data = {
+            'papers': data,
+            'pagination': {
+                'total': total_count,
+                'limit': limit,
+                'offset': offset,
+                'has_next': offset + limit < total_count,
+                'has_previous': offset > 0
+            }
+        }
+        
+        return api_success_response(response_data)
+        
+    except Exception as e:
+        logger.error(f"Export data error: {e}")
+        return api_error_response("Internal server error", 500, "INTERNAL_ERROR")
+
+
+@cache_page(60)  # Cache for 1 minute
+@require_http_methods(["GET"])
+def analytics_data_ajax(request):
+    """Enhanced AJAX endpoint for real-time analytics data updates"""
+    try:
+        # Get basic stats
+        stats = RetractedPaper.objects.aggregate(
+            total_papers=Count('id'),
+            total_citations=Count('citations'),
+            post_retraction_citations=Count('citations', filter=Q(citations__days_after_retraction__gt=0)),
+            recent_retractions=Count('id', filter=Q(retraction_date__gte=timezone.now() - timedelta(days=30)))
+        )
+        
+        # Get recent activity (last 24 hours)
+        recent_imports = DataImportLog.objects.filter(
+            start_time__gte=timezone.now() - timedelta(hours=24)
+        ).aggregate(
+            total_imports=Count('id'),
+            records_imported=Sum('records_created')
+        )
+        
+        # Quick citation patterns
+        citation_patterns = Citation.objects.aggregate(
+            post_retraction=Count('id', filter=Q(days_after_retraction__gt=0)),
+            pre_retraction=Count('id', filter=Q(days_after_retraction__lt=0)),
+            same_day=Count('id', filter=Q(days_after_retraction=0))
+        )
+        
+        # Calculate additional metrics
+        post_retraction_rate = 0
+        if stats['total_citations'] > 0:
+            post_retraction_rate = (stats['post_retraction_citations'] / stats['total_citations']) * 100
+        
+        data = {
+            'stats': {
+                **stats,
+                'post_retraction_rate': round(post_retraction_rate, 2)
+            },
+            'recent_activity': {
+                'total_imports': recent_imports['total_imports'] or 0,
+                'records_imported': recent_imports['records_imported'] or 0
+            },
+            'citation_patterns': citation_patterns,
+            'last_updated': timezone.now().isoformat(),
+            'status': 'success'
+        }
+        
+        return api_success_response(data)
+        
+    except Exception as e:
+        logger.error(f"Analytics data ajax error: {e}")
+        return api_error_response("Internal server error", 500, "INTERNAL_ERROR")
 
 
 class AnalyticsDataAPIView(View):
-    """API endpoint for comprehensive analytics data with filtering."""
+    """Enhanced API endpoint for comprehensive analytics data with filtering and validation"""
     
     def get(self, request):
-        # Get filter parameters
-        chart_type = request.GET.get('chart', 'overview')
-        time_filter = request.GET.get('time_filter', 'all')
-        
-        if chart_type == 'retractions_timeline':
-            data = self._get_retractions_timeline_data(time_filter)
-        elif chart_type == 'citation_heatmap':
-            data = self._get_citation_heatmap_data(time_filter)
-        elif chart_type == 'journal_bubble':
-            data = self._get_journal_bubble_data(time_filter)
-        elif chart_type == 'subject_distribution':
-            data = self._get_subject_distribution_data(time_filter)
-        else:
-            data = {'error': 'Unknown chart type'}
+        try:
+            # Get and validate filter parameters
+            chart_type = request.GET.get('chart', 'overview')
+            time_filter = request.GET.get('time_filter', 'all')
+            format_type = request.GET.get('format', 'json')
             
-        return JsonResponse(data)
+            # Validate chart type
+            valid_chart_types = ['overview', 'retractions_timeline', 'citation_heatmap', 'journal_bubble', 'subject_distribution']
+            if chart_type not in valid_chart_types:
+                return api_error_response(
+                    f"Invalid chart type. Must be one of: {', '.join(valid_chart_types)}", 
+                    400, "INVALID_CHART_TYPE"
+                )
+            
+            # Validate format
+            valid_formats = ['json', 'csv']
+            if format_type not in valid_formats:
+                return api_error_response(
+                    f"Invalid format. Must be one of: {', '.join(valid_formats)}", 
+                    400, "INVALID_FORMAT"
+                )
+            
+            # Route to appropriate data method
+            if chart_type == 'retractions_timeline':
+                data = self._get_retractions_timeline_data(time_filter)
+            elif chart_type == 'citation_heatmap':
+                data = self._get_citation_heatmap_data(time_filter)
+            elif chart_type == 'journal_bubble':
+                data = self._get_journal_bubble_data(time_filter)
+            elif chart_type == 'subject_distribution':
+                data = self._get_subject_distribution_data(time_filter)
+            else:  # overview
+                data = self._get_overview_data(time_filter)
+                
+            return api_success_response(data)
+            
+        except Exception as e:
+            logger.error(f"Analytics data API error: {e}")
+            return api_error_response("Internal server error", 500, "INTERNAL_ERROR")
+    
+    def _get_overview_data(self, time_filter):
+        """Get overview analytics data"""
+        # Use cached analytics if available
+        from .utils.cache_utils import get_analytics_overview
+        return get_analytics_overview()
     
     def _get_retractions_timeline_data(self, time_filter):
-        """Get retraction timeline data with time filtering."""
-        
+        """Get retraction timeline data with time filtering"""
         papers_qs = RetractedPaper.objects.filter(retraction_date__isnull=False)
         
         if time_filter != 'all':
@@ -1878,247 +2404,98 @@ class AnalyticsDataAPIView(View):
         ).order_by('year')
         
         return {
+            'chart_type': 'retractions_timeline',
             'labels': [item['year'].year for item in timeline_data],
-            'data': [item['count'] for item in timeline_data]
+            'data': [item['count'] for item in timeline_data],
+            'total_retractions': papers_qs.count(),
+            'time_filter': time_filter
         }
     
     def _get_citation_heatmap_data(self, time_filter):
-        """Get citation heatmap data."""
+        """Get citation heatmap data with proper database queries"""
         import calendar
         
         heatmap_data = []
         for month in range(1, 13):
             month_data = []
-            for bucket in [30, 90, 180, 365, 730, 9999]:
-                if bucket == 9999:
+            buckets = [
+                ('0-30 days', 0, 30),
+                ('30-90 days', 30, 90),
+                ('90-180 days', 90, 180),
+                ('180-365 days', 180, 365),
+                ('1-2 years', 365, 730),
+                ('2+ years', 730, 999999)
+            ]
+            
+            for bucket_name, min_days, max_days in buckets:
+                if max_days == 999999:
                     count = Citation.objects.filter(
                         retracted_paper__retraction_date__month=month,
-                        days_after_retraction__gt=730
+                        days_after_retraction__gt=min_days
                     ).count()
                 else:
-                    prev_bucket = 0 if bucket == 30 else [30, 90, 180, 365, 730][month_data.__len__()]
                     count = Citation.objects.filter(
                         retracted_paper__retraction_date__month=month,
-                        days_after_retraction__gt=prev_bucket,
-                        days_after_retraction__lte=bucket
+                        days_after_retraction__gt=min_days,
+                        days_after_retraction__lte=max_days
                     ).count()
                 month_data.append(count)
+            
             heatmap_data.append({
                 'month': calendar.month_name[month],
                 'data': month_data
             })
         
         return {
+            'chart_type': 'citation_heatmap',
             'months': [item['month'] for item in heatmap_data],
-            'buckets': ['0-30 days', '30-90 days', '90-180 days', '180-365 days', '1-2 years', '2+ years'],
-            'data': [item['data'] for item in heatmap_data]
+            'buckets': [bucket[0] for bucket in buckets],
+            'data': [item['data'] for item in heatmap_data],
+            'total_citations': Citation.objects.filter(days_after_retraction__gt=0).count()
         }
     
     def _get_journal_bubble_data(self, time_filter):
-        """Get journal bubble chart data."""
+        """Get journal bubble chart data"""
         journals = RetractedPaper.objects.values('journal').annotate(
             retraction_count=Count('id'),
-            avg_citations=Avg('total_citations'),
+            avg_citations=Avg('citation_count'),
             post_retraction_citations=Count(
                 'citations', filter=Q(citations__days_after_retraction__gt=0)
             )
         ).filter(
             retraction_count__gte=2,
             journal__isnull=False
+        ).exclude(
+            journal__exact=''
         ).order_by('-post_retraction_citations')[:15]
         
+        bubble_data = []
+        for item in journals:
+            bubble_data.append({
+                'name': item['journal'][:50] + '...' if len(item['journal']) > 50 else item['journal'],
+                'x': item['retraction_count'],
+                'y': item['post_retraction_citations'] or 0,
+                'size': max(5, (item['avg_citations'] or 0) / 5),
+                'full_name': item['journal'],
+                'retraction_count': item['retraction_count'],
+                'avg_citations': round(item['avg_citations'] or 0, 2)
+            })
+        
         return {
-            'journals': [
-                {
-                    'name': item['journal'][:30] + '...' if len(item['journal']) > 30 else item['journal'],
-                    'x': item['retraction_count'],
-                    'y': item['post_retraction_citations'] or 0,
-                    'size': max(5, (item['avg_citations'] or 0) / 5),
-                    'full_name': item['journal']
-                }
-                for item in journals
-            ]
+            'chart_type': 'journal_bubble',
+            'journals': bubble_data,
+            'total_journals': RetractedPaper.objects.values('journal').distinct().count()
         }
     
     def _get_subject_distribution_data(self, time_filter):
-        """Get subject distribution data."""
-        subjects = RetractedPaper.objects.values('subject').annotate(
-            count=Count('id'),
-            post_retraction_citations=Count(
-                'citations', filter=Q(citations__days_after_retraction__gt=0)
-            )
-        ).filter(subject__isnull=False).order_by('-count')[:12]
+        """Get subject distribution data using parsed subjects"""
+        # Use the parsed subjects method from the home view
+        parsed_subjects = self._get_parsed_subjects_with_citations(limit=15)
         
         return {
-            'labels': [item['subject'] for item in subjects],
-            'data': [item['count'] for item in subjects],
-            'post_retraction_data': [item['post_retraction_citations'] for item in subjects]
+            'chart_type': 'subject_distribution',
+            'labels': [item['subject'] for item in parsed_subjects],
+            'data': [item['count'] for item in parsed_subjects],
+            'post_retraction_data': [item['post_retraction_citations'] for item in parsed_subjects],
+            'total_subjects': len(parsed_subjects)
         }
-
-
-def search_autocomplete(request):
-    """AJAX endpoint for search autocomplete"""
-    query = request.GET.get('q', '').strip()
-    if len(query) < 3:
-        return JsonResponse({'suggestions': []})
-    
-    # Search in titles and authors
-    papers = RetractedPaper.objects.filter(
-        Q(title__icontains=query) | Q(author__icontains=query)
-    )[:10]
-    
-    suggestions = []
-    for paper in papers:
-        suggestions.append({
-            'title': paper.title,
-            'author': paper.author or '',
-            'journal': paper.journal or '',
-            'record_id': paper.record_id,
-            'url': paper.get_absolute_url(),
-            'post_retraction_citations': paper.citations.filter(days_after_retraction__gt=0).count()
-        })
-    
-    return JsonResponse({'suggestions': suggestions})
-
-
-def paper_citations_json(request, record_id):
-    """Enhanced AJAX endpoint for paper citations data with post-retraction analysis"""
-    paper = get_object_or_404(RetractedPaper, record_id=record_id)
-    
-    citations = Citation.objects.filter(retracted_paper=paper).select_related('citing_paper')
-    
-    # Group by year with post-retraction breakdown
-    citations_by_year = {}
-    post_retraction_by_year = {}
-    
-    for citation in citations:
-        year = citation.citing_paper.publication_year or 'Unknown'
-        if year not in citations_by_year:
-            citations_by_year[year] = 0
-            post_retraction_by_year[year] = 0
-        
-        citations_by_year[year] += 1
-        if citation.days_after_retraction and citation.days_after_retraction > 0:
-            post_retraction_by_year[year] += 1
-    
-    # Timeline data for post-retraction analysis
-    timeline_data = []
-    post_retraction_timeline = []
-    
-    for citation in citations:
-        citation_data = {
-            'days_after': citation.days_after_retraction,
-            'citing_paper': citation.citing_paper.title,
-            'publication_date': citation.citing_paper.publication_date.isoformat() if citation.citing_paper.publication_date else None,
-            'is_post_retraction': citation.days_after_retraction and citation.days_after_retraction > 0
-        }
-        timeline_data.append(citation_data)
-        
-        if citation.days_after_retraction and citation.days_after_retraction > 0:
-            post_retraction_timeline.append(citation_data)
-    
-    # Post-retraction statistics
-    post_retraction_stats = {
-        'within_30_days': len([c for c in post_retraction_timeline if c['days_after'] <= 30]),
-        'within_1_year': len([c for c in post_retraction_timeline if c['days_after'] <= 365]),
-        'within_2_years': len([c for c in post_retraction_timeline if c['days_after'] <= 730]),
-        'after_2_years': len([c for c in post_retraction_timeline if c['days_after'] > 730]),
-    }
-    
-    return JsonResponse({
-        'citations_by_year': citations_by_year,
-        'post_retraction_by_year': post_retraction_by_year,
-        'timeline_data': timeline_data,
-        'post_retraction_timeline': post_retraction_timeline,
-        'post_retraction_stats': post_retraction_stats,
-        'total_citations': citations.count(),
-        'post_retraction_count': len(post_retraction_timeline)
-    })
-
-
-def post_retraction_analytics_json(request):
-    """AJAX endpoint for post-retraction analytics charts"""
-    
-    # Timeline distribution
-    timeline_stats = Citation.objects.filter(
-        days_after_retraction__gt=0
-    ).aggregate(
-        within_30_days=Count(Case(When(days_after_retraction__lte=30, then=1))),
-        within_6_months=Count(Case(When(days_after_retraction__lte=180, then=1))),
-        within_1_year=Count(Case(When(days_after_retraction__lte=365, then=1))),
-        within_2_years=Count(Case(When(days_after_retraction__lte=730, then=1))),
-        after_2_years=Count(Case(When(days_after_retraction__gt=730, then=1))),
-    )
-    
-    # Top journals with post-retraction citations
-    top_journals = list(RetractedPaper.objects.values('journal').annotate(
-        post_retraction_citations=Count(
-            'citations',
-            filter=Q(citations__days_after_retraction__gt=0)
-        )
-    ).exclude(journal__isnull=True).filter(
-        post_retraction_citations__gt=0
-    ).order_by('-post_retraction_citations')[:10])
-    
-    return JsonResponse({
-        'timeline_stats': timeline_stats,
-        'top_journals': top_journals
-    })
-
-
-def export_data(request):
-    """Enhanced export functionality with post-retraction data"""
-    papers = RetractedPaper.objects.all()
-    
-    data = []
-    for paper in papers:
-        post_retraction_count = paper.citations.filter(days_after_retraction__gt=0).count()
-        data.append({
-            'record_id': paper.record_id,
-            'title': paper.title,
-            'author': paper.author,
-            'journal': paper.journal,
-            'retraction_date': paper.retraction_date.isoformat() if paper.retraction_date else None,
-            'total_citations': paper.citation_count,
-            'post_retraction_citations': post_retraction_count,
-            'post_retraction_percentage': (post_retraction_count / max(paper.citation_count, 1)) * 100,
-            'reason': paper.reason
-        })
-    
-    return JsonResponse({'papers': data})
-
-
-@cache_page(60)  # Cache for 1 minute
-def analytics_data_ajax(request):
-    """AJAX endpoint for real-time analytics data updates"""
-    
-    # Get basic stats
-    stats = RetractedPaper.objects.aggregate(
-        total_papers=Count('id'),
-        total_citations=Count('citations'),
-        post_retraction_citations=Count('citations', filter=Q(citations__days_after_retraction__gt=0)),
-        recent_retractions=Count('id', filter=Q(retraction_date__gte=timezone.now() - timedelta(days=30)))
-    )
-    
-    # Get recent activity (last 24 hours)
-    recent_imports = DataImportLog.objects.filter(
-        start_time__gte=timezone.now() - timedelta(hours=24)
-    ).aggregate(
-        total_imports=Count('id'),
-        records_imported=Sum('records_created')
-    )
-    
-    # Quick citation patterns
-    citation_patterns = Citation.objects.aggregate(
-        post_retraction=Count('id', filter=Q(days_after_retraction__gt=0)),
-        pre_retraction=Count('id', filter=Q(days_after_retraction__lt=0)),
-        same_day=Count('id', filter=Q(days_after_retraction=0))
-    )
-    
-    return JsonResponse({
-        'stats': stats,
-        'recent_activity': recent_imports,
-        'citation_patterns': citation_patterns,
-        'last_updated': timezone.now().isoformat(),
-        'status': 'success'
-    })

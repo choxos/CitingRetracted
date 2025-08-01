@@ -223,6 +223,57 @@ class RetractedPaper(models.Model):
         return cleaned_authors
     
     @property
+    def country_list(self):
+        """Parse multiple countries separated by semicolons"""
+        if not self.country:
+            return []
+        
+        # Split by semicolon and clean up each country
+        countries = [country.strip() for country in self.country.split(';') if country.strip()]
+        
+        # Filter out invalid entries
+        invalid_entries = {'', 'Unknown', 'unknown', 'N/A', 'n/a', 'None', 'null', 'NA'}
+        cleaned_countries = []
+        for country in countries:
+            if country and country not in invalid_entries and len(country) > 1:
+                cleaned_countries.append(country)
+        
+        return cleaned_countries
+    
+    @property
+    def institution_list(self):
+        """Parse multiple institutions separated by semicolons"""
+        if not self.institution:
+            return []
+        
+        # Split by semicolon and clean up each institution
+        institutions = [inst.strip() for inst in self.institution.split(';') if inst.strip()]
+        
+        # Filter out invalid entries
+        invalid_entries = {
+            '', 'Unknown', 'unknown', 'N/A', 'n/a', 'None', 'null', 'NA',
+            'unavailable', 'Unavailable', 'not available', 'Not Available'
+        }
+        cleaned_institutions = []
+        for institution in institutions:
+            if institution and institution not in invalid_entries and len(institution) > 2:
+                cleaned_institutions.append(institution)
+        
+        return cleaned_institutions
+    
+    @property
+    def primary_country(self):
+        """Get the first/primary country from the country list"""
+        countries = self.country_list
+        return countries[0] if countries else ''
+    
+    @property
+    def primary_institution(self):
+        """Get the first/primary institution from the institution list"""
+        institutions = self.institution_list
+        return institutions[0] if institutions else ''
+
+    @property
     def subject_list(self):
         """Parse multiple subjects separated by semicolons"""
         if not self.subject:
@@ -356,29 +407,6 @@ class RetractedPaper(models.Model):
             return ""
         
         return ", ".join(subjects)
-    
-    @property
-    def primary_country(self):
-        """Extract primary country from country field."""
-        if self.country:
-            # Handle multiple countries separated by semicolons
-            countries = [c.strip() for c in self.country.split(';')]
-            return countries[0] if countries else ''
-        return ''
-    
-    @property
-    def primary_subject(self):
-        """Extract primary subject from subject field."""
-        if self.subject:
-            # Handle multiple subjects separated by semicolons
-            subjects = [s.strip() for s in self.subject.split(';')]
-            # Remove prefix codes like (PHY), (B/T) etc.
-            if subjects:
-                subject = subjects[0]
-                if ')' in subject:
-                    subject = subject.split(')', 1)[1].strip()
-                return subject
-        return ''
     
     @property
     def is_recent_retraction(self):

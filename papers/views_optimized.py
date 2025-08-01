@@ -9,6 +9,8 @@ from django.db.models import Q, Count, Sum, Avg, Prefetch
 from django.core.cache import cache
 from django.conf import settings
 import json
+from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
 
 from .models import RetractedPaper, Citation, CitingPaper
 from .utils.cache_utils import (
@@ -366,15 +368,70 @@ def analytics_api(request):
     return JsonResponse(data, safe=False)
 
 @require_http_methods(["POST"])
+@csrf_exempt
 def warm_cache(request):
-    """Endpoint to warm up caches"""
-    from .utils.cache_utils import CacheWarmer
-    
-    cache_type = request.POST.get('type', 'all')
-    
-    if cache_type == 'analytics':
-        CacheWarmer.warm_analytics_cache()
-    else:
-        CacheWarmer.warm_all_caches()
-    
-    return JsonResponse({'status': 'success', 'message': 'Cache warmed successfully'}) 
+    """Enhanced endpoint to warm up caches with proper error handling"""
+    try:
+        # Parse JSON body
+        try:
+            if request.content_type == 'application/json':
+                data = json.loads(request.body)
+                cache_type = data.get('type', 'all')
+            else:
+                cache_type = request.POST.get('type', 'all')
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'status': 'error',
+                'error': {
+                    'code': 'INVALID_JSON',
+                    'message': 'Invalid JSON in request body'
+                }
+            }, status=400)
+        
+        # Validate cache type
+        valid_cache_types = ['all', 'analytics']
+        if cache_type not in valid_cache_types:
+            return JsonResponse({
+                'status': 'error',
+                'error': {
+                    'code': 'INVALID_CACHE_TYPE',
+                    'message': f'Invalid cache type. Must be one of: {", ".join(valid_cache_types)}'
+                }
+            }, status=400)
+        
+        # Warm up caches
+        if cache_type == 'analytics':
+            # Warm analytics-specific caches
+            from .utils.cache_utils import get_analytics_overview, get_retraction_trends, get_citation_analysis
+            
+            get_analytics_overview()
+            get_retraction_trends()
+            get_citation_analysis()
+            
+            message = 'Analytics cache warmed successfully'
+        else:
+            # Warm all caches
+            from .utils.cache_utils import get_analytics_overview, get_retraction_trends, get_citation_analysis, get_subject_analysis
+            
+            get_analytics_overview()
+            get_retraction_trends()  
+            get_citation_analysis()
+            get_subject_analysis()
+            
+            message = 'All caches warmed successfully'
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': message,
+            'cache_type': cache_type,
+            'timestamp': timezone.now().isoformat()
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'error': {
+                'code': 'INTERNAL_ERROR',
+                'message': 'Internal server error while warming cache'
+            }
+        }, status=500) 

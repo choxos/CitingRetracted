@@ -28,16 +28,42 @@ chmod +x prct_auto_updater.py
 ### Step 2: Test the Automation Script
 
 ```bash
-# Test the complete automation process
-sudo -u xeradb bash -c "
+# Test the complete automation process (standard mode)
+sudo -u xeradb bash -c '
 cd /var/www/prct
-export SECRET_KEY='$(grep SECRET_KEY .env | cut -d= -f2)'
-export DATABASE_PASSWORD='$(grep DATABASE_PASSWORD .env | cut -d= -f2)'
+export SECRET_KEY="$(grep SECRET_KEY .env | cut -d= -f2)"
+export DATABASE_PASSWORD="$(grep DATABASE_PASSWORD .env | cut -d= -f2)"
 export DJANGO_SETTINGS_MODULE=citing_retracted.settings_production
 
 # Run a test with limited records
 ./venv/bin/python prct_auto_updater.py --citation-limit 50 --import-limit 1000
-"
+'
+
+# Test with real-time citation updates (continuous mode)
+sudo -u xeradb bash -c '
+cd /var/www/prct
+export SECRET_KEY="$(grep SECRET_KEY .env | cut -d= -f2)"
+export DATABASE_PASSWORD="$(grep DATABASE_PASSWORD .env | cut -d= -f2)"
+export DJANGO_SETTINGS_MODULE=citing_retracted.settings_production
+
+# Run with continuous citation fetching for real-time website updates
+./venv/bin/python prct_auto_updater.py --citation-limit 50 --import-limit 1000 --continuous-citations
+'
+```
+
+**Alternative (if above still has issues):**
+```bash
+# Step-by-step approach (standard mode)
+cd /var/www/prct
+source .env
+export DJANGO_SETTINGS_MODULE=citing_retracted.settings_production
+sudo -u xeradb -E ./venv/bin/python prct_auto_updater.py --citation-limit 50 --import-limit 1000
+
+# Step-by-step approach (continuous mode)
+cd /var/www/prct
+source .env
+export DJANGO_SETTINGS_MODULE=citing_retracted.settings_production
+sudo -u xeradb -E ./venv/bin/python prct_auto_updater.py --citation-limit 50 --import-limit 1000 --continuous-citations
 ```
 
 ### Step 3: Set Up Daily Automation
@@ -46,9 +72,14 @@ export DJANGO_SETTINGS_MODULE=citing_retracted.settings_production
 # Create crontab entry for daily updates
 sudo -u xeradb crontab -e
 
-# Add this line for daily updates at 6:00 AM
-0 6 * * * cd /var/www/prct && ./venv/bin/python prct_auto_updater.py --citation-limit 100 >> logs/cron.log 2>&1
+# Option 1: Standard daily updates at 6:00 AM (updates website at the end)
+0 6 * * * cd /var/www/prct && source .env && export DJANGO_SETTINGS_MODULE=citing_retracted.settings_production && ./venv/bin/python prct_auto_updater.py --citation-limit 100 >> logs/cron.log 2>&1
+
+# Option 2: Real-time daily updates at 6:00 AM (updates website continuously)
+0 6 * * * cd /var/www/prct && source .env && export DJANGO_SETTINGS_MODULE=citing_retracted.settings_production && ./venv/bin/python prct_auto_updater.py --citation-limit 100 --continuous-citations >> logs/cron.log 2>&1
 ```
+
+**Recommendation:** Use **Option 2 (continuous)** for better user experience as citations appear on the website in real-time during the update process.
 
 ## 🔧 Automation Script Features
 
@@ -69,6 +100,13 @@ sudo -u xeradb crontab -e
 - Only processes records with Record ID higher than existing maximum
 - Eliminates duplicate key violations
 - Dramatically faster imports for incremental updates
+
+### **✨ NEW: Real-Time Citation Updates**
+- **`--continuous-citations` flag enables real-time website updates**
+- Citations appear on the website **immediately** as they're being fetched
+- Smart cache clearing every 20 papers for instant visibility
+- Progress tracking for each paper processed
+- Better error recovery - partial progress is saved
 
 ## 📊 Script Usage Options
 
