@@ -250,7 +250,7 @@ EOF
 sudo -u xeradb bash -c "
 cd /var/www/prct
 export SECRET_KEY='$(grep SECRET_KEY .env | cut -d= -f2)'
-export DB_PASSWORD='$(grep DB_PASSWORD .env | cut -d= -f2)'
+export DATABASE_PASSWORD='$(grep DATABASE_PASSWORD .env | cut -d= -f2)'
 export DJANGO_SETTINGS_MODULE=citing_retracted.production_settings
 ./venv/bin/python manage.py migrate
 "

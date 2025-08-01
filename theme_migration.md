@@ -8,4 +8,8 @@ In the shared_theme folder, you can find the specifics for the PRCT project in c
 
 3. After that, apply the theme to the PRCT project. Please note that I want the PRCT project to be as colorful as the current one. But remain professional and minimalistic.
 
-4. Commit 
+4. Commit the changes and push them to the remote repository.
+
+5. Then, run it locally to make sure everything is working fine.
+
+Let's GO!
