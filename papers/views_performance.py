@@ -45,75 +45,102 @@ class PerformanceAnalyticsView(View):
         
         return context
     
+    def _get_unique_retracted_papers(self):
+        """Get unique retracted papers based on PMID/DOI (similar to model method logic)"""
+        # Get all retracted papers
+        retracted_papers = RetractedPaper.objects.filter(retraction_nature__iexact='Retraction')
+        
+        # Filter to unique papers using same logic as model method
+        seen_identifiers = set()
+        unique_papers = []
+        
+        for paper in retracted_papers:
+            # Create a unique identifier for this paper
+            identifier = None
+            if paper.original_paper_pubmed_id:
+                identifier = f"pmid:{paper.original_paper_pubmed_id}"
+            elif paper.original_paper_doi:
+                identifier = f"doi:{paper.original_paper_doi}"
+            else:
+                identifier = f"record:{paper.record_id}"  # Fallback to record ID
+            
+            # Only include if we haven't seen this paper before
+            if identifier not in seen_identifiers:
+                seen_identifiers.add(identifier)
+                unique_papers.append(paper)
+        
+        return unique_papers
+    
     def _get_cached_basic_stats(self):
         """Basic statistics with short-term caching"""
-        cache_key = 'analytics_basic_stats_v3_retracted_only'
+        cache_key = 'analytics_basic_stats_v4_unique_retracted_only'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
             logger.info("Cache miss for basic stats - generating...")
             
-            # Single optimized query for all basic statistics (only retracted papers)
-            basic_stats = RetractedPaper.objects.filter(
-                retraction_nature__iexact='Retraction'
-            ).aggregate(
-                total_papers=Count('id'),
-                recent_retractions=Count('id', filter=Q(
-                    retraction_date__gte=timezone.now().date() - timedelta(days=365)
-                )),
-                avg_citations_per_paper=Avg('citation_count'),
-                max_citations=Max('citation_count'),
-                total_citation_sum=Sum('citation_count')
-            )
+            # Get unique retracted papers using the model method
+            unique_retracted_papers = self._get_unique_retracted_papers()
             
-            # Calculate additional statistics (SD, Median, Quartiles) using Django ORM for compatibility
+            # Calculate statistics from unique papers
+            total_papers = len(unique_retracted_papers)
+            recent_retractions = len([p for p in unique_retracted_papers 
+                                    if p.retraction_date and p.retraction_date >= timezone.now().date() - timedelta(days=365)])
+            
+            # Collect citation counts for statistics
+            citation_counts = [p.citation_count for p in unique_retracted_papers if p.citation_count is not None]
+            
+            basic_stats = {
+                'total_papers': total_papers,
+                'recent_retractions': recent_retractions,
+                'total_citation_sum': sum(citation_counts) if citation_counts else 0,
+                'avg_citations_per_paper': sum(citation_counts) / len(citation_counts) if citation_counts else 0,
+                'max_citations': max(citation_counts) if citation_counts else 0,
+            }
+            
+            # Calculate additional statistics (SD, Median, Quartiles) from unique papers
             from django.db.models import StdDev
+            import statistics
             
-            # Get all citation counts for percentile calculation (only retracted papers)
-            citation_counts = list(RetractedPaper.objects.filter(
-                retraction_nature__iexact='Retraction'
-            ).exclude(
-                citation_count__isnull=True
-            ).values_list('citation_count', flat=True).order_by('citation_count'))
+            # Use citation counts from unique papers (already calculated above)
+            citation_counts.sort()  # Sort for percentile calculation
             
             if citation_counts:
                 n = len(citation_counts)
                 
-                # Calculate percentiles manually
-                q1_index = max(0, int(n * 0.25) - 1)
-                median_index = max(0, int(n * 0.5) - 1)
-                q3_index = max(0, int(n * 0.75) - 1)
-                
-                # Use Django ORM for mean and standard deviation (only retracted papers)
-                stats = RetractedPaper.objects.filter(
-                    retraction_nature__iexact='Retraction'
-                ).exclude(
-                    citation_count__isnull=True
-                ).aggregate(
-                    mean_citations=Avg('citation_count'),
-                    std_citations=StdDev('citation_count')
-                )
+                # Calculate percentiles using statistics module for accuracy
+                try:
+                    mean_citations = statistics.mean(citation_counts)
+                    std_citations = statistics.stdev(citation_counts) if len(citation_counts) > 1 else 0
+                    median_citations = statistics.median(citation_counts)
+                    q1_citations = statistics.quantiles(citation_counts, n=4)[0] if len(citation_counts) >= 4 else citation_counts[0]
+                    q3_citations = statistics.quantiles(citation_counts, n=4)[2] if len(citation_counts) >= 4 else citation_counts[-1]
+                except statistics.StatisticsError:
+                    # Fallback for edge cases
+                    mean_citations = sum(citation_counts) / len(citation_counts)
+                    std_citations = 0
+                    median_citations = citation_counts[len(citation_counts)//2]
+                    q1_citations = citation_counts[0]
+                    q3_citations = citation_counts[-1]
                 
                 basic_stats.update({
-                    'mean_citations': float(stats['mean_citations']) if stats['mean_citations'] else 0,
-                    'std_citations': float(stats['std_citations']) if stats['std_citations'] else 0,
-                    'q1_citations': float(citation_counts[q1_index]) if q1_index < len(citation_counts) else 0,
-                    'median_citations': float(citation_counts[median_index]) if median_index < len(citation_counts) else 0,
-                    'q3_citations': float(citation_counts[q3_index]) if q3_index < len(citation_counts) else 0,
+                    'mean_citations': float(mean_citations),
+                    'std_citations': float(std_citations),
+                    'q1_citations': float(q1_citations),
+                    'median_citations': float(median_citations),
+                    'q3_citations': float(q3_citations),
                     'total_papers_with_citations': n,
                     # Template expects these field names
-                    'avg_citations_per_paper': float(stats['mean_citations']) if stats['mean_citations'] else 0,
-                    'stdev_citations_per_paper': float(stats['std_citations']) if stats['std_citations'] else 0,
-                    'median_citations_per_paper': float(citation_counts[median_index]) if median_index < len(citation_counts) else 0,
-                    'q1_citations_per_paper': float(citation_counts[q1_index]) if q1_index < len(citation_counts) else 0,
-                    'q3_citations_per_paper': float(citation_counts[q3_index]) if q3_index < len(citation_counts) else 0
+                    'stdev_citations_per_paper': float(std_citations),
+                    'median_citations_per_paper': float(median_citations),
+                    'q1_citations_per_paper': float(q1_citations),
+                    'q3_citations_per_paper': float(q3_citations)
                 })
             else:
                 basic_stats.update({
                     'mean_citations': 0, 'std_citations': 0, 'q1_citations': 0,
                     'median_citations': 0, 'q3_citations': 0, 'total_papers_with_citations': 0,
                     # Template expects these field names
-                    'avg_citations_per_paper': 0,
                     'stdev_citations_per_paper': 0,
                     'median_citations_per_paper': 0,
                     'q1_citations_per_paper': 0,
@@ -182,27 +209,30 @@ class PerformanceAnalyticsView(View):
     
     def _get_cached_chart_data(self):
         """Chart data with medium-term caching"""
-        cache_key = 'analytics_chart_data_v3_retracted_only'
+        cache_key = 'analytics_chart_data_v4_unique_retracted_only'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
             logger.info("Cache miss for chart data - generating...")
             
-            # Retraction trends (optimized with single query, only retracted papers)
-            retraction_trends_raw = list(RetractedPaper.objects.filter(
-                retraction_nature__iexact='Retraction',
-                retraction_date__isnull=False
-            ).annotate(
-                year=TruncYear('retraction_date')
-            ).values('year').annotate(
-                count=Count('id')
-            ).order_by('year').values('year', 'count'))
+            # Get unique retracted papers for all chart calculations
+            unique_retracted_papers = self._get_unique_retracted_papers()
             
-            retraction_trends = [(item['year'].year, item['count']) for item in retraction_trends_raw]
+            # Retraction trends by year (from unique papers)
+            from collections import defaultdict
+            retraction_trends_by_year = defaultdict(int)
+            for paper in unique_retracted_papers:
+                if paper.retraction_date:
+                    year = paper.retraction_date.year
+                    retraction_trends_by_year[year] += 1
             
-            # Citation analysis (optimized with single query, only citations to retracted papers)
+            retraction_trends = [(year, count) for year, count in sorted(retraction_trends_by_year.items())]
+            
+            
+            # Citation analysis by year (only citations to unique retracted papers)
+            unique_paper_ids = [p.record_id for p in unique_retracted_papers]
             citation_analysis_raw = list(Citation.objects.filter(
-                retracted_paper__retraction_nature__iexact='Retraction',
+                retracted_paper__record_id__in=unique_paper_ids,
                 citing_paper__publication_date__isnull=False
             ).annotate(
                 year=TruncYear('citing_paper__publication_date')
@@ -224,16 +254,17 @@ class PerformanceAnalyticsView(View):
                 for item in citation_analysis_raw
             ]
             
-            # Subject distribution (optimized, only retracted papers)
-            subject_data = list(RetractedPaper.objects.filter(
-                retraction_nature__iexact='Retraction'
-            ).exclude(
-                subject__isnull=True
-            ).exclude(
-                subject__exact=''
-            ).values('subject').annotate(
-                count=Count('id')
-            ).order_by('-count')[:10].values_list('subject', 'count'))
+            # Subject distribution (from unique retracted papers)
+            subject_counts = defaultdict(int)
+            for paper in unique_retracted_papers:
+                if paper.subject:
+                    # Handle semicolon-separated subjects
+                    subjects = [s.strip() for s in paper.subject.split(';') if s.strip()]
+                    for subject in subjects:
+                        subject_counts[subject] += 1
+            
+            # Get top 10 subjects
+            subject_data = sorted(subject_counts.items(), key=lambda x: x[1], reverse=True)[:10]
             
             # Generate retraction_comparison from citation_analysis data
             retraction_comparison = [
@@ -267,12 +298,33 @@ class PerformanceAnalyticsView(View):
         """Get top subjects by parsing semicolon-separated subject strings for network visualization"""
         from collections import Counter
         
-        # Get all papers with subjects (only retracted papers)
-        papers_with_subjects = RetractedPaper.objects.filter(
+        # Get all papers with subjects (only unique retracted papers)
+        unique_retracted_papers = RetractedPaper.objects.filter(
             retraction_nature__iexact='Retraction'
         ).exclude(
             Q(subject__isnull=True) | Q(subject__exact='')
-        ).values('subject', 'country', 'journal')
+        )
+        
+        # Filter to unique papers using same logic as helper method
+        seen_identifiers = set()
+        papers_with_subjects = []
+        
+        for paper in unique_retracted_papers:
+            identifier = None
+            if paper.original_paper_pubmed_id:
+                identifier = f"pmid:{paper.original_paper_pubmed_id}"
+            elif paper.original_paper_doi:
+                identifier = f"doi:{paper.original_paper_doi}"
+            else:
+                identifier = f"record:{paper.record_id}"
+            
+            if identifier not in seen_identifiers:
+                seen_identifiers.add(identifier)
+                papers_with_subjects.append({
+                    'subject': paper.subject,
+                    'country': paper.country,
+                    'journal': paper.journal
+                })
         
         # Parse and count individual subjects with additional stats
         subject_data = {}
@@ -324,12 +376,32 @@ class PerformanceAnalyticsView(View):
         """Get top countries by parsing semicolon-separated country strings for network visualization"""
         from collections import Counter
         
-        # Get all papers with countries (only retracted papers)
-        papers_with_countries = RetractedPaper.objects.filter(
+        # Get all papers with countries (only unique retracted papers)
+        unique_retracted_papers = RetractedPaper.objects.filter(
             retraction_nature__iexact='Retraction'
         ).exclude(
             Q(country__isnull=True) | Q(country__exact='')
-        ).values('country', 'subject')
+        )
+        
+        # Filter to unique papers using same logic as helper method
+        seen_identifiers = set()
+        papers_with_countries = []
+        
+        for paper in unique_retracted_papers:
+            identifier = None
+            if paper.original_paper_pubmed_id:
+                identifier = f"pmid:{paper.original_paper_pubmed_id}"
+            elif paper.original_paper_doi:
+                identifier = f"doi:{paper.original_paper_doi}"
+            else:
+                identifier = f"record:{paper.record_id}"
+            
+            if identifier not in seen_identifiers:
+                seen_identifiers.add(identifier)
+                papers_with_countries.append({
+                    'country': paper.country,
+                    'subject': paper.subject
+                })
         
         # Parse and count individual countries with additional stats
         country_data = {}
@@ -369,15 +441,19 @@ class PerformanceAnalyticsView(View):
 
     def _get_cached_complex_data(self):
         """Complex analytics with long-term caching"""
-        cache_key = 'analytics_complex_data_v3_retracted_only'
+        cache_key = 'analytics_complex_data_v4_unique_retracted_only'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
             logger.info("Cache miss for complex data - generating...")
             
-            # Problematic papers (pre-computed and cached, only retracted papers)
+            # Get unique retracted papers for all complex calculations
+            unique_retracted_papers = self._get_unique_retracted_papers()
+            unique_paper_ids = [p.record_id for p in unique_retracted_papers]
+            
+            # Problematic papers (from unique retracted papers only)
             problematic_papers = list(RetractedPaper.objects.filter(
-                retraction_nature__iexact='Retraction'
+                record_id__in=unique_paper_ids
             ).select_related().annotate(
                 post_retraction_count=Count('citations', filter=Q(citations__days_after_retraction__gt=0))
             ).filter(
@@ -386,9 +462,9 @@ class PerformanceAnalyticsView(View):
                 'record_id', 'title', 'journal', 'retraction_date', 'post_retraction_count', 'citation_count'
             ))
             
-            # Journal analysis (optimized, only retracted papers)
+            # Journal analysis (from unique retracted papers)
             journal_data = list(RetractedPaper.objects.filter(
-                retraction_nature__iexact='Retraction'
+                record_id__in=unique_paper_ids
             ).exclude(
                 journal__isnull=True
             ).exclude(
@@ -400,9 +476,9 @@ class PerformanceAnalyticsView(View):
                 'journal', 'retraction_count', 'avg_citations'
             ))
             
-            # Country analysis (simplified and cached, only retracted papers)
+            # Country analysis (from unique retracted papers)
             country_data = list(RetractedPaper.objects.filter(
-                retraction_nature__iexact='Retraction'
+                record_id__in=unique_paper_ids
             ).exclude(
                 country__isnull=True
             ).exclude(
@@ -417,9 +493,9 @@ class PerformanceAnalyticsView(View):
             # Generate missing template variables with proper data structures
             import math
             
-            # Citation timing distribution with REAL data (only citations to retracted papers)
+            # Citation timing distribution (only citations to unique retracted papers)
             timing_data = Citation.objects.filter(
-                retracted_paper__retraction_nature__iexact='Retraction',
+                retracted_paper__record_id__in=unique_paper_ids,
                 days_after_retraction__isnull=False
             ).aggregate(
                 pre_retraction=Count('id', filter=Q(days_after_retraction__lt=0)),
@@ -452,16 +528,16 @@ class PerformanceAnalyticsView(View):
                 
                 for i, bucket in enumerate(buckets):
                     if bucket == 9999:
-                        # 2+ years after retraction (only citations to retracted papers)
+                        # 2+ years after retraction (only citations to unique retracted papers)
                         count = Citation.objects.filter(
-                            retracted_paper__retraction_nature__iexact='Retraction',
+                            retracted_paper__record_id__in=unique_paper_ids,
                             retracted_paper__retraction_date__month=month,
                             days_after_retraction__gt=730
                         ).count()
                     else:
-                        # Time buckets: 0-30, 30-90, 90-180, 180-365, 365-730 days (only citations to retracted papers)
+                        # Time buckets: 0-30, 30-90, 90-180, 180-365, 365-730 days (only citations to unique retracted papers)
                         count = Citation.objects.filter(
-                            retracted_paper__retraction_nature__iexact='Retraction',
+                            retracted_paper__record_id__in=unique_paper_ids,
                             retracted_paper__retraction_date__month=month,
                             days_after_retraction__gt=prev_bucket,
                             days_after_retraction__lte=bucket
@@ -493,9 +569,9 @@ class PerformanceAnalyticsView(View):
                 if iso_code and retraction_count > 0:
                     log_value = math.log10(max(retraction_count, 1))
                     
-                    # Get additional country statistics (only retracted papers)
+                    # Get additional country statistics (only unique retracted papers)
                     country_stats = RetractedPaper.objects.filter(
-                        retraction_nature__iexact='Retraction',
+                        record_id__in=unique_paper_ids,
                         country=country_name
                     ).aggregate(
                         post_retraction_citations=Count('citations', filter=Q(citations__days_after_retraction__gt=0)),
@@ -524,9 +600,9 @@ class PerformanceAnalyticsView(View):
             
             logger.info(f"Generated world map data for {len(world_map_data)} countries")
             
-            # Article type data with actual database query (only retracted papers)
+            # Article type data (from unique retracted papers)
             article_type_data = list(RetractedPaper.objects.filter(
-                retraction_nature__iexact='Retraction'
+                record_id__in=unique_paper_ids
             ).exclude(
                 article_type__isnull=True
             ).exclude(
@@ -545,7 +621,7 @@ class PerformanceAnalyticsView(View):
                     
                 if 'document_type' in columns:
                     article_type_data = list(RetractedPaper.objects.filter(
-                        retraction_nature__iexact='Retraction'
+                        record_id__in=unique_paper_ids
                     ).exclude(
                         document_type__isnull=True
                     ).exclude(
@@ -602,9 +678,9 @@ class PerformanceAnalyticsView(View):
             }
             
             # Network data with REAL database relationships for meaningful visualization
-            # Get top retracted papers with most post-retraction citations (only retracted papers)
+            # Get top retracted papers with most post-retraction citations (only unique retracted papers)
             top_retracted = list(RetractedPaper.objects.filter(
-                retraction_nature__iexact='Retraction'
+                record_id__in=unique_paper_ids
             ).annotate(
                 post_retraction_count=Count('citations', filter=Q(citations__days_after_retraction__gt=0))
             ).filter(
@@ -642,7 +718,6 @@ class PerformanceAnalyticsView(View):
             if top_retracted:
                 retracted_ids = [p['record_id'] for p in top_retracted]
                 citations = list(Citation.objects.filter(
-                    retracted_paper__retraction_nature__iexact='Retraction',
                     retracted_paper__record_id__in=retracted_ids,
                     citing_paper__isnull=False
                 ).select_related('citing_paper', 'retracted_paper').order_by(
@@ -731,9 +806,9 @@ class PerformanceAnalyticsView(View):
             # Get top countries with proper parsing
             top_countries = self._get_parsed_countries_for_network(limit=12)
             
-            # Get top journals (only retracted papers)
+            # Get top journals (only unique retracted papers)
             top_journals = list(RetractedPaper.objects.filter(
-                retraction_nature__iexact='Retraction'
+                record_id__in=unique_paper_ids
             ).values('journal').annotate(
                 paper_count=Count('id'),
                 subject_count=Count('subject', distinct=True),
@@ -793,9 +868,9 @@ class PerformanceAnalyticsView(View):
                     'layer': 'outer'  # Outer layer
                 })
             
-            # Create SUBJECT-COUNTRY connections (strong connections, only retracted papers)
+            # Create SUBJECT-COUNTRY connections (strong connections, only unique retracted papers)
             subject_country_links = list(RetractedPaper.objects.filter(
-                retraction_nature__iexact='Retraction'
+                record_id__in=unique_paper_ids
             ).values('subject', 'country').annotate(
                 collaboration_strength=Count('id')
             ).filter(
@@ -818,9 +893,9 @@ class PerformanceAnalyticsView(View):
                         'weight': min(8, max(2, link['collaboration_strength'] / 5))
                     })
             
-            # Create COUNTRY-JOURNAL connections (medium connections, only retracted papers)  
+            # Create COUNTRY-JOURNAL connections (medium connections, only unique retracted papers)  
             country_journal_links = list(RetractedPaper.objects.filter(
-                retraction_nature__iexact='Retraction'
+                record_id__in=unique_paper_ids
             ).values('country', 'journal').annotate(
                 publication_strength=Count('id')
             ).filter(
@@ -843,9 +918,9 @@ class PerformanceAnalyticsView(View):
                         'weight': min(6, max(1, link['publication_strength'] / 8))
                     })
             
-            # Create SUBJECT-JOURNAL direct connections (specialized connections, only retracted papers)
+            # Create SUBJECT-JOURNAL direct connections (specialized connections, only unique retracted papers)
             subject_journal_links = list(RetractedPaper.objects.filter(
-                retraction_nature__iexact='Retraction'
+                record_id__in=unique_paper_ids
             ).values('subject', 'journal').annotate(
                 specialization_strength=Count('id')
             ).filter(
@@ -941,14 +1016,9 @@ class PerformanceAnalyticsView(View):
     
     def _generate_sunburst_data(self):
         """Generate comprehensive sunburst data with three-level hierarchy"""
-        # Get all subjects with proper aggregation (only retracted papers)
-        subject_data = RetractedPaper.objects.filter(
-            retraction_nature__iexact='Retraction'
-        ).exclude(
-            subject__isnull=True
-        ).exclude(
-            subject__exact=''
-        ).values_list('subject', flat=True)
+        # Get all subjects with proper aggregation (only unique retracted papers)
+        unique_retracted_papers = self._get_unique_retracted_papers()
+        subject_data = [p.subject for p in unique_retracted_papers if p.subject]
         
         logger.info(f"Found {len(subject_data)} papers with subjects for sunburst")
         
