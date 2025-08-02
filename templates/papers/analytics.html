@@ -605,9 +605,14 @@
                                                     <br><small class="text-muted">{{ paper.publisher|truncatechars:20 }}</small>
                                                     {% endif %}
                                                 </div>
-                                                {% if paper.country %}
+                                                {% if paper.countries_list %}
                                                 <div class="mt-1">
-                                                    <span class="badge bg-primary me-1">{{ paper.country|truncatechars:30 }}</span>
+                                                    {% for country in paper.countries_list %}
+                                                        <span class="badge bg-primary me-1">{{ country|truncatechars:15 }}</span>
+                                                    {% endfor %}
+                                                    {% if paper.additional_countries > 0 %}
+                                                        <span class="badge bg-secondary">+{{ paper.additional_countries }}</span>
+                                                    {% endif %}
                                                 </div>
                                                 {% endif %}
                                             </td>
@@ -638,10 +643,12 @@
                                                     <div class="progress" style="height: 8px;">
                                                         <div class="progress-bar bg-danger" 
                                                              style="width: {{ paper.citation_rate|safe_floatformat:0 }}%"
-                                                             title="{{ paper.citation_rate|safe_floatformat:1 }}% post-retraction rate">
+                                                             title="{{ paper.citation_impact_text }}">
                                                         </div>
                                                     </div>
-                                                    <small class="text-danger"><strong>{{ paper.citation_rate|safe_floatformat:1 }}% rate</strong></small>
+                                                    <small class="text-danger">
+                                                        <strong>{{ paper.citation_rate_text }}</strong>
+                                                    </small>
                                                 </div>
                                             </td>
                                             <td class="text-center">

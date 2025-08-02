@@ -400,11 +400,11 @@ class PerformanceAnalyticsView(View):
 
     def _get_cached_complex_data(self):
         """OPTIMIZED: Complex analytics with performance improvements and memory optimization"""
-        cache_key = 'analytics_complex_data_v24_parsed_article_types'
+        cache_key = 'analytics_complex_data_v25_parsed_countries_clear_citations'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
-            logger.info("Cache miss for complex data - generating PARSED ARTICLE TYPES version...")
+            logger.info("Cache miss for complex data - generating PARSED COUNTRIES & CLEAR CITATIONS version...")
             
             # OPTIMIZATION: Get total count using same method as main page
             unique_stats = RetractedPaper.get_unique_papers_by_nature()
@@ -430,9 +430,20 @@ class PerformanceAnalyticsView(View):
             # Calculate metrics in Python for compatibility
             problematic_papers = []
             for paper_data in problematic_papers_raw:
-                # Calculate citation rate
-                if paper_data['citation_count'] and paper_data['citation_count'] > 0:
-                    citation_rate = (paper_data['post_retraction_count'] / paper_data['citation_count']) * 100
+                # Parse countries (semicolon-separated like other fields)
+                countries_parsed = []
+                if paper_data['country']:
+                    countries = [c.strip() for c in paper_data['country'].split(';') if c.strip()]
+                    countries_parsed = countries[:3]  # Limit to first 3 countries for display
+                
+                # Calculate citation metrics with clearer naming
+                total_citations = paper_data['citation_count'] or 0
+                post_retraction_citations = paper_data['post_retraction_count']
+                pre_retraction_citations = total_citations - post_retraction_citations
+                
+                # Calculate citation rate (percentage of total citations that came post-retraction)
+                if total_citations > 0:
+                    citation_rate = (post_retraction_citations / total_citations) * 100
                 else:
                     citation_rate = 0
                 
@@ -444,9 +455,25 @@ class PerformanceAnalyticsView(View):
                 else:
                     days_since_retraction = None
                 
-                # Add calculated fields
+                # Add calculated fields with clearer naming
                 paper_data['citation_rate'] = citation_rate
                 paper_data['days_since_retraction'] = days_since_retraction
+                paper_data['countries_list'] = countries_parsed
+                paper_data['primary_country'] = countries_parsed[0] if countries_parsed else 'Unknown'
+                paper_data['additional_countries'] = len(countries_parsed) - 1 if len(countries_parsed) > 1 else 0
+                
+                # Fix field name mismatch - template expects post_retraction_citations
+                paper_data['post_retraction_citations'] = post_retraction_citations
+                paper_data['pre_retraction_citations'] = pre_retraction_citations
+                
+                # Add clearer citation impact description
+                if total_citations > 0:
+                    paper_data['citation_impact_text'] = f"{post_retraction_citations} of {total_citations} citations post-retraction"
+                    paper_data['citation_rate_text'] = f"{citation_rate:.1f}% of citations post-retraction"
+                else:
+                    paper_data['citation_impact_text'] = "No citations recorded"
+                    paper_data['citation_rate_text'] = "0% post-retraction rate"
+                
                 problematic_papers.append(paper_data)
             
             # OPTIMIZATION: Simplified analytics data with limited queries
@@ -667,7 +694,7 @@ class PerformanceAnalyticsView(View):
             
             # Cache for shorter time due to simplified data
             cache.set(cache_key, cached_data, CACHE_TIMEOUT_LONG)
-            logger.info("Parsed article types and corrected statistics cached successfully")
+            logger.info("Parsed countries, clear citation impact, and article types cached successfully")
         
         return cached_data
     
