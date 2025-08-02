@@ -1981,7 +1981,7 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
 }
 
 function initializeNetworkVisualization() {
-    const networkData = {{ network_data|safe }};
+    const networkData = {{ network_data|safe_json }};
     
     // Add debugging output
     console.log('Initializing network with data:', networkData);
@@ -2293,7 +2293,7 @@ function initializeNetworkVisualization() {
 
 function updateNetworkChart() {
     const networkType = document.getElementById('networkTypeFilter').value;
-    const networkData = {{ network_data|safe }};
+    const networkData = {{ network_data|safe_json }};
     
     // Debug the network data structure
     console.log('Network filter request:', networkType, 'with data:', networkData.metadata);
@@ -2687,7 +2687,7 @@ function updateNetworkSize() {
 }
 
 function setNetworkPreset(preset) {
-    const networkData = {{ network_data|safe }};
+    const networkData = {{ network_data|safe_json }};
     const maxSubjects = networkData.available_subjects || 100;
     const maxJournals = networkData.available_journals || 50;
     const maxAuthors = networkData.available_authors || 100;
