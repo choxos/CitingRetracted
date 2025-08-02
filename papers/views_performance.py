@@ -55,28 +55,52 @@ class PerformanceAnalyticsView(View):
         )
     
     def _get_cached_basic_stats(self):
-        """OPTIMIZED: Basic statistics with improved database queries"""
-        cache_key = 'analytics_basic_stats_v6_optimized'
+        """OPTIMIZED: Basic statistics matching main page calculations exactly"""
+        cache_key = 'analytics_basic_stats_v7_exact_match'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
-            logger.info("Cache miss for basic stats - generating with optimizations...")
+            logger.info("Cache miss for basic stats - generating to match main page...")
             
-            # OPTIMIZATION: Single aggregation query instead of multiple queries
-            unique_stats = RetractedPaper.objects.filter(
+            # Use the same method as main page for unique paper counting
+            unique_stats = RetractedPaper.get_unique_papers_by_nature()
+            total_unique_retracted = unique_stats.get('Retraction', 0)
+            
+            # Get basic paper counts - only for retracted papers
+            paper_stats = RetractedPaper.objects.filter(
                 retraction_nature__iexact='Retraction'
             ).aggregate(
-                total_papers=Count('id', distinct=True),
+                total_papers=Count('id'),
+                recent_retractions=Count('id', filter=Q(
+                    retraction_date__gte=timezone.now().date() - timedelta(days=365)
+                )),
+                avg_citations_per_paper=Avg('citation_count'),
                 total_citation_sum=Sum('citation_count'),
-                avg_citations=Avg('citation_count'),
-                max_citations=Max('citation_count'),
-                recent_retractions=Count(
-                    'id',
-                    filter=Q(retraction_date__gte=timezone.now().date() - timedelta(days=365))
-                )
+                max_citations=Max('citation_count')
             )
             
-            # OPTIMIZATION: Single citation query with all needed aggregations
+            # Calculate statistics for papers with citations only (same as main page)
+            citation_counts_nonzero = list(RetractedPaper.objects.filter(
+                citation_count__gt=0,
+                retraction_nature__iexact='Retraction'
+            ).values_list('citation_count', flat=True))
+            
+            if citation_counts_nonzero and len(citation_counts_nonzero) >= 4:
+                import statistics
+                median_citations = statistics.median(citation_counts_nonzero)
+                stdev_citations = statistics.stdev(citation_counts_nonzero)
+                
+                # Calculate Q1 and Q3 for papers WITH citations
+                quantiles = statistics.quantiles(citation_counts_nonzero, n=4)
+                q1_citations = quantiles[0]  # 25th percentile (Q1)
+                q3_citations = quantiles[2]  # 75th percentile (Q3)
+            else:
+                median_citations = 0
+                stdev_citations = 0
+                q1_citations = 0
+                q3_citations = 0
+            
+            # Get citation stats efficiently - only for retracted papers
             citation_stats = Citation.objects.filter(
                 retracted_paper__retraction_nature__iexact='Retraction'
             ).aggregate(
@@ -92,46 +116,35 @@ class PerformanceAnalyticsView(View):
                 after_2_years=Count('id', filter=Q(days_after_retraction__gt=730))
             )
             
-            # OPTIMIZATION: Calculate statistics in database instead of Python
-            citation_stats_detailed = Citation.objects.filter(
-                retracted_paper__retraction_nature__iexact='Retraction',
-                retracted_paper__citation_count__isnull=False
-            ).exclude(
-                retracted_paper__citation_count=0
-            ).aggregate(
-                count=Count('retracted_paper__citation_count'),
-                sum_val=Sum('retracted_paper__citation_count'),
-                avg_val=Avg('retracted_paper__citation_count')
-            )
-            
-            # Use database results
+            # Calculate percentages
             total_citations = citation_stats['total_citations'] or 1
-            total_papers = unique_stats['total_papers'] or 1
+            post_retraction = citation_stats['post_retraction_citations']
             
+            # Build stats exactly like main page
             basic_stats = {
-                'total_papers': unique_stats['total_papers'] or 0,
-                'recent_retractions': unique_stats['recent_retractions'] or 0,
-                'total_citation_sum': unique_stats['total_citation_sum'] or 0,
-                'avg_citations_per_paper': unique_stats['avg_citations'] or 0,
-                'max_citations': unique_stats['max_citations'] or 0,
-                'mean_citations': unique_stats['avg_citations'] or 0,
-                'std_citations': 0,  # Simplified for performance
-                'median_citations': 0,  # Simplified for performance
-                'q1_citations': 0,
-                'q3_citations': 0,
-                'total_papers_with_citations': citation_stats_detailed['count'] or 0,
-                # Template field names
-                'stdev_citations_per_paper': 0,
-                'median_citations_per_paper': 0,
-                'q1_citations_per_paper': 0,
-                'q3_citations_per_paper': 0
+                # Use unique count for total papers (matches main page)
+                'total_papers': total_unique_retracted,
+                'recent_retractions': paper_stats['recent_retractions'] or 0,
+                'total_citation_sum': paper_stats['total_citation_sum'] or 0,
+                'avg_citations_per_paper': paper_stats['avg_citations_per_paper'] or 0,
+                'max_citations': paper_stats['max_citations'] or 0,
+                'mean_citations': paper_stats['avg_citations_per_paper'] or 0,
+                # Proper statistical calculations
+                'std_citations': stdev_citations,
+                'median_citations': median_citations,
+                'q1_citations': q1_citations,
+                'q3_citations': q3_citations,
+                'total_papers_with_citations': len(citation_counts_nonzero),
+                # Template field names (same values)
+                'stdev_citations_per_paper': stdev_citations,
+                'median_citations_per_paper': median_citations,
+                'q1_citations_per_paper': q1_citations,
+                'q3_citations_per_paper': q3_citations
             }
             
             # Add citation statistics
             basic_stats.update(citation_stats)
-            basic_stats['post_retraction_percentage'] = (
-                citation_stats['post_retraction_citations'] / total_citations
-            ) * 100
+            basic_stats['post_retraction_percentage'] = (post_retraction / total_citations) * 100
             
             cached_data = {
                 'stats': basic_stats,
@@ -151,7 +164,9 @@ class PerformanceAnalyticsView(View):
             }
             
             cache.set(cache_key, cached_data, CACHE_TIMEOUT_SHORT)
-            logger.info("Optimized basic stats cached successfully")
+            logger.info(f"Main page compatible stats cached - Unique papers: {total_unique_retracted}, "
+                       f"Median: {median_citations}, SD: {stdev_citations:.1f}, "
+                       f"Q1: {q1_citations}, Q3: {q3_citations}")
         
         return cached_data
     
@@ -385,16 +400,15 @@ class PerformanceAnalyticsView(View):
 
     def _get_cached_complex_data(self):
         """OPTIMIZED: Complex analytics with performance improvements and memory optimization"""
-        cache_key = 'analytics_complex_data_v22_interactive_network'
+        cache_key = 'analytics_complex_data_v23_corrected_stats'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
-            logger.info("Cache miss for complex data - generating INTERACTIVE NETWORK version...")
+            logger.info("Cache miss for complex data - generating CORRECTED STATS version...")
             
-            # OPTIMIZATION: Get total count efficiently
-            total_unique_retracted = RetractedPaper.objects.filter(
-                retraction_nature__iexact='Retraction'
-            ).count()
+            # OPTIMIZATION: Get total count using same method as main page
+            unique_stats = RetractedPaper.get_unique_papers_by_nature()
+            total_unique_retracted = unique_stats.get('Retraction', 0)
             
             logger.info(f"Processing {total_unique_retracted} unique retracted papers")
             
@@ -661,7 +675,7 @@ class PerformanceAnalyticsView(View):
             
             # Cache for shorter time due to simplified data
             cache.set(cache_key, cached_data, CACHE_TIMEOUT_LONG)
-            logger.info("Interactive network with filtering support cached successfully")
+            logger.info("Corrected statistics matching main page cached successfully")
         
         return cached_data
     
