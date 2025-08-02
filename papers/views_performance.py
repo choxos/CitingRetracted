@@ -46,17 +46,17 @@ class PerformanceAnalyticsView(View):
         return context
     
     def _get_unique_retracted_papers(self):
-        """OPTIMIZED: Get unique retracted papers with minimal database hits"""
-        # Use database-level DISTINCT instead of Python processing
+        """OPTIMIZED: Get unique retracted papers with minimal database hits (DOI-only)"""
+        # Use database-level DISTINCT on DOI only instead of Python processing
         return RetractedPaper.objects.filter(
             retraction_nature__iexact='Retraction'
-        ).select_related().distinct('original_paper_doi', 'original_paper_pubmed_id').order_by(
-            'original_paper_doi', 'original_paper_pubmed_id', 'id'
+        ).select_related().distinct('original_paper_doi').order_by(
+            'original_paper_doi', 'id'
         )
     
     def _get_cached_basic_stats(self):
         """OPTIMIZED: Basic statistics matching main page calculations exactly"""
-        cache_key = 'analytics_basic_stats_v7_exact_match'
+        cache_key = 'analytics_basic_stats_v8_doi_only_dedup'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
@@ -172,7 +172,7 @@ class PerformanceAnalyticsView(View):
     
     def _get_cached_chart_data(self):
         """OPTIMIZED: Chart data with improved database queries and caching"""
-        cache_key = 'analytics_chart_data_v8_fixed'
+        cache_key = 'analytics_chart_data_v9_doi_only_dedup'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
@@ -264,21 +264,19 @@ class PerformanceAnalyticsView(View):
             Q(subject__isnull=True) | Q(subject__exact='')
         )
         
-        # Filter to unique papers using same logic as helper method
-        seen_identifiers = set()
+        # Filter to unique papers using DOI-only logic (matches model method)
+        seen_dois = set()
         papers_with_subjects = []
         
         for paper in unique_retracted_papers:
             identifier = None
-            if paper.original_paper_pubmed_id:
-                identifier = f"pmid:{paper.original_paper_pubmed_id}"
-            elif paper.original_paper_doi:
-                identifier = f"doi:{paper.original_paper_doi}"
+            if paper.original_paper_doi and paper.original_paper_doi.strip():
+                identifier = f"doi:{paper.original_paper_doi.strip()}"
             else:
-                identifier = f"record:{paper.record_id}"
+                identifier = f"record:{paper.record_id}"  # Fallback to record ID for papers without DOI
             
-            if identifier not in seen_identifiers:
-                seen_identifiers.add(identifier)
+            if identifier not in seen_dois:
+                seen_dois.add(identifier)
                 papers_with_subjects.append({
                     'subject': paper.subject,
                     'country': paper.country,
@@ -342,21 +340,19 @@ class PerformanceAnalyticsView(View):
             Q(country__isnull=True) | Q(country__exact='')
         )
         
-        # Filter to unique papers using same logic as helper method
-        seen_identifiers = set()
+        # Filter to unique papers using DOI-only logic (matches model method)
+        seen_dois = set()
         papers_with_countries = []
         
         for paper in unique_retracted_papers:
             identifier = None
-            if paper.original_paper_pubmed_id:
-                identifier = f"pmid:{paper.original_paper_pubmed_id}"
-            elif paper.original_paper_doi:
-                identifier = f"doi:{paper.original_paper_doi}"
+            if paper.original_paper_doi and paper.original_paper_doi.strip():
+                identifier = f"doi:{paper.original_paper_doi.strip()}"
             else:
-                identifier = f"record:{paper.record_id}"
+                identifier = f"record:{paper.record_id}"  # Fallback to record ID for papers without DOI
             
-            if identifier not in seen_identifiers:
-                seen_identifiers.add(identifier)
+            if identifier not in seen_dois:
+                seen_dois.add(identifier)
                 papers_with_countries.append({
                     'country': paper.country,
                     'subject': paper.subject
@@ -400,7 +396,7 @@ class PerformanceAnalyticsView(View):
 
     def _get_cached_complex_data(self):
         """OPTIMIZED: Complex analytics with performance improvements and memory optimization"""
-        cache_key = 'analytics_complex_data_v26_increased_network_limits'
+        cache_key = 'analytics_complex_data_v27_doi_only_dedup'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:

@@ -785,27 +785,25 @@ class SearchView(ListView):
         return [reason for reason, count in sorted_reasons[:100]]  # Limit to top 100
     
     def _filter_to_unique_papers(self, queryset):
-        """Filter queryset to unique papers using same logic as homepage"""
+        """Filter queryset to unique papers using DOI-only logic (matches model method)"""
         # Convert queryset to list to work with
         all_papers = list(queryset)
         
-        # Filter to unique papers using same logic as get_unique_papers_by_nature
-        seen_identifiers = set()
+        # Filter to unique papers using DOI-only logic
+        seen_dois = set()
         unique_papers = []
         
         for paper in all_papers:
-            # Create a unique identifier for this paper (same logic as model method)
+            # Create a unique identifier for this paper (DOI only)
             identifier = None
-            if paper.original_paper_pubmed_id:
-                identifier = f"pmid:{paper.original_paper_pubmed_id}"
-            elif paper.original_paper_doi:
-                identifier = f"doi:{paper.original_paper_doi}"
+            if paper.original_paper_doi and paper.original_paper_doi.strip():
+                identifier = f"doi:{paper.original_paper_doi.strip()}"
             else:
-                identifier = f"record:{paper.record_id}"  # Fallback to record ID
+                identifier = f"record:{paper.record_id}"  # Fallback to record ID for papers without DOI
             
-            # Only include if we haven't seen this paper before
-            if identifier not in seen_identifiers:
-                seen_identifiers.add(identifier)
+            # Only include if we haven't seen this DOI before
+            if identifier not in seen_dois:
+                seen_dois.add(identifier)
                 unique_papers.append(paper)
         
         # Convert back to queryset for pagination

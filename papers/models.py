@@ -77,42 +77,44 @@ class RetractedPaper(models.Model):
     
     @classmethod
     def get_unique_papers_count(cls):
-        """Get count of unique papers (by PMID/DOI combination)"""
+        """Get count of unique papers (by DOI only)"""
         from django.db.models import Q, Count
         
-        # Create a query that groups by PMID or DOI
-        unique_papers = cls.objects.values(
-            'original_paper_pubmed_id', 
-            'original_paper_doi'
-        ).annotate(count=Count('id')).count()
+        # Create a query that groups by DOI only
+        unique_papers = cls.objects.exclude(
+            Q(original_paper_doi__isnull=True) | Q(original_paper_doi__exact='')
+        ).values('original_paper_doi').distinct().count()
         
-        return unique_papers
+        # Add papers without DOI (counted individually)
+        papers_without_doi = cls.objects.filter(
+            Q(original_paper_doi__isnull=True) | Q(original_paper_doi__exact='')
+        ).count()
+        
+        return unique_papers + papers_without_doi
     
     @classmethod
     def get_unique_papers_by_nature(cls):
-        """Get count of unique papers grouped by retraction nature"""
+        """Get count of unique papers grouped by retraction nature (DOI-based only)"""
         from django.db.models import Q, Count
         from django.db.models.functions import Lower
         
-        # Group by nature and unique identifiers
+        # Group by nature and unique DOI identifiers
         nature_counts = {}
         
-        # Get all papers and group them by their identifying characteristics
-        seen_identifiers = set()
+        # Get all papers and group them by their DOI
+        seen_dois = set()
         
         for paper in cls.objects.all():
-            # Create a unique identifier for this paper
+            # Create a unique identifier for this paper (DOI only)
             identifier = None
-            if paper.original_paper_pubmed_id:
-                identifier = f"pmid:{paper.original_paper_pubmed_id}"
-            elif paper.original_paper_doi:
-                identifier = f"doi:{paper.original_paper_doi}"
+            if paper.original_paper_doi and paper.original_paper_doi.strip():
+                identifier = f"doi:{paper.original_paper_doi.strip()}"
             else:
-                identifier = f"record:{paper.record_id}"  # Fallback to record ID
+                identifier = f"record:{paper.record_id}"  # Fallback to record ID for papers without DOI
             
-            # Only count if we haven't seen this paper before
-            if identifier not in seen_identifiers:
-                seen_identifiers.add(identifier)
+            # Only count if we haven't seen this DOI before
+            if identifier not in seen_dois:
+                seen_dois.add(identifier)
                 
                 # Categorize the nature
                 nature = paper.retraction_nature_display.lower() if paper.retraction_nature else 'retracted'
@@ -196,25 +198,15 @@ class RetractedPaper(models.Model):
     
     @property
     def related_records(self):
-        """Find other records with the same PMID or DOI"""
+        """Find other records with the same DOI (DOI-only matching)"""
         related = []
         
-        # Find by PMID
-        if self.original_paper_pubmed_id:
-            pmid_matches = RetractedPaper.objects.filter(
-                original_paper_pubmed_id=self.original_paper_pubmed_id
-            ).exclude(id=self.id)
-            related.extend(pmid_matches)
-        
-        # Find by DOI
-        if self.original_paper_doi:
+        # Find by DOI only
+        if self.original_paper_doi and self.original_paper_doi.strip():
             doi_matches = RetractedPaper.objects.filter(
-                original_paper_doi=self.original_paper_doi
+                original_paper_doi=self.original_paper_doi.strip()
             ).exclude(id=self.id)
-            # Avoid duplicates if both PMID and DOI match
-            for doi_match in doi_matches:
-                if doi_match not in related:
-                    related.append(doi_match)
+            related.extend(doi_matches)
         
         return related
     
