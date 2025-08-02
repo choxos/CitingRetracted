@@ -8,6 +8,7 @@ from django.utils.decorators import method_decorator
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta, date
+from dateutil.relativedelta import relativedelta
 import json
 import logging
 
@@ -56,7 +57,7 @@ class PerformanceAnalyticsView(View):
     
     def _get_cached_basic_stats(self):
         """OPTIMIZED: Basic statistics matching main page calculations exactly"""
-        cache_key = 'analytics_basic_stats_v8_doi_only_dedup'
+        cache_key = 'analytics_basic_stats_v9_exact_12_months'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
@@ -67,12 +68,15 @@ class PerformanceAnalyticsView(View):
             total_unique_retracted = unique_stats.get('Retraction', 0)
             
             # Get basic paper counts - only for retracted papers
+            # Calculate exactly 12 months ago for more accurate "last 12 months"
+            twelve_months_ago = timezone.now().date() - relativedelta(months=12)
+            
             paper_stats = RetractedPaper.objects.filter(
                 retraction_nature__iexact='Retraction'
             ).aggregate(
                 total_papers=Count('id'),
                 recent_retractions=Count('id', filter=Q(
-                    retraction_date__gte=timezone.now().date() - timedelta(days=365)
+                    retraction_date__gte=twelve_months_ago
                 )),
                 avg_citations_per_paper=Avg('citation_count'),
                 total_citation_sum=Sum('citation_count'),

@@ -10,6 +10,7 @@ from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
 from .models import RetractedPaper, CitingPaper, Citation, DataImportLog
 import json
 from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 from django.utils import timezone
 from django.views.generic import View
 from django.views.decorators.cache import cache_page
@@ -42,15 +43,18 @@ class HomeView(ListView):
         
         # Use cached data when possible
         from django.core.cache import cache
-        cache_key = 'home_stats_v2_retracted_only'
+        cache_key = 'home_stats_v3_exact_12_months'
         cached_stats = cache.get(cache_key)
         
         if cached_stats is None:
             # Get summary statistics in one optimized query
+            # Calculate exactly 12 months ago for accurate "last 12 months"
+            twelve_months_ago = timezone.now().date() - relativedelta(months=12)
+            
             stats = RetractedPaper.objects.aggregate(
                 total_retracted=Count('id'),
                 recent_retractions=Count('id', filter=Q(
-                    retraction_date__gte=timezone.now().date() - timedelta(days=365)
+                    retraction_date__gte=twelve_months_ago
                 )),
                 avg_citations=Avg('citation_count'),
                 max_citations=Max('citation_count')
@@ -1089,12 +1093,15 @@ class AnalyticsView(View):
     def _get_basic_stats(self):
         """Get basic statistics in efficient bulk queries - only for retracted papers"""
         # Get all basic counts in one go - only for actual retractions
+        # Calculate exactly 12 months ago for accurate "last 12 months"
+        twelve_months_ago = timezone.now().date() - relativedelta(months=12)
+        
         paper_stats = RetractedPaper.objects.filter(
             retraction_nature__iexact='Retraction'
         ).aggregate(
             total_papers=Count('id'),
             recent_retractions=Count('id', filter=Q(
-                retraction_date__gte=timezone.now().date() - timedelta(days=365)
+                retraction_date__gte=twelve_months_ago
             )),
             avg_citations_per_paper=Avg('citation_count')
         )
