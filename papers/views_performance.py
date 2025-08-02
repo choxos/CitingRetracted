@@ -16,11 +16,26 @@ from .models import RetractedPaper, CitingPaper, Citation, DataImportLog
 
 logger = logging.getLogger(__name__)
 
-# Optimized cache timeout constants
-CACHE_TIMEOUT_SHORT = 180    # 3 minutes (reduced from 5)
-CACHE_TIMEOUT_MEDIUM = 600   # 10 minutes (reduced from 15)
-CACHE_TIMEOUT_LONG = 1800    # 30 minutes (reduced from 1 hour)
-CACHE_TIMEOUT_DAILY = 43200  # 12 hours (reduced from 24)
+# PERFORMANCE HELPER FUNCTIONS
+def parse_semicolon_field(field_value, limit=3):
+    """Optimized helper to parse semicolon-separated fields with limit"""
+    if not field_value or not field_value.strip():
+        return []
+    return [item.strip() for item in field_value.split(';') if item.strip()][:limit]
+
+def process_parsed_field(parsed_list, limit=3):
+    """Process parsed field list into display data"""
+    return {
+        'list': parsed_list,
+        'primary': parsed_list[0] if parsed_list else 'Unknown',
+        'additional': max(0, len(parsed_list) - 1) if len(parsed_list) > 1 else 0
+    }
+
+# Optimized cache timeout constants - INCREASED for performance
+CACHE_TIMEOUT_SHORT = 300    # 5 minutes 
+CACHE_TIMEOUT_MEDIUM = 1800  # 30 minutes (increased for heavy operations)
+CACHE_TIMEOUT_LONG = 7200    # 2 hours (increased for complex analytics)
+CACHE_TIMEOUT_DAILY = 86400  # 24 hours (restored for daily data)
 
 class PerformanceAnalyticsView(View):
     """Ultra-optimized analytics view with aggressive caching and minimal database queries"""
@@ -167,7 +182,7 @@ class PerformanceAnalyticsView(View):
                 }
             }
             
-            cache.set(cache_key, cached_data, CACHE_TIMEOUT_SHORT)
+            cache.set(cache_key, cached_data, CACHE_TIMEOUT_MEDIUM)  # Use medium timeout for stats
             logger.info(f"Main page compatible stats cached - Unique papers: {total_unique_retracted}, "
                        f"Median: {median_citations}, SD: {stdev_citations:.1f}, "
                        f"Q1: {q1_citations}, Q3: {q3_citations}")
@@ -400,7 +415,7 @@ class PerformanceAnalyticsView(View):
 
     def _get_cached_complex_data(self):
         """OPTIMIZED: Complex analytics with performance improvements and memory optimization"""
-        cache_key = 'analytics_complex_data_v28_parsed_reasons_fields'
+        cache_key = 'analytics_complex_data_v29_performance_optimized'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
@@ -420,7 +435,7 @@ class PerformanceAnalyticsView(View):
                 total_citations=Count('citations')
             ).filter(
                 post_retraction_count__gt=0
-            ).order_by('-post_retraction_count')[:500].values(
+            ).order_by('-post_retraction_count')[:250].values(  # Reduced from 500 to 250 for performance
                 'record_id', 'title', 'journal', 'author', 'retraction_date',
                 'post_retraction_count', 'citation_count', 'total_citations',
                 'original_paper_doi', 'original_paper_pubmed_id', 'publisher',
@@ -428,38 +443,18 @@ class PerformanceAnalyticsView(View):
                 'specific_fields', 'broad_subjects'
             )
             
+            # PERFORMANCE OPTIMIZATION: Pre-calculate date for reuse
+            today = timezone.now().date()
+            
             # Calculate metrics in Python for compatibility
             problematic_papers = []
             for paper_data in problematic_papers_raw:
-                # Parse countries (semicolon-separated like other fields)
-                countries_parsed = []
-                if paper_data['country']:
-                    countries = [c.strip() for c in paper_data['country'].split(';') if c.strip()]
-                    countries_parsed = countries[:3]  # Limit to first 3 countries for display
-                
-                # Parse reasons (semicolon-separated)
-                reasons_parsed = []
-                if paper_data['reason']:
-                    reasons = [r.strip() for r in paper_data['reason'].split(';') if r.strip()]
-                    reasons_parsed = reasons[:3]  # Limit to first 3 reasons for display
-                
-                # Parse subjects (semicolon-separated)
-                subjects_parsed = []
-                if paper_data['subject']:
-                    subjects = [s.strip() for s in paper_data['subject'].split(';') if s.strip()]
-                    subjects_parsed = subjects[:3]  # Limit to first 3 subjects for display
-                
-                # Parse specific fields (semicolon-separated)
-                specific_fields_parsed = []
-                if paper_data['specific_fields']:
-                    fields = [f.strip() for f in paper_data['specific_fields'].split(';') if f.strip()]
-                    specific_fields_parsed = fields[:3]  # Limit to first 3 fields for display
-                
-                # Parse broad subjects (semicolon-separated)
-                broad_subjects_parsed = []
-                if paper_data['broad_subjects']:
-                    broad_subj = [b.strip() for b in paper_data['broad_subjects'].split(';') if b.strip()]
-                    broad_subjects_parsed = broad_subj[:3]  # Limit to first 3 broad subjects for display
+                # OPTIMIZED: Use helper functions for all semicolon-separated parsing
+                countries_data = process_parsed_field(parse_semicolon_field(paper_data['country']))
+                reasons_data = process_parsed_field(parse_semicolon_field(paper_data['reason']))
+                subjects_data = process_parsed_field(parse_semicolon_field(paper_data['subject']))
+                specific_fields_data = process_parsed_field(parse_semicolon_field(paper_data['specific_fields']))
+                broad_subjects_data = process_parsed_field(parse_semicolon_field(paper_data['broad_subjects']))
                 
                 # Calculate citation metrics with clearer naming
                 total_citations = paper_data['citation_count'] or 0
@@ -472,9 +467,8 @@ class PerformanceAnalyticsView(View):
                 else:
                     citation_rate = 0
                 
-                # Calculate days since retraction
+                # OPTIMIZED: Calculate days since retraction (reuse pre-calculated today)
                 if paper_data['retraction_date']:
-                    today = timezone.now().date()
                     delta = today - paper_data['retraction_date']
                     days_since_retraction = delta.days
                 else:
@@ -483,26 +477,29 @@ class PerformanceAnalyticsView(View):
                 # Add calculated fields with clearer naming
                 paper_data['citation_rate'] = citation_rate
                 paper_data['days_since_retraction'] = days_since_retraction
-                paper_data['countries_list'] = countries_parsed
-                paper_data['primary_country'] = countries_parsed[0] if countries_parsed else 'Unknown'
-                paper_data['additional_countries'] = len(countries_parsed) - 1 if len(countries_parsed) > 1 else 0
                 
-                # Add parsed semicolon-separated fields
-                paper_data['reasons_list'] = reasons_parsed
-                paper_data['primary_reason'] = reasons_parsed[0] if reasons_parsed else 'Unknown'
-                paper_data['additional_reasons'] = len(reasons_parsed) - 1 if len(reasons_parsed) > 1 else 0
-                
-                paper_data['subjects_list'] = subjects_parsed
-                paper_data['primary_subject'] = subjects_parsed[0] if subjects_parsed else 'Unknown'
-                paper_data['additional_subjects'] = len(subjects_parsed) - 1 if len(subjects_parsed) > 1 else 0
-                
-                paper_data['specific_fields_list'] = specific_fields_parsed
-                paper_data['primary_specific_field'] = specific_fields_parsed[0] if specific_fields_parsed else 'Unknown'
-                paper_data['additional_specific_fields'] = len(specific_fields_parsed) - 1 if len(specific_fields_parsed) > 1 else 0
-                
-                paper_data['broad_subjects_list'] = broad_subjects_parsed
-                paper_data['primary_broad_subject'] = broad_subjects_parsed[0] if broad_subjects_parsed else 'Unknown'
-                paper_data['additional_broad_subjects'] = len(broad_subjects_parsed) - 1 if len(broad_subjects_parsed) > 1 else 0
+                # OPTIMIZED: Add all parsed fields using processed data
+                paper_data.update({
+                    'countries_list': countries_data['list'],
+                    'primary_country': countries_data['primary'],
+                    'additional_countries': countries_data['additional'],
+                    
+                    'reasons_list': reasons_data['list'],
+                    'primary_reason': reasons_data['primary'], 
+                    'additional_reasons': reasons_data['additional'],
+                    
+                    'subjects_list': subjects_data['list'],
+                    'primary_subject': subjects_data['primary'],
+                    'additional_subjects': subjects_data['additional'],
+                    
+                    'specific_fields_list': specific_fields_data['list'],
+                    'primary_specific_field': specific_fields_data['primary'],
+                    'additional_specific_fields': specific_fields_data['additional'],
+                    
+                    'broad_subjects_list': broad_subjects_data['list'],
+                    'primary_broad_subject': broad_subjects_data['primary'],
+                    'additional_broad_subjects': broad_subjects_data['additional']
+                })
                 
                 # Fix field name mismatch - template expects post_retraction_citations
                 paper_data['post_retraction_citations'] = post_retraction_citations
@@ -747,53 +744,61 @@ class PerformanceAnalyticsView(View):
             unique_stats_by_nature = RetractedPaper.get_unique_papers_by_nature()
             total_unique_retracted = unique_stats_by_nature.get('Retraction', 0)
             
-            # Get actual subject data from database for realistic sunburst
-            actual_subject_data = RetractedPaper.objects.filter(
+            # PERFORMANCE OPTIMIZATION: Use aggregated data instead of processing all subjects
+            # Get top subject categories directly from database with counts
+            subject_data = RetractedPaper.objects.filter(
                 retraction_nature__iexact='Retraction'
             ).exclude(
-                subject__isnull=True
-            ).exclude(
-                subject__exact=''
-            ).values_list('subject', flat=True)
+                Q(subject__isnull=True) | Q(subject__exact='')
+            ).values('subject').annotate(
+                count=Count('id')
+            ).order_by('-count')[:50]  # Limit to top 50 for performance
             
-            # Parse and categorize subjects
+            # OPTIMIZED: Simplified categorization using first word/keyword matching
             from collections import defaultdict
             subject_categories = defaultdict(int)
             subject_subcategories = defaultdict(lambda: defaultdict(int))
             
-            for subject_string in actual_subject_data:
+            # Pre-define keyword mapping for faster lookup
+            category_keywords = {
+                'Life Sciences': ['biology', 'life', 'biochem', 'molecular', 'cell', 'genetic'],
+                'Medical Sciences': ['medicine', 'medical', 'clinical', 'health', 'therapy'],
+                'Physical Sciences': ['chemistry', 'chemical', 'physics', 'physical'],
+                'Engineering': ['engineering', 'technology', 'computer']
+            }
+            
+            for item in subject_data:
+                subject_string = item['subject']
+                count = item['count']
+                
                 if subject_string:
-                    # Split multiple subjects
-                    subjects = [s.strip() for s in subject_string.split(';') if s.strip()]
-                    for subject in subjects:
-                        # Categorize subjects
-                        subject_lower = subject.lower()
-                        if any(keyword in subject_lower for keyword in ['biology', 'life', 'biochem', 'molecular', 'cell', 'genetic']):
-                            subject_categories['Life Sciences'] += 1
-                            if 'molecular' in subject_lower or 'cell' in subject_lower:
-                                subject_subcategories['Life Sciences']['Molecular Biology'] += 1
-                            elif 'genetic' in subject_lower:
-                                subject_subcategories['Life Sciences']['Genetics'] += 1
+                    # OPTIMIZED: Process only first subject for performance
+                    first_subject = subject_string.split(';')[0].strip().lower()
+                    
+                    # Find category using optimized lookup
+                    category_found = False
+                    for category, keywords in category_keywords.items():
+                        if any(keyword in first_subject for keyword in keywords):
+                            subject_categories[category] += count
+                            # Simplified subcategorization
+                            if category == 'Life Sciences':
+                                if 'molecular' in first_subject or 'cell' in first_subject:
+                                    subject_subcategories[category]['Molecular Biology'] += count
+                                else:
+                                    subject_subcategories[category]['General Biology'] += count
+                            elif category == 'Medical Sciences':
+                                if 'clinical' in first_subject:
+                                    subject_subcategories[category]['Clinical Medicine'] += count
+                                else:
+                                    subject_subcategories[category]['Basic Medicine'] += count
                             else:
-                                subject_subcategories['Life Sciences']['General Biology'] += 1
-                        elif any(keyword in subject_lower for keyword in ['medicine', 'medical', 'clinical', 'health', 'therapy']):
-                            subject_categories['Medical Sciences'] += 1
-                            if 'clinical' in subject_lower:
-                                subject_subcategories['Medical Sciences']['Clinical Medicine'] += 1
-                            else:
-                                subject_subcategories['Medical Sciences']['Basic Medicine'] += 1
-                        elif any(keyword in subject_lower for keyword in ['chemistry', 'chemical', 'physics', 'physical']):
-                            subject_categories['Physical Sciences'] += 1
-                            if 'chemistry' in subject_lower or 'chemical' in subject_lower:
-                                subject_subcategories['Physical Sciences']['Chemistry'] += 1
-                            else:
-                                subject_subcategories['Physical Sciences']['Physics'] += 1
-                        elif any(keyword in subject_lower for keyword in ['engineering', 'technology', 'computer']):
-                            subject_categories['Engineering'] += 1
-                            subject_subcategories['Engineering']['Technology'] += 1
-                        else:
-                            subject_categories['Other Sciences'] += 1
-                            subject_subcategories['Other Sciences']['Interdisciplinary'] += 1
+                                subject_subcategories[category]['General'] += count
+                            category_found = True
+                            break
+                    
+                    if not category_found:
+                        subject_categories['Other Sciences'] += count
+                        subject_subcategories['Other Sciences']['Interdisciplinary'] += count
             
             # Build hierarchical sunburst data as single root object with children (template expects this structure)
             categories = []
@@ -832,38 +837,33 @@ class PerformanceAnalyticsView(View):
         links = []
         node_id = 0
         
-        # Get data for all node types with much higher limits for realistic counts
-        top_subjects = list(RetractedPaper.objects.filter(
-            retraction_nature__iexact='Retraction'
-        ).exclude(
+        # PERFORMANCE OPTIMIZATION: Reduced limits and simplified queries
+        base_filter = RetractedPaper.objects.filter(retraction_nature__iexact='Retraction')
+        
+        # Reduced limits for better performance while maintaining functionality
+        top_subjects = list(base_filter.exclude(
             Q(subject__isnull=True) | Q(subject__exact='')
         ).values('subject').annotate(
             count=Count('id')
-        ).order_by('-count')[:200])  # Increased from 50 to 200
+        ).order_by('-count')[:100])  # Reduced from 200 to 100
         
-        top_journals = list(RetractedPaper.objects.filter(
-            retraction_nature__iexact='Retraction'
-        ).exclude(
+        top_journals = list(base_filter.exclude(
             Q(journal__isnull=True) | Q(journal__exact='')
         ).values('journal').annotate(
             count=Count('id')
-        ).order_by('-count')[:150])  # Increased from 30 to 150
+        ).order_by('-count')[:80])  # Reduced from 150 to 80
         
-        top_countries = list(RetractedPaper.objects.filter(
-            retraction_nature__iexact='Retraction'
-        ).exclude(
+        top_countries = list(base_filter.exclude(
             Q(country__isnull=True) | Q(country__exact='')
         ).values('country').annotate(
             count=Count('id')
-        ).order_by('-count')[:100])  # Increased from 25 to 100
+        ).order_by('-count')[:60])  # Reduced from 100 to 60
         
-        top_authors = list(RetractedPaper.objects.filter(
-            retraction_nature__iexact='Retraction'
-        ).exclude(
+        top_authors = list(base_filter.exclude(
             Q(author__isnull=True) | Q(author__exact='')
         ).values('author').annotate(
             count=Count('id')
-        ).order_by('-count')[:80])  # Increased from 20 to 80
+        ).order_by('-count')[:40])  # Reduced from 80 to 40
         
         # Create subject nodes with connected properties (limit displayed nodes for performance)
         subject_nodes = {}
