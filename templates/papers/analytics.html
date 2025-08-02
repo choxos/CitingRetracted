@@ -747,7 +747,7 @@
                                 </select>
                             </div>
                             <div class="col-md-6 text-end">
-                                <button class="xera-btn xera-btn-sm xera-btn-primary" onclick="updateNetworkChart()">
+                                <button id="updateNetworkBtn" class="xera-btn xera-btn-sm xera-btn-primary" onclick="updateNetworkWithFeedback()">
                                     <i class="fas fa-project-diagram"></i> Update Network
                                 </button>
                             </div>
@@ -824,16 +824,16 @@
                                     <div class="row mt-2">
                                         <div class="col-12">
                                             <div class="d-flex gap-2 flex-wrap">
-                                                <button class="btn btn-outline-secondary btn-sm" onclick="setNetworkPreset('small')">
+                                                <button id="presetSmall" class="btn btn-outline-secondary btn-sm" onclick="setNetworkPreset('small')">
                                                     Small (50 nodes)
                                                 </button>
-                                                <button class="btn btn-outline-secondary btn-sm" onclick="setNetworkPreset('medium')">
+                                                <button id="presetMedium" class="btn btn-outline-secondary btn-sm" onclick="setNetworkPreset('medium')">
                                                     Medium (200 nodes)
                                                 </button>
-                                                <button class="btn btn-outline-secondary btn-sm" onclick="setNetworkPreset('large')">
+                                                <button id="presetLarge" class="btn btn-outline-secondary btn-sm" onclick="setNetworkPreset('large')">
                                                     Large (500 nodes)
                                                 </button>
-                                                <button class="btn btn-outline-danger btn-sm" onclick="setNetworkPreset('maximum')">
+                                                <button id="presetMaximum" class="btn btn-outline-danger btn-sm" onclick="setNetworkPreset('maximum')">
                                                     Maximum (1000+ nodes)
                                                 </button>
                                             </div>
@@ -2756,8 +2756,88 @@ function setNetworkPreset(preset) {
     document.getElementById('authorCount').value = authorCount;
     document.getElementById('countryCount').value = countryCount;
     
-    // Update displays
-    updateNetworkSize();
+    // Clear highlighting from all preset buttons
+    document.querySelectorAll('[id^="preset"]').forEach(btn => {
+        btn.classList.remove('btn-primary', 'btn-success');
+        if (btn.id === 'presetMaximum') {
+            btn.classList.add('btn-outline-danger');
+        } else {
+            btn.classList.add('btn-outline-secondary');
+        }
+    });
+    
+    // Highlight the selected preset button
+    const selectedButton = document.getElementById(`preset${preset.charAt(0).toUpperCase() + preset.slice(1)}`);
+    if (selectedButton) {
+        selectedButton.classList.remove('btn-outline-secondary', 'btn-outline-danger');
+        selectedButton.classList.add(preset === 'maximum' ? 'btn-danger' : 'btn-primary');
+    }
+    
+    // Update display values
+    updateNetworkDisplayValues();
+    
+    console.log(`Applied ${preset} preset:`, {
+        subjects: subjectCount,
+        journals: journalCount,
+        authors: authorCount,
+        countries: countryCount
+    });
+}
+
+function updateNetworkWithFeedback() {
+    const updateBtn = document.getElementById('updateNetworkBtn');
+    const originalContent = updateBtn.innerHTML;
+    
+    // Show loading state
+    updateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+    updateBtn.disabled = true;
+    
+    // Get current settings for feedback
+    const settings = {
+        subjects: parseInt(document.getElementById('subjectCount').value),
+        journals: parseInt(document.getElementById('journalCount').value),
+        authors: parseInt(document.getElementById('authorCount').value),
+        countries: parseInt(document.getElementById('countryCount').value),
+        networkType: document.getElementById('networkTypeFilter').value
+    };
+    
+    console.log('Update Network clicked with settings:', settings);
+    
+    // Add small delay to show feedback, then update
+    setTimeout(() => {
+        try {
+            updateNetworkChart();
+            
+            // Success feedback
+            updateBtn.innerHTML = '<i class="fas fa-check"></i> Updated!';
+            updateBtn.classList.remove('xera-btn-primary');
+            updateBtn.classList.add('xera-btn-success');
+            
+            // Reset button after 2 seconds
+            setTimeout(() => {
+                updateBtn.innerHTML = originalContent;
+                updateBtn.classList.remove('xera-btn-success');
+                updateBtn.classList.add('xera-btn-primary');
+                updateBtn.disabled = false;
+            }, 2000);
+            
+        } catch (error) {
+            console.error('Network update error:', error);
+            
+            // Error feedback
+            updateBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
+            updateBtn.classList.remove('xera-btn-primary');
+            updateBtn.classList.add('xera-btn-danger');
+            
+            // Reset button after 3 seconds
+            setTimeout(() => {
+                updateBtn.innerHTML = originalContent;
+                updateBtn.classList.remove('xera-btn-danger');
+                updateBtn.classList.add('xera-btn-primary');
+                updateBtn.disabled = false;
+            }, 3000);
+        }
+    }, 300);
 }
 
 function updateNetworkStats(nodeCount, linkCount) {
