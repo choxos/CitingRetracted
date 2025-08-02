@@ -439,7 +439,7 @@ class PerformanceAnalyticsView(View):
 
     def _get_cached_complex_data(self):
         """Complex analytics with long-term caching - OPTIMIZED for large datasets"""
-        cache_key = 'analytics_complex_data_v16_enhanced_relationships'
+        cache_key = 'analytics_complex_data_v17_problematic_tab'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
@@ -452,7 +452,7 @@ class PerformanceAnalyticsView(View):
             
             logger.info(f"Processing {total_unique_retracted} unique retracted papers")
             
-            # OPTIMIZATION 2: Enhanced problematic papers with detailed data
+            # OPTIMIZATION 2: Comprehensive problematic papers for dedicated tab
             problematic_papers = list(RetractedPaper.objects.filter(
                 retraction_nature__iexact='Retraction'
             ).annotate(
@@ -460,11 +460,28 @@ class PerformanceAnalyticsView(View):
                 total_citations=Count('citations')
             ).filter(
                 post_retraction_count__gt=0  # Papers with post-retraction citations
-            ).order_by('-post_retraction_count')[:20].values(  # Top 20 for comprehensive display
+            ).order_by('-post_retraction_count').values(  # ALL problematic papers, not limited
                 'record_id', 'title', 'journal', 'author', 'retraction_date', 
                 'post_retraction_count', 'citation_count', 'total_citations',
-                'original_paper_doi', 'publisher', 'subject'
+                'original_paper_doi', 'original_paper_pubmed_id', 'publisher', 
+                'subject', 'reason', 'country', 'institution', 'is_open_access'
             ))
+            
+            # Calculate additional metrics for each paper
+            for paper in problematic_papers:
+                if paper['total_citations'] > 0:
+                    paper['citation_rate'] = (paper['post_retraction_count'] / paper['total_citations']) * 100
+                else:
+                    paper['citation_rate'] = 0
+                
+                # Calculate days since retraction
+                if paper['retraction_date']:
+                    from datetime import date
+                    today = date.today()
+                    delta = today - paper['retraction_date']
+                    paper['days_since_retraction'] = delta.days
+                else:
+                    paper['days_since_retraction'] = None
             
             # Ensure we have actual data by checking if list is empty
             if not problematic_papers:
@@ -476,11 +493,27 @@ class PerformanceAnalyticsView(View):
                     total_citations=Count('citations')
                 ).filter(
                     total_citations__gt=0  # Any citations at all
-                ).order_by('-total_citations')[:10].values(
+                ).order_by('-total_citations').values(
                     'record_id', 'title', 'journal', 'author', 'retraction_date',
                     'post_retraction_count', 'citation_count', 'total_citations',
-                    'original_paper_doi', 'publisher', 'subject'
+                    'original_paper_doi', 'original_paper_pubmed_id', 'publisher', 
+                    'subject', 'reason', 'country', 'institution', 'is_open_access'
                 ))
+                
+                # Calculate metrics for fallback data too
+                for paper in problematic_papers:
+                    if paper['total_citations'] > 0:
+                        paper['citation_rate'] = (paper['post_retraction_count'] / paper['total_citations']) * 100
+                    else:
+                        paper['citation_rate'] = 0
+                    
+                    if paper['retraction_date']:
+                        from datetime import date
+                        today = date.today()
+                        delta = today - paper['retraction_date']
+                        paper['days_since_retraction'] = delta.days
+                    else:
+                        paper['days_since_retraction'] = None
             
             # OPTIMIZATION 3: Simplified journal analysis
             journal_data = list(RetractedPaper.objects.filter(

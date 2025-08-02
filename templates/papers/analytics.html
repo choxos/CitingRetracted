@@ -281,6 +281,11 @@
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="problematic-tab" data-bs-toggle="pill" data-bs-target="#problematic" type="button" role="tab">
+                        <i class="fas fa-exclamation-triangle"></i> Problematic Papers
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
                     <button class="nav-link" id="network-tab" data-bs-toggle="pill" data-bs-target="#network" type="button" role="tab">
                         <i class="fas fa-project-diagram"></i> Network
                     </button>
@@ -520,102 +525,144 @@
                 </div>
             </div>
             
-            <!-- Enhanced Problematic Papers Table -->
+
+        </div>
+        
+        <!-- Problematic Papers Tab -->
+        <div class="tab-pane fade" id="problematic" role="tabpanel">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="alert alert-warning">
+                        <h5><i class="fas fa-exclamation-triangle"></i> Most Problematic Papers</h5>
+                        <p class="mb-0">Papers that continue to be cited after retraction represent ongoing potential issues in the research ecosystem. This comprehensive list shows all papers ranked by their post-retraction citation impact.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enhanced Problematic Papers Table with Controls -->
             <div class="row">
                 <div class="col-12">
                     <div class="card">
                         <div class="card-header">
-                            <h5><i class="fas fa-exclamation-triangle"></i> Most Problematic Papers</h5>
-                            <small class="text-muted">Papers with highest post-retraction citation counts</small>
+                            <div class="row align-items-center">
+                                <div class="col-md-8">
+                                    <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Comprehensive Problematic Papers Analysis</h5>
+                                    <small class="text-muted">All papers with post-retraction citations, ranked by impact</small>
+                                </div>
+                                <div class="col-md-4 text-end">
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="sortProblematicPapers('citations')">
+                                            <i class="fas fa-sort-numeric-down"></i> By Citations
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="sortProblematicPapers('rate')">
+                                            <i class="fas fa-percentage"></i> By Rate
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="sortProblematicPapers('recent')">
+                                            <i class="fas fa-clock"></i> Most Recent
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="card-body">
-                            <div class="data-table-container">
-                                <table class="table table-hover table-sm">
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover table-sm mb-0" id="problematicPapersTable">
                                     <thead class="table-dark sticky-top">
                                         <tr>
-                                            <th>Title</th>
-                                            <th>Journal</th>
-                                            <th>Country</th>
-                                            <th>Institution</th>
-                                            <th>Access</th>
-                                            <th>Retraction Date</th>
-                                            <th>Post-Retraction Citations</th>
-                                            <th>Citation Rate</th>
-                                            <th>Links</th>
+                                            <th style="width: 5%">#</th>
+                                            <th style="width: 35%">Paper Details</th>
+                                            <th style="width: 15%">Journal & Country</th>
+                                            <th style="width: 10%">Access</th>
+                                            <th style="width: 12%">Retraction Date</th>
+                                            <th style="width: 13%">Citation Impact</th>
+                                            <th style="width: 10%">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {% for paper in problematic_papers_detailed|slice:":5" %}
-                                        <tr>
-                                            <td>
-                                                <strong>{{ paper.title }}</strong>
-                                                {% if paper.formatted_reasons %}
-                                                <br><small class="text-danger"><i class="fas fa-exclamation-circle"></i> {{ paper.formatted_reasons|truncatechars:80 }}</small>
-                                                {% endif %}
-                                                {% if paper.formatted_subjects %}
-                                                <br><small class="text-info"><i class="fas fa-tag"></i> {{ paper.formatted_subjects|truncatechars:60 }}</small>
-                                                {% endif %}
+                                        {% for paper in problematic_papers_detailed %}
+                                        <tr class="problematic-paper-row" data-citations="{{ paper.post_retraction_citations }}" data-rate="{{ paper.citation_rate|floatformat:1 }}" data-date="{{ paper.retraction_date|date:'Y-m-d' }}">
+                                            <td class="text-center">
+                                                <strong class="text-danger">{{ forloop.counter }}</strong>
                                             </td>
-                                            <td>{{ paper.journal|default:"Unknown" }}</td>
                                             <td>
-                                                {% if paper.countries %}
-                                                    {% for country in paper.countries %}
-                                                        <span class="badge bg-primary me-1 mb-1">{{ country }}</span>
-                                                    {% endfor %}
-                                                    {% if paper.country_count > 3 %}
-                                                        <small class="text-muted d-block">+{{ paper.country_count|add:'-3' }} more</small>
+                                                <div class="paper-title-block">
+                                                    <strong>{{ paper.title|truncatechars:80 }}</strong>
+                                                    {% if paper.author %}
+                                                    <br><small class="text-muted"><i class="fas fa-user"></i> {{ paper.author|truncatechars:60 }}</small>
                                                     {% endif %}
-                                                {% else %}
-                                                    <span class="text-muted">Unknown</span>
+                                                    {% if paper.reason %}
+                                                    <br><small class="text-danger"><i class="fas fa-exclamation-circle"></i> {{ paper.reason|truncatechars:80 }}</small>
+                                                    {% endif %}
+                                                    {% if paper.subject %}
+                                                    <br><small class="text-info"><i class="fas fa-tag"></i> {{ paper.subject|truncatechars:60 }}</small>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div>
+                                                    <strong>{{ paper.journal|default:"Unknown"|truncatechars:25 }}</strong>
+                                                    {% if paper.publisher %}
+                                                    <br><small class="text-muted">{{ paper.publisher|truncatechars:20 }}</small>
+                                                    {% endif %}
+                                                </div>
+                                                {% if paper.country %}
+                                                <div class="mt-1">
+                                                    {% with countries=paper.country|split:";" %}
+                                                        {% for country in countries|slice:":2" %}
+                                                            <span class="badge bg-primary me-1">{{ country|striptags }}</span>
+                                                        {% endfor %}
+                                                        {% if countries|length > 2 %}
+                                                            <small class="text-muted">+{{ countries|length|add:"-2" }} more</small>
+                                                        {% endif %}
+                                                    {% endwith %}
+                                                </div>
                                                 {% endif %}
                                             </td>
-                                            <td>
-                                                <small>{{ paper.institution|default:"Unknown" }}</small>
-                                            </td>
-                                            <td>
-                                                {% if paper.access_status == "Open Access" %}
+                                            <td class="text-center">
+                                                {% if paper.is_open_access %}
                                                     <span class="badge bg-success"><i class="fas fa-unlock"></i> Open</span>
-                                                {% elif paper.access_status == "Paywalled" %}
-                                                    <span class="badge bg-warning"><i class="fas fa-lock"></i> Paywalled</span>
                                                 {% else %}
-                                                    <span class="badge bg-secondary">Unknown</span>
+                                                    <span class="badge bg-warning"><i class="fas fa-lock"></i> Paywalled</span>
                                                 {% endif %}
                                             </td>
                                             <td>
                                                 {% if paper.retraction_date %}
-                                                    {{ paper.retraction_date }}
+                                                    <strong>{{ paper.retraction_date|date:"M d, Y" }}</strong>
                                                     <br><small class="text-muted">{{ paper.days_since_retraction }} days ago</small>
-                                                    {% if paper.formatted_reasons %}
-                                                        <br><small class="text-danger"><strong>{{ paper.formatted_reasons|truncatechars:50 }}</strong></small>
-                                                    {% endif %}
                                                 {% else %}
                                                     <span class="text-muted">Unknown</span>
                                                 {% endif %}
                                             </td>
                                             <td>
-                                                <span class="badge bg-danger">{{ paper.post_retraction_citations }}</span>
-                                                <br><small class="text-muted">of {{ paper.total_citations }} total</small>
-                                            </td>
-                                            <td>
-                                                <div class="progress" style="height: 20px;">
-                                                    <div class="progress-bar bg-danger" 
-                                                         style="width: {{ paper.citation_rate|floatformat:0 }}%">
-                                                        {{ paper.citation_rate|floatformat:1 }}%
+                                                <div class="citation-impact-block text-center">
+                                                    <div class="mb-1">
+                                                        <span class="badge bg-danger fs-6">{{ paper.post_retraction_citations }}</span>
+                                                        <small class="text-muted">post-retraction</small>
                                                     </div>
+                                                    <div class="mb-1">
+                                                        <small class="text-muted">{{ paper.total_citations }} total citations</small>
+                                                    </div>
+                                                    <div class="progress" style="height: 8px;">
+                                                        <div class="progress-bar bg-danger" 
+                                                             style="width: {{ paper.citation_rate|floatformat:0 }}%"
+                                                             title="{{ paper.citation_rate|floatformat:1 }}% post-retraction rate">
+                                                        </div>
+                                                    </div>
+                                                    <small class="text-danger"><strong>{{ paper.citation_rate|floatformat:1 }}% rate</strong></small>
                                                 </div>
                                             </td>
-                                            <td>
-                                                <div class="btn-group-vertical" role="group">
-                                                    <a href="{% url 'papers:detail' paper.record_id %}" class="btn btn-sm btn-outline-primary">
+                                            <td class="text-center">
+                                                <div class="btn-group-vertical btn-group-sm" role="group">
+                                                    <a href="{% url 'papers:detail' paper.record_id %}" class="btn btn-outline-primary btn-sm">
                                                         <i class="fas fa-eye"></i> View
                                                     </a>
-                                                    {% if paper.original_paper_url %}
-                                                    <a href="{{ paper.original_paper_url }}" target="_blank" class="btn btn-sm btn-outline-success">
+                                                    {% if paper.original_paper_doi %}
+                                                    <a href="https://doi.org/{{ paper.original_paper_doi }}" target="_blank" class="btn btn-outline-success btn-sm">
                                                         <i class="fas fa-external-link-alt"></i> DOI
                                                     </a>
                                                     {% endif %}
-                                                    {% if paper.pubmed_url %}
-                                                    <a href="{{ paper.pubmed_url }}" target="_blank" class="btn btn-sm btn-outline-info">
+                                                    {% if paper.original_paper_pubmed_id %}
+                                                    <a href="https://pubmed.ncbi.nlm.nih.gov/{{ paper.original_paper_pubmed_id }}/" target="_blank" class="btn btn-outline-info btn-sm">
                                                         <i class="fas fa-book-medical"></i> PubMed
                                                     </a>
                                                     {% endif %}
@@ -624,18 +671,55 @@
                                         </tr>
                                         {% empty %}
                                         <tr>
-                                            <td colspan="9" class="text-center text-muted">No problematic papers found</td>
+                                            <td colspan="7" class="text-center text-muted py-4">
+                                                <i class="fas fa-info-circle fa-2x mb-2"></i><br>
+                                                No problematic papers found. This could indicate excellent research integrity in the current dataset.
+                                            </td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>
                                 </table>
+                            </div>
+                            
+                            <!-- Summary Footer -->
+                            <div class="card-footer bg-light">
+                                <div class="row text-center">
+                                    <div class="col-md-3">
+                                        <h5 class="text-danger mb-0">{{ problematic_papers_detailed|length }}</h5>
+                                        <small class="text-muted">Problematic Papers</small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <h5 class="text-warning mb-0">
+                                            {% with total_post_citations=problematic_papers_detailed|map:"post_retraction_citations"|sum %}
+                                                {{ total_post_citations|default:0 }}
+                                            {% endwith %}
+                                        </h5>
+                                        <small class="text-muted">Total Post-Retraction Citations</small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <h5 class="text-info mb-0">
+                                            {% with avg_rate=problematic_papers_detailed|map:"citation_rate"|avg %}
+                                                {{ avg_rate|floatformat:1|default:0 }}%
+                                            {% endwith %}
+                                        </h5>
+                                        <small class="text-muted">Average Post-Retraction Rate</small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <h5 class="text-success mb-0">
+                                            {% with recent_count=problematic_papers_detailed|recentitems:365|length %}
+                                                {{ recent_count|default:0 }}
+                                            {% endwith %}
+                                        </h5>
+                                        <small class="text-muted">Retracted This Year</small>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        
+
         <!-- Network Tab -->
         <div class="tab-pane fade" id="network" role="tabpanel">
                             <!-- Enhanced Network Controls -->
