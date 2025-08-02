@@ -4,6 +4,9 @@ from django import template
 from django.utils.safestring import mark_safe
 from urllib.parse import urlencode
 import math
+import logging
+
+logger = logging.getLogger(__name__)
 
 register = template.Library()
 
@@ -36,9 +39,11 @@ def safe_floatformat(value, arg=None):
     Safe version of floatformat that handles None, NaN, and infinity values.
     Usage: {{ value|safe_floatformat:2 }}
     """
+    logger.debug(f"safe_floatformat called with value: {value}, arg: {arg}")
     try:
         # Handle None values
         if value is None:
+            logger.debug("safe_floatformat: value is None, returning '0'")
             return "0"
         
         # Convert to float if it's not already
@@ -47,14 +52,18 @@ def safe_floatformat(value, arg=None):
         
         # Handle NaN and infinity
         if math.isnan(value) or math.isinf(value):
+            logger.debug(f"safe_floatformat: value is NaN or Inf ({value}), returning '0'")
             return "0"
         
         # Use Django's built-in floatformat for valid numbers
         from django.template.defaultfilters import floatformat
-        return floatformat(value, arg)
+        result = floatformat(value, arg)
+        logger.debug(f"safe_floatformat: successfully formatted {value} to {result}")
+        return result
         
-    except (ValueError, TypeError, OverflowError):
+    except (ValueError, TypeError, OverflowError) as e:
         # Return "0" for any conversion errors
+        logger.debug(f"safe_floatformat: error formatting {value}: {e}, returning '0'")
         return "0"
 
 @register.filter

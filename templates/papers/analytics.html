@@ -2,6 +2,12 @@
 {% load static %}
 {% load json_filters %}
 
+<!-- DEBUG: Template context variables available -->
+<!-- stats: {{ stats|default:"MISSING" }} -->
+<!-- analytics_overview: {{ analytics_overview|default:"MISSING" }} -->
+<!-- citation_patterns: {{ citation_patterns|default:"MISSING" }} -->
+<!-- post_retraction_timeline: {{ post_retraction_timeline|default:"MISSING" }} -->
+
 {% block title %}Analytics - Post-Retraction Citation Tracker{% endblock %}
 
 {% block extra_css %}
