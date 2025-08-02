@@ -415,7 +415,7 @@ class PerformanceAnalyticsView(View):
 
     def _get_cached_complex_data(self):
         """OPTIMIZED: Complex analytics with performance improvements and memory optimization"""
-        cache_key = 'analytics_complex_data_v29_performance_optimized'
+        cache_key = 'analytics_complex_data_v30_colorblind_friendly'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
@@ -874,7 +874,7 @@ class PerformanceAnalyticsView(View):
                 'name': subject_name,
                 'type': 'subject',
                 'size': min(20, 8 + (item['count'] // 10)),
-                'color': '#ff6b6b',
+                'color': '#0173B2',  # Color-blind friendly blue for subjects
                 'count': item['count'],
                 'paper_count': item['count'],
                 # Add connected properties for filtering
@@ -895,7 +895,7 @@ class PerformanceAnalyticsView(View):
                 'name': journal_name,
                 'type': 'journal',
                 'size': min(18, 6 + (item['count'] // 5)),
-                'color': '#4ecdc4',
+                'color': '#DE8F05',  # Color-blind friendly orange for journals
                 'count': item['count'],
                 'paper_count': item['count'],
                 # Add connected properties for filtering
@@ -918,7 +918,7 @@ class PerformanceAnalyticsView(View):
                     'name': country_name,
                     'type': 'country',
                     'size': min(16, 5 + (item['count'] // 20)),
-                    'color': '#96ceb4',
+                    'color': '#029E73',  # Color-blind friendly green for countries
                     'count': item['count'],
                     'paper_count': item['count'],
                     # Add connected properties for filtering
@@ -940,7 +940,7 @@ class PerformanceAnalyticsView(View):
                     'name': author_name,
                     'type': 'author',
                     'size': min(14, 4 + item['count']),
-                    'color': '#45b7d1',
+                    'color': '#CC78BC',  # Color-blind friendly magenta for authors
                     'count': item['count'],
                     'paper_count': item['count'],
                     # Add connected properties for filtering
@@ -964,7 +964,7 @@ class PerformanceAnalyticsView(View):
                         'strength': max(3, min(8, 6)),
                         'type': 'subject-journal',
                         'connection_type': 'primary',
-                        'color': '#007bff'
+                        'color': '#56B4E9'  # Light blue for subject-journal links
                     })
         
         # 2. Country-Subject relationships (secondary connections)
@@ -977,7 +977,7 @@ class PerformanceAnalyticsView(View):
                         'strength': max(4, min(7, 5)),
                         'type': 'country-subject',
                         'connection_type': 'secondary',
-                        'color': '#28a745'
+                        'color': '#8B4513'  # Brown for country-subject links
                     })
         
         # 3. Country-Country collaborations (specialized connections)
@@ -991,7 +991,7 @@ class PerformanceAnalyticsView(View):
                         'strength': max(2, min(6, 4)),
                         'type': 'country-country',
                         'connection_type': 'specialized',
-                        'color': '#ffc107'
+                        'color': '#FBAD23'  # High-contrast yellow for country-country links
                     })
         
         # 4. Journal Citations (secondary connections)
@@ -1005,7 +1005,7 @@ class PerformanceAnalyticsView(View):
                         'strength': max(3, min(7, 5)),
                         'type': 'journal-citation',
                         'connection_type': 'secondary',
-                        'color': '#dc3545'
+                        'color': '#E32636'  # True red for journal-citation links
                     })
         
         # 5. Journal-Author relationships (primary connections)
@@ -1018,7 +1018,7 @@ class PerformanceAnalyticsView(View):
                         'strength': max(2, min(6, 4)),
                         'type': 'journal-author',
                         'connection_type': 'primary',
-                        'color': '#6f42c1'
+                        'color': '#924893'  # Purple for journal-author links
                     })
         
         # Calculate actual counts for realistic display
