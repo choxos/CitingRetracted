@@ -400,11 +400,11 @@ class PerformanceAnalyticsView(View):
 
     def _get_cached_complex_data(self):
         """OPTIMIZED: Complex analytics with performance improvements and memory optimization"""
-        cache_key = 'analytics_complex_data_v23_corrected_stats'
+        cache_key = 'analytics_complex_data_v24_parsed_article_types'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
-            logger.info("Cache miss for complex data - generating CORRECTED STATS version...")
+            logger.info("Cache miss for complex data - generating PARSED ARTICLE TYPES version...")
             
             # OPTIMIZATION: Get total count using same method as main page
             unique_stats = RetractedPaper.get_unique_papers_by_nature()
@@ -577,16 +577,8 @@ class PerformanceAnalyticsView(View):
             
             logger.info(f"Generated world map data for {len(world_map_data)} countries")
             
-            # OPTIMIZATION: Dynamic article type data from database
-            article_type_data = list(
-                RetractedPaper.objects.filter(
-                    retraction_nature__iexact='Retraction'
-                ).exclude(
-                    Q(article_type__isnull=True) | Q(article_type__exact='')
-                ).values('article_type').annotate(
-                    count=Count('id')
-                ).order_by('-count')
-            )
+            # OPTIMIZATION: Dynamic article type data with proper semicolon parsing
+            article_type_data = self._get_article_types_parsed()
             
             # Fallback to static data if no article types in database
             if not article_type_data:
@@ -675,7 +667,7 @@ class PerformanceAnalyticsView(View):
             
             # Cache for shorter time due to simplified data
             cache.set(cache_key, cached_data, CACHE_TIMEOUT_LONG)
-            logger.info("Corrected statistics matching main page cached successfully")
+            logger.info("Parsed article types and corrected statistics cached successfully")
         
         return cached_data
     
@@ -1017,6 +1009,44 @@ class PerformanceAnalyticsView(View):
                 'available_filters': ['subjects', 'journals', 'countries', 'authors', 'citations', 'combined']
             }
         }
+
+    def _get_article_types_parsed(self):
+        """Get article types by parsing semicolon-separated strings (following same pattern as subjects/countries)"""
+        from collections import Counter
+        
+        # Get all papers with article types (only retracted papers)
+        papers_with_article_types = RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).exclude(
+            Q(article_type__isnull=True) | Q(article_type__exact='')
+        ).values_list('article_type', flat=True)
+        
+        # Parse and count individual article types
+        article_type_counter = Counter()
+        for article_type_string in papers_with_article_types:
+            if article_type_string:
+                # Split by semicolon and clean up each article type
+                article_types = [at.strip() for at in article_type_string.split(';') if at.strip()]
+                for article_type in article_types:
+                    # Clean up the article type (remove prefix codes if present)
+                    clean_article_type = article_type
+                    if ')' in article_type and article_type.startswith('('):
+                        # Remove codes like (PHY), (B/T) etc.
+                        clean_article_type = article_type.split(')', 1)[1].strip()
+                    
+                    # Only count meaningful article types
+                    if len(clean_article_type) > 2:  # Filter out very short entries
+                        article_type_counter[clean_article_type] += 1
+        
+        # Convert to the expected format
+        article_type_data = []
+        for article_type, count in article_type_counter.most_common():
+            article_type_data.append({
+                'article_type': article_type,
+                'count': count
+            })
+        
+        return article_type_data
 
 # Performance monitoring decorator
 def monitor_performance(func):
