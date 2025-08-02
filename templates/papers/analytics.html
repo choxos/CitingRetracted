@@ -683,27 +683,33 @@
                                     </div>
                                     <div class="col-md-3">
                                         <h5 class="text-warning mb-0">
-                                            {% with total_post_citations=problematic_papers_detailed|map:"post_retraction_citations"|sum %}
-                                                {{ total_post_citations|default:0 }}
-                                            {% endwith %}
+                                            {% if problematic_papers_detailed %}
+                                                {{ problematic_papers_detailed.0.post_retraction_citations|default:"-" }}
+                                            {% else %}
+                                                -
+                                            {% endif %}
                                         </h5>
-                                        <small class="text-muted">Total Post-Retraction Citations</small>
+                                        <small class="text-muted">Sample Citations</small>
                                     </div>
                                     <div class="col-md-3">
                                         <h5 class="text-info mb-0">
-                                            {% with avg_rate=problematic_papers_detailed|map:"citation_rate"|avg %}
-                                                {{ avg_rate|floatformat:1|default:0 }}%
-                                            {% endwith %}
+                                            {% if problematic_papers_detailed %}
+                                                {{ problematic_papers_detailed.0.citation_rate|floatformat:1|default:"-" }}%
+                                            {% else %}
+                                                -
+                                            {% endif %}
                                         </h5>
-                                        <small class="text-muted">Average Post-Retraction Rate</small>
+                                        <small class="text-muted">Sample Rate</small>
                                     </div>
                                     <div class="col-md-3">
                                         <h5 class="text-success mb-0">
-                                            {% with recent_count=problematic_papers_detailed|recentitems:365|length %}
-                                                {{ recent_count|default:0 }}
-                                            {% endwith %}
+                                            {% if problematic_papers_detailed %}
+                                                {{ problematic_papers_detailed|length }}
+                                            {% else %}
+                                                0
+                                            {% endif %}
                                         </h5>
-                                        <small class="text-muted">Retracted This Year</small>
+                                        <small class="text-muted">Total Records</small>
                                     </div>
                                 </div>
                             </div>
