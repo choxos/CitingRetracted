@@ -769,7 +769,7 @@
                                                 <input type="range" class="form-range" id="subjectCount" 
                                                        min="10" max="{{ network_data.available_subjects|default:100 }}" 
                                                        value="{{ network_data.current_config.subjects_shown|default:50 }}"
-                                                       oninput="updateNetworkSize()">
+                                                       oninput="updateNetworkDisplayValues()">
                                                 <span class="input-group-text" id="subjectCountValue">{{ network_data.current_config.subjects_shown|default:50 }}</span>
                                             </div>
                                         </div>
@@ -784,7 +784,7 @@
                                                 <input type="range" class="form-range" id="journalCount"
                                                        min="5" max="{{ network_data.available_journals|default:50 }}"
                                                        value="{{ network_data.current_config.journals_shown|default:25 }}"
-                                                       oninput="updateNetworkSize()">
+                                                       oninput="updateNetworkDisplayValues()">
                                                 <span class="input-group-text" id="journalCountValue">{{ network_data.current_config.journals_shown|default:25 }}</span>
                                             </div>
                                         </div>
@@ -799,7 +799,7 @@
                                                 <input type="range" class="form-range" id="countryCount"
                                                        min="5" max="{{ network_data.available_countries|default:50 }}"
                                                        value="{{ network_data.current_config.countries_shown|default:20 }}"
-                                                       oninput="updateNetworkSize()">
+                                                       oninput="updateNetworkDisplayValues()">
                                                 <span class="input-group-text" id="countryCountValue">{{ network_data.current_config.countries_shown|default:20 }}</span>
                                             </div>
                                         </div>
@@ -814,7 +814,7 @@
                                                 <input type="range" class="form-range" id="authorCount"
                                                        min="0" max="{{ network_data.available_authors|default:100 }}"
                                                        value="{{ network_data.current_config.authors_shown|default:20 }}"
-                                                       oninput="updateNetworkSize()">
+                                                       oninput="updateNetworkDisplayValues()">
                                                 <span class="input-group-text" id="authorCountValue">{{ network_data.current_config.authors_shown|default:20 }}</span>
                                             </div>
                                         </div>
@@ -853,6 +853,13 @@
                                                     | <strong>Relationships:</strong> <span id="relationshipTypes">Subject-Journal, Country-Subject, Journal Citations</span>
                                                 </small>
                                             </div>
+                                            <!-- Settings Preview -->
+                                            <div class="mt-2 p-2 bg-light rounded">
+                                                <small class="text-primary">
+                                                    <strong><i class="fas fa-eye"></i> Preview:</strong> 
+                                                                                                         <span id="networkStatus">Configure settings above and click 'Update Network'</span>
+                                                 </small>
+                                             </div>
                                         </div>
                                     </div>
                                 </div>
@@ -2295,8 +2302,20 @@ function updateNetworkChart() {
     const networkType = document.getElementById('networkTypeFilter').value;
     const networkData = {{ network_data|safe_json }};
     
+    // Collect user's size settings from controls
+    const userSettings = {
+        subjectCount: parseInt(document.getElementById('subjectCount').value),
+        journalCount: parseInt(document.getElementById('journalCount').value),
+        authorCount: parseInt(document.getElementById('authorCount').value),
+        countryCount: parseInt(document.getElementById('countryCount').value)
+    };
+    
     // Debug the network data structure
-    console.log('Network filter request:', networkType, 'with data:', networkData.metadata);
+    console.log('Network update request:', {
+        type: networkType,
+        settings: userSettings,
+        metadata: networkData.metadata
+    });
     
     if (!networkData || !networkData.nodes || !networkData.links) {
         console.error('Invalid network data structure for filtering');
@@ -2304,90 +2323,93 @@ function updateNetworkChart() {
         return;
     }
     
-    // Filter nodes and links based on network type for focused views
+    // Apply user's size settings to filter nodes by type and count
     let filteredNodes = [];
     let filteredLinks = [];
     let layoutConfig = {};
     
+    // Start with nodes filtered by user's count settings
+    const subjectNodes = networkData.nodes.filter(n => n.type === 'subject').slice(0, userSettings.subjectCount);
+    const journalNodes = networkData.nodes.filter(n => n.type === 'journal').slice(0, userSettings.journalCount);
+    const countryNodes = networkData.nodes.filter(n => n.type === 'country').slice(0, userSettings.countryCount);
+    const authorNodes = networkData.nodes.filter(n => n.type === 'author').slice(0, userSettings.authorCount);
+    
+    // Combine nodes based on network type and user settings
+    filteredNodes = [...subjectNodes, ...journalNodes, ...countryNodes, ...authorNodes];
+    
     switch(networkType) {
         case 'subjects':
-            // Focus ONLY on subjects and their strongest connections
-            filteredNodes = networkData.nodes.filter(node => {
-                if (node.type === 'subject') return true;
-                // Only include countries/journals with strong subject connections
-                if (node.type === 'country') return (node.connected_subjects || 0) >= 3;
-                if (node.type === 'journal') return (node.connected_subjects || 0) >= 5;
-                return false;
-            });
-            filteredLinks = networkData.links.filter(link => 
-                (link.connection_type === 'primary' || link.connection_type === 'specialized') &&
-                link.strength >= 8 && // Only strong connections
-                filteredNodes.some(n => n.id === link.source || (link.source.id && n.id === link.source.id)) &&
-                filteredNodes.some(n => n.id === link.target || (link.target.id && n.id === link.target.id))
-            );
+            // Focus on subjects but still use user's size settings
+            filteredNodes = [...subjectNodes, ...journalNodes.filter(n => (n.connected_subjects || 0) >= 3), 
+                            ...countryNodes.filter(n => (n.connected_subjects || 0) >= 2)];
             layoutConfig = {
                 centerForce: 150,
                 radialStrength: 0.3,
-                description: 'Research areas and their strongest academic connections'
+                description: `Subject-focused network with ${subjectNodes.length} subjects, ${journalNodes.length} journals, ${countryNodes.length} countries`
             };
             break;
             
         case 'countries':
-            // Focus ONLY on countries and geographic research patterns
-            filteredNodes = networkData.nodes.filter(node => {
-                if (node.type === 'country') return true;
-                // Only include subjects/journals strongly tied to geography
-                if (node.type === 'subject') return (node.connected_countries || 0) >= 4;
-                if (node.type === 'journal') return (node.connected_countries || 0) >= 3;
-                return false;
-            });
-            filteredLinks = networkData.links.filter(link => 
-                (link.connection_type === 'primary' || link.connection_type === 'secondary') &&
-                link.strength >= 6 && // Medium-strong connections
-                filteredNodes.some(n => n.id === link.source || (link.source.id && n.id === link.source.id)) &&
-                filteredNodes.some(n => n.id === link.target || (link.target.id && n.id === link.target.id))
-            );
+            // Focus on countries but still use user's size settings
+            filteredNodes = [...countryNodes, ...subjectNodes.filter(n => (n.connected_countries || 0) >= 2), 
+                            ...journalNodes.filter(n => (n.connected_countries || 0) >= 2)];
             layoutConfig = {
                 centerForce: 120,
                 radialStrength: 0.2,
-                description: 'Geographic research hubs and international collaboration patterns'
+                description: `Country-focused network with ${countryNodes.length} countries, ${subjectNodes.length} subjects, ${journalNodes.length} journals`
             };
             break;
             
         case 'journals':
-            // Focus ONLY on journals and publication specialization
-            filteredNodes = networkData.nodes.filter(node => {
-                if (node.type === 'journal') return true;
-                // Only include subjects/countries with significant journal presence
-                if (node.type === 'subject') return (node.connected_journals || 0) >= 4;
-                if (node.type === 'country') return (node.paper_count || 0) >= 100; // High-volume countries
-                return false;
-            });
-            filteredLinks = networkData.links.filter(link => 
-                (link.connection_type === 'secondary' || link.connection_type === 'specialized') &&
-                link.strength >= 5 && // Meaningful publication relationships
-                filteredNodes.some(n => n.id === link.source || (link.source.id && n.id === link.source.id)) &&
-                filteredNodes.some(n => n.id === link.target || (link.target.id && n.id === link.target.id))
-            );
+            // Focus on journals but still use user's size settings
+            filteredNodes = [...journalNodes, ...subjectNodes.filter(n => (n.connected_journals || 0) >= 2), 
+                            ...countryNodes.filter(n => (n.paper_count || 0) >= 50), ...authorNodes];
             layoutConfig = {
                 centerForce: 100,
                 radialStrength: 0.1,
-                description: 'Publication venues and their research specializations'
+                description: `Journal-focused network with ${journalNodes.length} journals, ${subjectNodes.length} subjects, ${authorNodes.length} authors`
+            };
+            break;
+            
+        case 'authors':
+            // Focus on authors but still use user's size settings
+            filteredNodes = [...authorNodes, ...journalNodes, ...subjectNodes.filter(n => (n.connected_authors || 0) >= 1)];
+            layoutConfig = {
+                centerForce: 80,
+                radialStrength: 0.1,
+                description: `Author-focused network with ${authorNodes.length} authors, ${journalNodes.length} journals, ${subjectNodes.length} subjects`
+            };
+            break;
+            
+        case 'citations':
+            // Focus on citation relationships with all node types
+            filteredNodes = [...subjectNodes, ...journalNodes, ...countryNodes];
+            layoutConfig = {
+                centerForce: 150,
+                radialStrength: 0.2,
+                description: `Citation network with ${subjectNodes.length} subjects, ${journalNodes.length} journals, ${countryNodes.length} countries`
             };
             break;
             
         case 'combined':
         default:
-            // Show the complete network with all relationships
-            filteredNodes = networkData.nodes;
-            filteredLinks = networkData.links;
+            // Use all user's selected nodes
+            filteredNodes = [...subjectNodes, ...journalNodes, ...countryNodes, ...authorNodes];
             layoutConfig = {
                 centerForce: 200,
                 radialStrength: 0.15,
-                description: 'Complete research ecosystem: all subjects, countries, and journals'
+                description: `Complete network: ${subjectNodes.length} subjects, ${journalNodes.length} journals, ${countryNodes.length} countries, ${authorNodes.length} authors`
             };
             break;
     }
+    
+    // Filter links to only include connections between selected nodes
+    const selectedNodeIds = new Set(filteredNodes.map(n => n.id));
+    filteredLinks = networkData.links.filter(link => {
+        const sourceId = link.source.id || link.source;
+        const targetId = link.target.id || link.target;
+        return selectedNodeIds.has(sourceId) && selectedNodeIds.has(targetId);
+    });
     
     console.log(`Filtered data for ${networkType}:`, {
         nodes: filteredNodes.length,
@@ -2656,7 +2678,8 @@ function updateNetworkChart() {
 }
 
 // Network control functions
-function updateNetworkSize() {
+function updateNetworkDisplayValues() {
+    // Update display values only (no auto-update of chart)
     const subjectCount = document.getElementById('subjectCount').value;
     const journalCount = document.getElementById('journalCount').value;
     const authorCount = document.getElementById('authorCount').value;
@@ -2679,11 +2702,16 @@ function updateNetworkSize() {
     
     document.getElementById('relationshipTypes').textContent = relationshipTypes.join(', ') || 'None selected';
     
-    // Auto-update network after 1 second of no changes (debounce)
-    clearTimeout(window.networkUpdateTimeout);
-    window.networkUpdateTimeout = setTimeout(() => {
-        updateNetworkChart();
-    }, 1000);
+    // Show preview of current settings
+    const networkStatus = document.getElementById('networkStatus');
+    if (networkStatus) {
+        networkStatus.innerHTML = `Preview: ${totalNodes} nodes | Relationships: ${relationshipTypes.join(', ') || 'None'}`;
+    }
+}
+
+function updateNetworkSize() {
+    // Legacy function - now just updates display values
+    updateNetworkDisplayValues();
 }
 
 function setNetworkPreset(preset) {
