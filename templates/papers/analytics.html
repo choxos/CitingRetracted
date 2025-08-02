@@ -303,7 +303,7 @@
                 <div class="col-md-3 mb-4">
                     <div class="prct-stat-card h-100 text-center">
                         <i class="fas fa-ban fa-3x text-danger mb-3"></i>
-                        <h3 class="prct-stat-number">{{ stats.total_papers|floatformat:0 }}</h3>
+                        <h3 class="prct-stat-number">{{ stats.total_papers|safe_floatformat:0 }}</h3>
                         <p class="prct-stat-label">Total Retracted Papers</p>
                         <div class="progress mt-2" style="height: 6px;">
                             <div class="progress-bar bg-danger" role="progressbar" style="width: 100%"></div>
@@ -313,11 +313,11 @@
                 <div class="col-md-3 mb-4">
                     <div class="prct-stat-card h-100 text-center">
                         <i class="fas fa-quote-right fa-3x text-warning mb-3"></i>
-                        <h3 class="prct-stat-number">{{ stats.total_citations|floatformat:0 }}</h3>
+                        <h3 class="prct-stat-number">{{ stats.total_citations|safe_floatformat:0 }}</h3>
                         <p class="prct-stat-label">Total Citations</p>
                         <small class="text-muted">
-                            <strong>Mean:</strong> {{ stats.avg_citations_per_paper|floatformat:1 }} (SD: {{ stats.stdev_citations_per_paper|floatformat:1 }})<br>
-                            <strong>Median:</strong> {{ stats.median_citations_per_paper|floatformat:1 }} (Q1: {{ stats.q1_citations_per_paper|floatformat:1 }}, Q3: {{ stats.q3_citations_per_paper|floatformat:1 }})
+                            <strong>Mean:</strong> {{ stats.avg_citations_per_paper|safe_floatformat:1 }} (SD: {{ stats.stdev_citations_per_paper|safe_floatformat:1 }})<br>
+                            <strong>Median:</strong> {{ stats.median_citations_per_paper|safe_floatformat:1 }} (Q1: {{ stats.q1_citations_per_paper|safe_floatformat:1 }}, Q3: {{ stats.q3_citations_per_paper|safe_floatformat:1 }})
                             {% if stats.avg_citations_per_paper > stats.median_citations_per_paper|add:1 %}
                                 <br><span class="text-info"><i class="fas fa-info-circle"></i> Skewed distribution</span>
                             {% endif %}
@@ -327,17 +327,17 @@
                 <div class="col-md-3 mb-4">
                     <div class="prct-stat-card h-100 text-center">
                         <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
-                        <h3 class="prct-stat-number">{{ stats.post_retraction_citations|floatformat:0 }}</h3>
+                        <h3 class="prct-stat-number">{{ stats.post_retraction_citations|safe_floatformat:0 }}</h3>
                         <p class="prct-stat-label">Post-Retraction Citations</p>
                         <div class="mt-2">
-                            <span class="prct-retraction-badge retracted">{{ stats.post_retraction_percentage|floatformat:1 }}% of total</span>
+                            <span class="prct-retraction-badge retracted">{{ stats.post_retraction_percentage|safe_floatformat:1 }}% of total</span>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-3 mb-4">
                     <div class="prct-stat-card h-100 text-center">
                         <i class="fas fa-clock fa-3x text-success mb-3"></i>
-                        <h3 class="prct-stat-number">{{ stats.recent_retractions|floatformat:0 }}</h3>
+                        <h3 class="prct-stat-number">{{ stats.recent_retractions|safe_floatformat:0 }}</h3>
                         <p class="prct-stat-label">Recent Retractions</p>
                         <small class="text-muted">Last 12 months</small>
                     </div>
@@ -384,7 +384,7 @@
                         </div>
                         <div class="mt-3 text-center">
                             <span class="prct-retraction-badge retracted fs-6">
-                                {{ citation_patterns.post_retraction_percentage|floatformat:1 }}% post-retraction
+                                {{ citation_patterns.post_retraction_percentage|safe_floatformat:1 }}% post-retraction
                             </span>
                         </div>
                     </div>
@@ -580,7 +580,7 @@
                                     </thead>
                                     <tbody>
                                         {% for paper in problematic_papers_detailed %}
-                                        <tr class="problematic-paper-row" data-citations="{{ paper.post_retraction_citations }}" data-rate="{{ paper.citation_rate|floatformat:1 }}" data-date="{{ paper.retraction_date|date:'Y-m-d' }}">
+                                        <tr class="problematic-paper-row" data-citations="{{ paper.post_retraction_citations }}" data-rate="{{ paper.citation_rate|safe_floatformat:1 }}" data-date="{{ paper.retraction_date|date:'Y-m-d' }}">
                                             <td class="text-center">
                                                 <strong class="text-danger">{{ forloop.counter }}</strong>
                                             </td>
@@ -637,11 +637,11 @@
                                                     </div>
                                                     <div class="progress" style="height: 8px;">
                                                         <div class="progress-bar bg-danger" 
-                                                             style="width: {{ paper.citation_rate|floatformat:0 }}%"
-                                                             title="{{ paper.citation_rate|floatformat:1 }}% post-retraction rate">
+                                                             style="width: {{ paper.citation_rate|safe_floatformat:0 }}%"
+                                                             title="{{ paper.citation_rate|safe_floatformat:1 }}% post-retraction rate">
                                                         </div>
                                                     </div>
-                                                    <small class="text-danger"><strong>{{ paper.citation_rate|floatformat:1 }}% rate</strong></small>
+                                                    <small class="text-danger"><strong>{{ paper.citation_rate|safe_floatformat:1 }}% rate</strong></small>
                                                 </div>
                                             </td>
                                             <td class="text-center">
@@ -694,7 +694,7 @@
                                     <div class="col-md-3">
                                         <h5 class="text-info mb-0">
                                             {% if problematic_papers_detailed %}
-                                                {{ problematic_papers_detailed.0.citation_rate|floatformat:1|default:"-" }}%
+                                                {{ problematic_papers_detailed.0.citation_rate|safe_floatformat:1|default:"-" }}%
                                             {% else %}
                                                 -
                                             {% endif %}

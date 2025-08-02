@@ -3,6 +3,7 @@ from datetime import date, datetime
 from django import template
 from django.utils.safestring import mark_safe
 from urllib.parse import urlencode
+import math
 
 register = template.Library()
 
@@ -28,6 +29,33 @@ def map(queryset, field_name):
     except Exception as e:
         # Return empty list if something goes wrong
         return []
+
+@register.filter
+def safe_floatformat(value, arg=None):
+    """
+    Safe version of floatformat that handles None, NaN, and infinity values.
+    Usage: {{ value|safe_floatformat:2 }}
+    """
+    try:
+        # Handle None values
+        if value is None:
+            return "0"
+        
+        # Convert to float if it's not already
+        if isinstance(value, str):
+            value = float(value)
+        
+        # Handle NaN and infinity
+        if math.isnan(value) or math.isinf(value):
+            return "0"
+        
+        # Use Django's built-in floatformat for valid numbers
+        from django.template.defaultfilters import floatformat
+        return floatformat(value, arg)
+        
+    except (ValueError, TypeError, OverflowError):
+        # Return "0" for any conversion errors
+        return "0"
 
 @register.filter
 def safe_json(value):
