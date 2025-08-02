@@ -607,14 +607,7 @@
                                                 </div>
                                                 {% if paper.country %}
                                                 <div class="mt-1">
-                                                    {% with countries=paper.country|split:";" %}
-                                                        {% for country in countries|slice:":2" %}
-                                                            <span class="badge bg-primary me-1">{{ country|striptags }}</span>
-                                                        {% endfor %}
-                                                        {% if countries|length > 2 %}
-                                                            <small class="text-muted">+{{ countries|length|add:"-2" }} more</small>
-                                                        {% endif %}
-                                                    {% endwith %}
+                                                    <span class="badge bg-primary me-1">{{ paper.country|truncatechars:30 }}</span>
                                                 </div>
                                                 {% endif %}
                                             </td>
