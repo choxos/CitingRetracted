@@ -590,11 +590,45 @@
                                                     {% if paper.author %}
                                                     <br><small class="text-muted"><i class="fas fa-user"></i> {{ paper.author|truncatechars:60 }}</small>
                                                     {% endif %}
-                                                    {% if paper.reason %}
-                                                    <br><small class="text-danger"><i class="fas fa-exclamation-circle"></i> {{ paper.reason|truncatechars:80 }}</small>
+                                                    {% if paper.reasons_list %}
+                                                    <br><small class="text-danger"><i class="fas fa-exclamation-circle"></i> 
+                                                        {% for reason in paper.reasons_list %}
+                                                            <span class="badge bg-danger me-1">{{ reason|truncatechars:25 }}</span>
+                                                        {% endfor %}
+                                                        {% if paper.additional_reasons > 0 %}
+                                                            <span class="badge bg-secondary">+{{ paper.additional_reasons }}</span>
+                                                        {% endif %}
+                                                    </small>
                                                     {% endif %}
-                                                    {% if paper.subject %}
-                                                    <br><small class="text-info"><i class="fas fa-tag"></i> {{ paper.subject|truncatechars:60 }}</small>
+                                                    {% if paper.subjects_list %}
+                                                    <br><small class="text-info"><i class="fas fa-tag"></i> 
+                                                        {% for subject in paper.subjects_list %}
+                                                            <span class="badge bg-info me-1">{{ subject|truncatechars:20 }}</span>
+                                                        {% endfor %}
+                                                        {% if paper.additional_subjects > 0 %}
+                                                            <span class="badge bg-secondary">+{{ paper.additional_subjects }}</span>
+                                                        {% endif %}
+                                                    </small>
+                                                    {% endif %}
+                                                    {% if paper.specific_fields_list %}
+                                                    <br><small class="text-success"><i class="fas fa-microscope"></i> 
+                                                        {% for field in paper.specific_fields_list %}
+                                                            <span class="badge bg-success me-1">{{ field|truncatechars:18 }}</span>
+                                                        {% endfor %}
+                                                        {% if paper.additional_specific_fields > 0 %}
+                                                            <span class="badge bg-secondary">+{{ paper.additional_specific_fields }}</span>
+                                                        {% endif %}
+                                                    </small>
+                                                    {% endif %}
+                                                    {% if paper.broad_subjects_list %}
+                                                    <br><small class="text-warning"><i class="fas fa-sitemap"></i> 
+                                                        {% for broad_subject in paper.broad_subjects_list %}
+                                                            <span class="badge bg-warning me-1">{{ broad_subject|truncatechars:18 }}</span>
+                                                        {% endfor %}
+                                                        {% if paper.additional_broad_subjects > 0 %}
+                                                            <span class="badge bg-secondary">+{{ paper.additional_broad_subjects }}</span>
+                                                        {% endif %}
+                                                    </small>
                                                     {% endif %}
                                                 </div>
                                             </td>

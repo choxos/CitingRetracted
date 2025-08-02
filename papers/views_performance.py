@@ -400,7 +400,7 @@ class PerformanceAnalyticsView(View):
 
     def _get_cached_complex_data(self):
         """OPTIMIZED: Complex analytics with performance improvements and memory optimization"""
-        cache_key = 'analytics_complex_data_v27_doi_only_dedup'
+        cache_key = 'analytics_complex_data_v28_parsed_reasons_fields'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
@@ -424,7 +424,8 @@ class PerformanceAnalyticsView(View):
                 'record_id', 'title', 'journal', 'author', 'retraction_date',
                 'post_retraction_count', 'citation_count', 'total_citations',
                 'original_paper_doi', 'original_paper_pubmed_id', 'publisher',
-                'subject', 'reason', 'country', 'institution', 'is_open_access'
+                'subject', 'reason', 'country', 'institution', 'is_open_access',
+                'specific_fields', 'broad_subjects'
             )
             
             # Calculate metrics in Python for compatibility
@@ -435,6 +436,30 @@ class PerformanceAnalyticsView(View):
                 if paper_data['country']:
                     countries = [c.strip() for c in paper_data['country'].split(';') if c.strip()]
                     countries_parsed = countries[:3]  # Limit to first 3 countries for display
+                
+                # Parse reasons (semicolon-separated)
+                reasons_parsed = []
+                if paper_data['reason']:
+                    reasons = [r.strip() for r in paper_data['reason'].split(';') if r.strip()]
+                    reasons_parsed = reasons[:3]  # Limit to first 3 reasons for display
+                
+                # Parse subjects (semicolon-separated)
+                subjects_parsed = []
+                if paper_data['subject']:
+                    subjects = [s.strip() for s in paper_data['subject'].split(';') if s.strip()]
+                    subjects_parsed = subjects[:3]  # Limit to first 3 subjects for display
+                
+                # Parse specific fields (semicolon-separated)
+                specific_fields_parsed = []
+                if paper_data['specific_fields']:
+                    fields = [f.strip() for f in paper_data['specific_fields'].split(';') if f.strip()]
+                    specific_fields_parsed = fields[:3]  # Limit to first 3 fields for display
+                
+                # Parse broad subjects (semicolon-separated)
+                broad_subjects_parsed = []
+                if paper_data['broad_subjects']:
+                    broad_subj = [b.strip() for b in paper_data['broad_subjects'].split(';') if b.strip()]
+                    broad_subjects_parsed = broad_subj[:3]  # Limit to first 3 broad subjects for display
                 
                 # Calculate citation metrics with clearer naming
                 total_citations = paper_data['citation_count'] or 0
@@ -461,6 +486,23 @@ class PerformanceAnalyticsView(View):
                 paper_data['countries_list'] = countries_parsed
                 paper_data['primary_country'] = countries_parsed[0] if countries_parsed else 'Unknown'
                 paper_data['additional_countries'] = len(countries_parsed) - 1 if len(countries_parsed) > 1 else 0
+                
+                # Add parsed semicolon-separated fields
+                paper_data['reasons_list'] = reasons_parsed
+                paper_data['primary_reason'] = reasons_parsed[0] if reasons_parsed else 'Unknown'
+                paper_data['additional_reasons'] = len(reasons_parsed) - 1 if len(reasons_parsed) > 1 else 0
+                
+                paper_data['subjects_list'] = subjects_parsed
+                paper_data['primary_subject'] = subjects_parsed[0] if subjects_parsed else 'Unknown'
+                paper_data['additional_subjects'] = len(subjects_parsed) - 1 if len(subjects_parsed) > 1 else 0
+                
+                paper_data['specific_fields_list'] = specific_fields_parsed
+                paper_data['primary_specific_field'] = specific_fields_parsed[0] if specific_fields_parsed else 'Unknown'
+                paper_data['additional_specific_fields'] = len(specific_fields_parsed) - 1 if len(specific_fields_parsed) > 1 else 0
+                
+                paper_data['broad_subjects_list'] = broad_subjects_parsed
+                paper_data['primary_broad_subject'] = broad_subjects_parsed[0] if broad_subjects_parsed else 'Unknown'
+                paper_data['additional_broad_subjects'] = len(broad_subjects_parsed) - 1 if len(broad_subjects_parsed) > 1 else 0
                 
                 # Fix field name mismatch - template expects post_retraction_citations
                 paper_data['post_retraction_citations'] = post_retraction_citations
