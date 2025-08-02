@@ -9,7 +9,7 @@ from django.views.generic import ListView, DetailView
 from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
 from .models import RetractedPaper, CitingPaper, Citation, DataImportLog
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
 from django.utils import timezone
 from django.views.generic import View
@@ -43,18 +43,18 @@ class HomeView(ListView):
         
         # Use cached data when possible
         from django.core.cache import cache
-        cache_key = 'home_stats_v3_exact_12_months'
+        cache_key = 'home_stats_v4_current_year_2025'
         cached_stats = cache.get(cache_key)
         
         if cached_stats is None:
             # Get summary statistics in one optimized query
-            # Calculate exactly 12 months ago for accurate "last 12 months"
-            twelve_months_ago = timezone.now().date() - relativedelta(months=12)
+            # Calculate start of current year for "in 2025" display
+            current_year_start = date(timezone.now().year, 1, 1)
             
             stats = RetractedPaper.objects.aggregate(
                 total_retracted=Count('id'),
                 recent_retractions=Count('id', filter=Q(
-                    retraction_date__gte=twelve_months_ago
+                    retraction_date__gte=current_year_start
                 )),
                 avg_citations=Avg('citation_count'),
                 max_citations=Max('citation_count')
