@@ -2650,6 +2650,154 @@ function updateNetworkChart() {
     console.log(`${networkType} network updated with ${filteredNodes.length} nodes and ${filteredLinks.length} links`);
 }
 
+// Network control functions
+function updateNetworkSize() {
+    const subjectCount = document.getElementById('subjectCount').value;
+    const journalCount = document.getElementById('journalCount').value;
+    const authorCount = document.getElementById('authorCount').value;
+    const countryCount = document.getElementById('countryCount').value;
+    
+    // Update display values
+    document.getElementById('subjectCountValue').textContent = subjectCount;
+    document.getElementById('journalCountValue').textContent = journalCount;
+    document.getElementById('authorCountValue').textContent = authorCount;
+    document.getElementById('countryCountValue').textContent = countryCount;
+    
+    // Update relationship types display
+    const totalNodes = parseInt(subjectCount) + parseInt(journalCount) + parseInt(authorCount) + parseInt(countryCount);
+    const relationshipTypes = [];
+    if (parseInt(subjectCount) > 0 && parseInt(journalCount) > 0) relationshipTypes.push('Subject-Journal');
+    if (parseInt(countryCount) > 0 && parseInt(subjectCount) > 0) relationshipTypes.push('Country-Subject');
+    if (parseInt(countryCount) > 1) relationshipTypes.push('Country-Country');
+    if (parseInt(journalCount) > 1) relationshipTypes.push('Journal Citations');
+    if (parseInt(journalCount) > 0 && parseInt(authorCount) > 0) relationshipTypes.push('Journal-Author');
+    
+    document.getElementById('relationshipTypes').textContent = relationshipTypes.join(', ') || 'None selected';
+    
+    // Auto-update network after 1 second of no changes (debounce)
+    clearTimeout(window.networkUpdateTimeout);
+    window.networkUpdateTimeout = setTimeout(() => {
+        updateNetworkChart();
+    }, 1000);
+}
+
+function setNetworkPreset(preset) {
+    const networkData = {{ network_data|safe }};
+    const maxSubjects = networkData.available_subjects || 100;
+    const maxJournals = networkData.available_journals || 50;
+    const maxAuthors = networkData.available_authors || 100;
+    const maxCountries = networkData.available_countries || 50;
+    
+    let subjectCount, journalCount, authorCount, countryCount;
+    
+    switch(preset) {
+        case 'small':
+            subjectCount = Math.min(20, maxSubjects);
+            journalCount = Math.min(15, maxJournals);
+            authorCount = Math.min(15, maxAuthors);
+            countryCount = Math.min(10, maxCountries);
+            break;
+        case 'medium':
+            subjectCount = Math.min(80, maxSubjects);
+            journalCount = Math.min(60, maxJournals);
+            authorCount = Math.min(60, maxAuthors);
+            countryCount = Math.min(30, maxCountries);
+            break;
+        case 'large':
+            subjectCount = Math.min(200, maxSubjects);
+            journalCount = Math.min(150, maxJournals);
+            authorCount = Math.min(150, maxAuthors);
+            countryCount = Math.min(80, maxCountries);
+            break;
+        case 'maximum':
+            subjectCount = maxSubjects;
+            journalCount = maxJournals;
+            authorCount = maxAuthors;
+            countryCount = maxCountries;
+            break;
+    }
+    
+    // Update sliders
+    document.getElementById('subjectCount').value = subjectCount;
+    document.getElementById('journalCount').value = journalCount;
+    document.getElementById('authorCount').value = authorCount;
+    document.getElementById('countryCount').value = countryCount;
+    
+    // Update displays
+    updateNetworkSize();
+}
+
+function updateNetworkStats(nodeCount, linkCount) {
+    document.getElementById('currentNodeCount').textContent = nodeCount;
+    document.getElementById('currentLinkCount').textContent = linkCount;
+    
+    const indicator = document.getElementById('performanceIndicator');
+    if (nodeCount < 100) {
+        indicator.textContent = 'Excellent';
+        indicator.className = 'text-success';
+    } else if (nodeCount < 300) {
+        indicator.textContent = 'Good';
+        indicator.className = 'text-info';
+    } else if (nodeCount < 600) {
+        indicator.textContent = 'Fair';
+        indicator.className = 'text-warning';
+    } else {
+        indicator.textContent = 'Heavy';
+        indicator.className = 'text-danger';
+    }
+}
+
+// Problematic Papers sorting functionality
+function sortProblematicPapers(sortBy) {
+    const table = document.getElementById('problematicPapersTable');
+    if (!table) return; // Table not found, might be on a different tab
+    
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr.problematic-paper-row'));
+    
+    rows.sort((a, b) => {
+        let aVal, bVal;
+        
+        switch(sortBy) {
+            case 'citations':
+                aVal = parseInt(a.dataset.citations) || 0;
+                bVal = parseInt(b.dataset.citations) || 0;
+                return bVal - aVal; // Descending
+            case 'rate':
+                aVal = parseFloat(a.dataset.rate) || 0;
+                bVal = parseFloat(b.dataset.rate) || 0;
+                return bVal - aVal; // Descending
+            case 'recent':
+                aVal = new Date(a.dataset.date || '1900-01-01');
+                bVal = new Date(b.dataset.date || '1900-01-01');
+                return bVal - aVal; // Most recent first
+            default:
+                return 0;
+        }
+    });
+    
+    // Re-append sorted rows
+    rows.forEach((row, index) => {
+        // Update row number
+        const numberCell = row.querySelector('td:first-child strong');
+        if (numberCell) {
+            numberCell.textContent = index + 1;
+        }
+        tbody.appendChild(row);
+    });
+    
+    // Update button states
+    document.querySelectorAll('[onclick^="sortProblematicPapers"]').forEach(btn => {
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-outline-primary');
+    });
+    
+    if (event && event.target) {
+        event.target.classList.remove('btn-outline-primary');
+        event.target.classList.add('btn-primary');
+    }
+}
+
 // Utility functions
 function refreshChart(chartId) {
     if (chartInstances[chartId]) {
