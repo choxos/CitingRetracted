@@ -385,11 +385,11 @@ class PerformanceAnalyticsView(View):
 
     def _get_cached_complex_data(self):
         """OPTIMIZED: Complex analytics with performance improvements and memory optimization"""
-        cache_key = 'analytics_complex_data_v20_enhanced_network'
+        cache_key = 'analytics_complex_data_v21_expanded_maps'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
-            logger.info("Cache miss for complex data - generating SQL FIXED version...")
+            logger.info("Cache miss for complex data - generating EXPANDED MAPS version...")
             
             # OPTIMIZATION: Get total count efficiently
             total_unique_retracted = RetractedPaper.objects.filter(
@@ -493,23 +493,68 @@ class PerformanceAnalyticsView(View):
                     'data': month_data
                 })
             
-            # OPTIMIZATION: Simplified world map with top countries only
+            # OPTIMIZATION: Enhanced world map with expanded country coverage
             world_map_data = []
             country_iso_mapping = {
+                # Major countries
                 'United States': 'USA', 'China': 'CHN', 'India': 'IND', 'Germany': 'DEU',
                 'United Kingdom': 'GBR', 'Japan': 'JPN', 'France': 'FRA', 'Canada': 'CAN',
                 'Australia': 'AUS', 'Brazil': 'BRA', 'Italy': 'ITA', 'Spain': 'ESP',
-                'South Korea': 'KOR', 'Netherlands': 'NLD', 'Sweden': 'SWE'
+                'South Korea': 'KOR', 'Netherlands': 'NLD', 'Sweden': 'SWE', 'Switzerland': 'CHE',
+                # European countries
+                'Belgium': 'BEL', 'Austria': 'AUT', 'Poland': 'POL', 'Denmark': 'DNK',
+                'Norway': 'NOR', 'Finland': 'FIN', 'Ireland': 'IRL', 'Portugal': 'PRT',
+                'Greece': 'GRC', 'Czech Republic': 'CZE', 'Hungary': 'HUN', 'Romania': 'ROU',
+                'Bulgaria': 'BGR', 'Croatia': 'HRV', 'Slovakia': 'SVK', 'Slovenia': 'SVN',
+                'Estonia': 'EST', 'Latvia': 'LVA', 'Lithuania': 'LTU', 'Luxembourg': 'LUX',
+                # Asian countries
+                'Russia': 'RUS', 'Turkey': 'TUR', 'Iran': 'IRN', 'Israel': 'ISR',
+                'Thailand': 'THA', 'Singapore': 'SGP', 'Malaysia': 'MYS', 'Indonesia': 'IDN',
+                'Philippines': 'PHL', 'Taiwan': 'TWN', 'Pakistan': 'PAK', 'Bangladesh': 'BGD',
+                'Vietnam': 'VNM', 'Sri Lanka': 'LKA', 'Nepal': 'NPL', 'Myanmar': 'MMR',
+                'Cambodia': 'KHM', 'Laos': 'LAO', 'Mongolia': 'MNG', 'Kazakhstan': 'KAZ',
+                'Uzbekistan': 'UZB', 'Afghanistan': 'AFG', 'Jordan': 'JOR', 'Lebanon': 'LBN',
+                'Syria': 'SYR', 'Iraq': 'IRQ', 'Kuwait': 'KWT', 'Qatar': 'QAT',
+                'United Arab Emirates': 'ARE', 'Saudi Arabia': 'SAU', 'Oman': 'OMN',
+                'Yemen': 'YEM', 'Bahrain': 'BHR', 'Cyprus': 'CYP', 'Georgia': 'GEO',
+                'Armenia': 'ARM', 'Azerbaijan': 'AZE',
+                # African countries
+                'South Africa': 'ZAF', 'Nigeria': 'NGA', 'Egypt': 'EGY', 'Kenya': 'KEN',
+                'Morocco': 'MAR', 'Tunisia': 'TUN', 'Algeria': 'DZA', 'Libya': 'LBY',
+                'Ghana': 'GHA', 'Ethiopia': 'ETH', 'Uganda': 'UGA', 'Tanzania': 'TZA',
+                'Cameroon': 'CMR', 'Ivory Coast': 'CIV', 'Zimbabwe': 'ZWE', 'Botswana': 'BWA',
+                'Namibia': 'NAM', 'Zambia': 'ZMB', 'Malawi': 'MWI', 'Rwanda': 'RWA',
+                'Senegal': 'SEN', 'Mali': 'MLI', 'Burkina Faso': 'BFA', 'Niger': 'NER',
+                'Chad': 'TCD', 'Sudan': 'SDN', 'Madagascar': 'MDG', 'Mauritius': 'MUS',
+                # American countries
+                'Mexico': 'MEX', 'Argentina': 'ARG', 'Chile': 'CHL', 'Colombia': 'COL',
+                'Peru': 'PER', 'Venezuela': 'VEN', 'Ecuador': 'ECU', 'Bolivia': 'BOL',
+                'Uruguay': 'URY', 'Paraguay': 'PRY', 'Costa Rica': 'CRI', 'Panama': 'PAN',
+                'Guatemala': 'GTM', 'Honduras': 'HND', 'Nicaragua': 'NIC', 'El Salvador': 'SLV',
+                'Cuba': 'CUB', 'Dominican Republic': 'DOM', 'Jamaica': 'JAM', 'Haiti': 'HTI',
+                'Trinidad and Tobago': 'TTO', 'Barbados': 'BRB',
+                # Oceania
+                'New Zealand': 'NZL', 'Papua New Guinea': 'PNG', 'Fiji': 'FJI',
+                # Additional common variations
+                'UK': 'GBR', 'USA': 'USA', 'US': 'USA', 'United States of America': 'USA',
+                'Korea': 'KOR', 'South Korea': 'KOR', 'Republic of Korea': 'KOR',
+                'Czech Rep': 'CZE', 'Czechia': 'CZE',
+                'UAE': 'ARE', 'Cote d\'Ivoire': 'CIV'
             }
             
-            for item in country_data[:10]:  # Top 10 countries only
+            for item in country_data[:20]:  # Expand to top 20 countries
                 country_name = item[0]
                 retraction_count = item[1]
-                iso_code = country_iso_mapping.get(country_name, '')
+                
+                # Handle multiple countries separated by semicolons
+                countries = [c.strip() for c in country_name.split(';') if c.strip()]
+                primary_country = countries[0] if countries else country_name
+                
+                iso_code = country_iso_mapping.get(primary_country, '')
                 
                 if iso_code and retraction_count > 0:
                     world_map_data.append({
-                        'country': country_name,
+                        'country': primary_country,
                         'iso_alpha': iso_code,
                         'value': float(retraction_count),
                         'post_retraction_citations': int(retraction_count * 0.3),  # Estimated
@@ -518,13 +563,25 @@ class PerformanceAnalyticsView(View):
             
             logger.info(f"Generated world map data for {len(world_map_data)} countries")
             
-            # OPTIMIZATION: Simplified static data
-            article_type_data = [
-                {'article_type': 'Research Article', 'count': int(total_unique_retracted * 0.7)},
-                {'article_type': 'Review', 'count': int(total_unique_retracted * 0.15)},
-                {'article_type': 'Letter', 'count': int(total_unique_retracted * 0.1)},
-                {'article_type': 'Editorial', 'count': int(total_unique_retracted * 0.05)}
-            ]
+            # OPTIMIZATION: Dynamic article type data from database
+            article_type_data = list(
+                RetractedPaper.objects.filter(
+                    retraction_nature__iexact='Retraction'
+                ).exclude(
+                    Q(article_type__isnull=True) | Q(article_type__exact='')
+                ).values('article_type').annotate(
+                    count=Count('id')
+                ).order_by('-count')
+            )
+            
+            # Fallback to static data if no article types in database
+            if not article_type_data:
+                article_type_data = [
+                    {'article_type': 'Research Article', 'count': int(total_unique_retracted * 0.7)},
+                    {'article_type': 'Review', 'count': int(total_unique_retracted * 0.15)},
+                    {'article_type': 'Letter', 'count': int(total_unique_retracted * 0.1)},
+                    {'article_type': 'Editorial', 'count': int(total_unique_retracted * 0.05)}
+                ]
             
             access_analytics = {
                 'open_access': {'count': int(total_unique_retracted * 0.35), 'percentage': 35.0},
@@ -561,13 +618,26 @@ class PerformanceAnalyticsView(View):
                 for item in country_data[:5]
             ]
             
-            publisher_data = [
-                {'publisher': 'Elsevier', 'count': int(total_unique_retracted * 0.18)},
-                {'publisher': 'Springer', 'count': int(total_unique_retracted * 0.16)},
-                {'publisher': 'Wiley', 'count': int(total_unique_retracted * 0.14)},
-                {'publisher': 'Nature Publishing', 'count': int(total_unique_retracted * 0.12)},
-                {'publisher': 'Others', 'count': int(total_unique_retracted * 0.40)}
-            ]
+            # OPTIMIZATION: Dynamic publisher data from database (up to 10)
+            publisher_data = list(
+                RetractedPaper.objects.filter(
+                    retraction_nature__iexact='Retraction'
+                ).exclude(
+                    Q(publisher__isnull=True) | Q(publisher__exact='')
+                ).values('publisher').annotate(
+                    count=Count('id')
+                ).order_by('-count')[:10]  # Top 10 publishers
+            )
+            
+            # Fallback to static data if no publishers in database
+            if not publisher_data:
+                publisher_data = [
+                    {'publisher': 'Elsevier', 'count': int(total_unique_retracted * 0.18)},
+                    {'publisher': 'Springer', 'count': int(total_unique_retracted * 0.16)},
+                    {'publisher': 'Wiley', 'count': int(total_unique_retracted * 0.14)},
+                    {'publisher': 'Nature Publishing', 'count': int(total_unique_retracted * 0.12)},
+                    {'publisher': 'Others', 'count': int(total_unique_retracted * 0.40)}
+                ]
 
             cached_data = {
                 'problematic_papers': problematic_papers,
@@ -591,7 +661,7 @@ class PerformanceAnalyticsView(View):
             
             # Cache for shorter time due to simplified data
             cache.set(cache_key, cached_data, CACHE_TIMEOUT_LONG)
-            logger.info("SQL fixed complex data cached successfully")
+            logger.info("Expanded maps and dynamic data cached successfully")
         
         return cached_data
     
