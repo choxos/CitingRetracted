@@ -1983,14 +1983,13 @@ if (sunburstData && sunburstData.children && sunburstData.children.length > 0) {
 function initializeNetworkVisualization() {
     const networkData = {{ network_data|safe }};
     
-    // Debug network data structure
-    console.log('New Network Data Structure:', networkData);
-    console.log('Nodes:', networkData.nodes ? networkData.nodes.length : 0);
-    console.log('Links:', networkData.links ? networkData.links.length : 0);
-    console.log('Design info:', networkData.design);
+    // Add debugging output
+    console.log('Initializing network with data:', networkData);
+    console.log('Network nodes:', networkData?.nodes?.length);
+    console.log('Network links:', networkData?.links?.length);
     
-    if (!networkData || !networkData.nodes || !networkData.links) {
-        console.error('Invalid network data structure');
+    if (!networkData || !networkData.nodes || !networkData.links || networkData.nodes.length === 0) {
+        console.warn('Network data is missing or empty:', networkData);
         document.getElementById("networkVisualization").innerHTML = '<p class="text-center text-muted">No network data available</p>';
         return;
     }

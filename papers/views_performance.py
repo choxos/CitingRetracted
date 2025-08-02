@@ -400,7 +400,7 @@ class PerformanceAnalyticsView(View):
 
     def _get_cached_complex_data(self):
         """OPTIMIZED: Complex analytics with performance improvements and memory optimization"""
-        cache_key = 'analytics_complex_data_v25_parsed_countries_clear_citations'
+        cache_key = 'analytics_complex_data_v26_increased_network_limits'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
@@ -790,14 +790,14 @@ class PerformanceAnalyticsView(View):
         links = []
         node_id = 0
         
-        # Get data for all node types with more detail
+        # Get data for all node types with much higher limits for realistic counts
         top_subjects = list(RetractedPaper.objects.filter(
             retraction_nature__iexact='Retraction'
         ).exclude(
             Q(subject__isnull=True) | Q(subject__exact='')
         ).values('subject').annotate(
             count=Count('id')
-        ).order_by('-count')[:50])  # Get more for filtering
+        ).order_by('-count')[:200])  # Increased from 50 to 200
         
         top_journals = list(RetractedPaper.objects.filter(
             retraction_nature__iexact='Retraction'
@@ -805,7 +805,7 @@ class PerformanceAnalyticsView(View):
             Q(journal__isnull=True) | Q(journal__exact='')
         ).values('journal').annotate(
             count=Count('id')
-        ).order_by('-count')[:30])  # Get more for filtering
+        ).order_by('-count')[:150])  # Increased from 30 to 150
         
         top_countries = list(RetractedPaper.objects.filter(
             retraction_nature__iexact='Retraction'
@@ -813,7 +813,7 @@ class PerformanceAnalyticsView(View):
             Q(country__isnull=True) | Q(country__exact='')
         ).values('country').annotate(
             count=Count('id')
-        ).order_by('-count')[:25])  # Get more for filtering
+        ).order_by('-count')[:100])  # Increased from 25 to 100
         
         top_authors = list(RetractedPaper.objects.filter(
             retraction_nature__iexact='Retraction'
@@ -821,11 +821,11 @@ class PerformanceAnalyticsView(View):
             Q(author__isnull=True) | Q(author__exact='')
         ).values('author').annotate(
             count=Count('id')
-        ).order_by('-count')[:20])  # Get more for filtering
+        ).order_by('-count')[:80])  # Increased from 20 to 80
         
-        # Create subject nodes with connected properties
+        # Create subject nodes with connected properties (limit displayed nodes for performance)
         subject_nodes = {}
-        for i, item in enumerate(top_subjects):
+        for i, item in enumerate(top_subjects[:25]):  # Show first 25 by default
             subject_name = item['subject'][:25]
             nodes.append({
                 'id': node_id,
@@ -836,17 +836,17 @@ class PerformanceAnalyticsView(View):
                 'count': item['count'],
                 'paper_count': item['count'],
                 # Add connected properties for filtering
-                'connected_journals': min(10, item['count'] // 20),
-                'connected_countries': min(8, item['count'] // 30),
+                'connected_journals': min(15, item['count'] // 20),
+                'connected_countries': min(12, item['count'] // 30),
                 'connected_subjects': 0,  # Self-connection not relevant
-                'connected_authors': min(5, item['count'] // 50)
+                'connected_authors': min(8, item['count'] // 50)
             })
             subject_nodes[subject_name] = node_id
             node_id += 1
         
-        # Create journal nodes with connected properties
+        # Create journal nodes with connected properties (limit displayed nodes for performance)
         journal_nodes = {}
-        for item in top_journals:
+        for item in top_journals[:15]:  # Show first 15 by default
             journal_name = item['journal'][:20]
             nodes.append({
                 'id': node_id,
@@ -857,17 +857,17 @@ class PerformanceAnalyticsView(View):
                 'count': item['count'],
                 'paper_count': item['count'],
                 # Add connected properties for filtering
-                'connected_subjects': min(12, item['count'] // 10),
-                'connected_countries': min(6, item['count'] // 25),
+                'connected_subjects': min(20, item['count'] // 10),
+                'connected_countries': min(10, item['count'] // 25),
                 'connected_journals': 0,  # Self-connection not relevant
-                'connected_authors': min(8, item['count'] // 15)
+                'connected_authors': min(12, item['count'] // 15)
             })
             journal_nodes[journal_name] = node_id
             node_id += 1
         
-        # Create country nodes with connected properties
+        # Create country nodes with connected properties (limit displayed nodes for performance)
         country_nodes = {}
-        for item in top_countries:
+        for item in top_countries[:12]:  # Show first 12 by default
             # Handle multi-country entries
             country_name = item['country'].split(';')[0].strip()[:15]
             if country_name not in country_nodes:
@@ -880,17 +880,17 @@ class PerformanceAnalyticsView(View):
                     'count': item['count'],
                     'paper_count': item['count'],
                     # Add connected properties for filtering
-                    'connected_subjects': min(15, item['count'] // 15),
-                    'connected_journals': min(10, item['count'] // 20),
+                    'connected_subjects': min(25, item['count'] // 15),
+                    'connected_journals': min(15, item['count'] // 20),
                     'connected_countries': len(top_countries) - 1,  # Can connect to other countries
-                    'connected_authors': min(6, item['count'] // 40)
+                    'connected_authors': min(10, item['count'] // 40)
                 })
                 country_nodes[country_name] = node_id
                 node_id += 1
         
-        # Create author nodes with connected properties
+        # Create author nodes with connected properties (limit displayed nodes for performance)
         author_nodes = {}
-        for item in top_authors:
+        for item in top_authors[:8]:  # Show first 8 by default
             author_name = item['author'].split(';')[0].strip()[:15]
             if author_name not in author_nodes:
                 nodes.append({
@@ -902,9 +902,9 @@ class PerformanceAnalyticsView(View):
                     'count': item['count'],
                     'paper_count': item['count'],
                     # Add connected properties for filtering
-                    'connected_subjects': min(8, item['count']),
-                    'connected_journals': min(6, item['count']),
-                    'connected_countries': min(4, item['count'] // 2),
+                    'connected_subjects': min(12, item['count']),
+                    'connected_journals': min(10, item['count']),
+                    'connected_countries': min(6, item['count'] // 2),
                     'connected_authors': 0  # Self-connection not relevant
                 })
                 author_nodes[author_name] = node_id
@@ -1016,6 +1016,7 @@ class PerformanceAnalyticsView(View):
                     'specialized_links': '#ffc107'
                 }
             },
+            # Report the full available counts, not just what's displayed
             'available_subjects': len(top_subjects),
             'available_journals': len(top_journals),
             'available_authors': len(top_authors),
@@ -1027,7 +1028,7 @@ class PerformanceAnalyticsView(View):
                 'countries_shown': countries_shown
             },
             'relationship_types': list(relationship_types),
-            'performance_level': 'Excellent' if len(nodes) < 50 else 'Good',
+            'performance_level': 'Excellent' if len(nodes) < 50 else 'Good' if len(nodes) < 100 else 'Fair',
             'metadata': {
                 'total_papers': total_papers,
                 'network_complexity': 'medium',
