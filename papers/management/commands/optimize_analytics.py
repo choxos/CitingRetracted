@@ -38,7 +38,7 @@ class Command(BaseCommand):
                     SELECT schemaname, tablename, indexname, idx_scan, idx_tup_read, idx_tup_fetch
                     FROM pg_stat_user_indexes 
                     WHERE schemaname = 'public' 
-                    AND tablename IN ('papers_retractedpaper', 'papers_citation', 'papers_citingpaper')
+                    AND tablename IN ('retracted_papers', 'citations', 'citing_papers')
                     ORDER BY idx_scan DESC;
                 """)
                 
@@ -65,45 +65,45 @@ class Command(BaseCommand):
             # Compound indexes for common analytics filters
             {
                 'name': 'idx_retracted_papers_nature_date',
-                'table': 'papers_retractedpaper',
+                'table': 'retracted_papers',
                 'fields': 'retraction_nature, retraction_date',
-                'sql': 'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_retracted_papers_nature_date ON papers_retractedpaper (retraction_nature, retraction_date) WHERE retraction_nature IS NOT NULL AND retraction_date IS NOT NULL;'
+                'sql': 'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_retracted_papers_nature_date ON retracted_papers (retraction_nature, retraction_date) WHERE retraction_nature IS NOT NULL AND retraction_date IS NOT NULL;'
             },
             {
                 'name': 'idx_retracted_papers_nature_citations',
-                'table': 'papers_retractedpaper', 
+                'table': 'retracted_papers', 
                 'fields': 'retraction_nature, citation_count',
-                'sql': 'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_retracted_papers_nature_citations ON papers_retractedpaper (retraction_nature, citation_count) WHERE retraction_nature IS NOT NULL AND citation_count IS NOT NULL;'
+                'sql': 'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_retracted_papers_nature_citations ON retracted_papers (retraction_nature, citation_count) WHERE retraction_nature IS NOT NULL AND citation_count IS NOT NULL;'
             },
             {
                 'name': 'idx_citations_days_after',
-                'table': 'papers_citation',
+                'table': 'citations',
                 'fields': 'days_after_retraction',
-                'sql': 'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_citations_days_after ON papers_citation (days_after_retraction) WHERE days_after_retraction IS NOT NULL;'
+                'sql': 'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_citations_days_after ON citations (days_after_retraction) WHERE days_after_retraction IS NOT NULL;'
             },
             {
                 'name': 'idx_citing_papers_pub_date',
-                'table': 'papers_citingpaper',
+                'table': 'citing_papers',
                 'fields': 'publication_date',
-                'sql': 'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_citing_papers_pub_date ON papers_citingpaper (publication_date) WHERE publication_date IS NOT NULL;'
+                'sql': 'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_citing_papers_pub_date ON citing_papers (publication_date) WHERE publication_date IS NOT NULL;'
             },
             {
                 'name': 'idx_retracted_papers_journal',
-                'table': 'papers_retractedpaper',
+                'table': 'retracted_papers',
                 'fields': 'journal',
-                'sql': 'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_retracted_papers_journal ON papers_retractedpaper (journal) WHERE journal IS NOT NULL AND journal != \'\';'
+                'sql': 'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_retracted_papers_journal ON retracted_papers (journal) WHERE journal IS NOT NULL AND journal != \'\';'
             },
             {
                 'name': 'idx_retracted_papers_country',
-                'table': 'papers_retractedpaper',
+                'table': 'retracted_papers',
                 'fields': 'country', 
-                'sql': 'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_retracted_papers_country ON papers_retractedpaper (country) WHERE country IS NOT NULL AND country != \'\';'
+                'sql': 'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_retracted_papers_country ON retracted_papers (country) WHERE country IS NOT NULL AND country != \'\';'
             },
             {
                 'name': 'idx_retracted_papers_subject',
-                'table': 'papers_retractedpaper',
+                'table': 'retracted_papers',
                 'fields': 'subject',
-                'sql': 'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_retracted_papers_subject ON papers_retractedpaper (subject) WHERE subject IS NOT NULL AND subject != \'\';'
+                'sql': 'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_retracted_papers_subject ON retracted_papers (subject) WHERE subject IS NOT NULL AND subject != \'\';'
             }
         ]
 

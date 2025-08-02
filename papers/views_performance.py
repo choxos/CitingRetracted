@@ -157,42 +157,42 @@ class PerformanceAnalyticsView(View):
     
     def _get_cached_chart_data(self):
         """OPTIMIZED: Chart data with improved database queries and caching"""
-        cache_key = 'analytics_chart_data_v7_optimized'
+        cache_key = 'analytics_chart_data_v8_fixed'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
             logger.info("Cache miss for chart data - generating optimized version...")
             
-            # OPTIMIZATION: Combined retraction trends with better indexing hints
+            # OPTIMIZATION: Combined retraction trends with better performance
             retraction_trends_raw = RetractedPaper.objects.filter(
                 retraction_nature__iexact='Retraction',
                 retraction_date__isnull=False
-            ).extra(
-                select={'year_int': 'EXTRACT(year FROM retraction_date)'}
-            ).values('year_int').annotate(
+            ).annotate(
+                year=TruncYear('retraction_date')
+            ).values('year').annotate(
                 count=Count('id')
-            ).order_by('year_int')  # Use integer year for better performance
+            ).order_by('year')
             
             retraction_trends = [
-                {'year': int(item['year_int']), 'count': item['count']} 
+                {'year': item['year'].year, 'count': item['count']} 
                 for item in retraction_trends_raw
             ]
             
-            # OPTIMIZATION: Streamlined citation analysis with database date extraction
+            # OPTIMIZATION: Streamlined citation analysis with better query
             citation_analysis_raw = Citation.objects.filter(
                 retracted_paper__retraction_nature__iexact='Retraction',
                 citing_paper__publication_date__isnull=False
-            ).extra(
-                select={'year_int': 'EXTRACT(year FROM citing_paper__publication_date)'}
-            ).values('year_int').annotate(
+            ).annotate(
+                year=TruncYear('citing_paper__publication_date')
+            ).values('year').annotate(
                 total_citations=Count('id'),
                 post_retraction_citations=Count('id', filter=Q(days_after_retraction__gt=0)),
                 pre_retraction_citations=Count('id', filter=Q(days_after_retraction__lt=0))
-            ).order_by('year_int')
+            ).order_by('year')
             
             citation_analysis = [
                 {
-                    'year': int(item['year_int']),
+                    'year': item['year'].year,
                     'total_citations': item['total_citations'],
                     'post_retraction_citations': item['post_retraction_citations'],
                     'pre_retraction_citations': item['pre_retraction_citations']
@@ -385,11 +385,11 @@ class PerformanceAnalyticsView(View):
 
     def _get_cached_complex_data(self):
         """OPTIMIZED: Complex analytics with performance improvements and memory optimization"""
-        cache_key = 'analytics_complex_data_v18_memory_optimized'
+        cache_key = 'analytics_complex_data_v19_sql_fixed'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
-            logger.info("Cache miss for complex data - generating MEMORY OPTIMIZED version...")
+            logger.info("Cache miss for complex data - generating SQL FIXED version...")
             
             # OPTIMIZATION: Get total count efficiently
             total_unique_retracted = RetractedPaper.objects.filter(
@@ -398,39 +398,42 @@ class PerformanceAnalyticsView(View):
             
             logger.info(f"Processing {total_unique_retracted} unique retracted papers")
             
-            # OPTIMIZATION: Limited problematic papers with database-level calculations
-            problematic_papers = list(
-                RetractedPaper.objects.filter(
-                    retraction_nature__iexact='Retraction'
-                ).annotate(
-                    post_retraction_count=Count('citations', filter=Q(citations__days_after_retraction__gt=0)),
-                    total_citations=Count('citations'),
-                    # Calculate citation rate in database
-                    citation_rate=Case(
-                        When(citation_count__gt=0, then=F('post_retraction_count') * 100.0 / F('citation_count')),
-                        default=Value(0.0),
-                        output_field=IntegerField()
-                    ),
-                    # Calculate days since retraction in database  
-                    days_since_retraction=Case(
-                        When(
-                            retraction_date__isnull=False,
-                            then=Extract(Cast(Value(timezone.now().date()), CharField()) - F('retraction_date'), 'days')
-                        ),
-                        default=Value(None),
-                        output_field=IntegerField()
-                    )
-                ).filter(
-                    post_retraction_count__gt=0
-                ).order_by('-post_retraction_count')[:500]  # LIMIT to top 500 for performance
-                .values(
-                    'record_id', 'title', 'journal', 'author', 'retraction_date',
-                    'post_retraction_count', 'citation_count', 'total_citations',
-                    'original_paper_doi', 'original_paper_pubmed_id', 'publisher',
-                    'subject', 'reason', 'country', 'institution', 'is_open_access',
-                    'citation_rate', 'days_since_retraction'
-                )
+            # OPTIMIZATION: Simplified problematic papers query (avoid complex database calculations)
+            problematic_papers_raw = RetractedPaper.objects.filter(
+                retraction_nature__iexact='Retraction'
+            ).annotate(
+                post_retraction_count=Count('citations', filter=Q(citations__days_after_retraction__gt=0)),
+                total_citations=Count('citations')
+            ).filter(
+                post_retraction_count__gt=0
+            ).order_by('-post_retraction_count')[:500].values(
+                'record_id', 'title', 'journal', 'author', 'retraction_date',
+                'post_retraction_count', 'citation_count', 'total_citations',
+                'original_paper_doi', 'original_paper_pubmed_id', 'publisher',
+                'subject', 'reason', 'country', 'institution', 'is_open_access'
             )
+            
+            # Calculate metrics in Python for compatibility
+            problematic_papers = []
+            for paper_data in problematic_papers_raw:
+                # Calculate citation rate
+                if paper_data['citation_count'] and paper_data['citation_count'] > 0:
+                    citation_rate = (paper_data['post_retraction_count'] / paper_data['citation_count']) * 100
+                else:
+                    citation_rate = 0
+                
+                # Calculate days since retraction
+                if paper_data['retraction_date']:
+                    today = timezone.now().date()
+                    delta = today - paper_data['retraction_date']
+                    days_since_retraction = delta.days
+                else:
+                    days_since_retraction = None
+                
+                # Add calculated fields
+                paper_data['citation_rate'] = citation_rate
+                paper_data['days_since_retraction'] = days_since_retraction
+                problematic_papers.append(paper_data)
             
             # OPTIMIZATION: Simplified analytics data with limited queries
             journal_data = list(
@@ -505,7 +508,6 @@ class PerformanceAnalyticsView(View):
                 iso_code = country_iso_mapping.get(country_name, '')
                 
                 if iso_code and retraction_count > 0:
-                    import math
                     world_map_data.append({
                         'country': country_name,
                         'iso_alpha': iso_code,
@@ -589,7 +591,7 @@ class PerformanceAnalyticsView(View):
             
             # Cache for shorter time due to simplified data
             cache.set(cache_key, cached_data, CACHE_TIMEOUT_LONG)
-            logger.info("Memory optimized complex data cached successfully")
+            logger.info("SQL fixed complex data cached successfully")
         
         return cached_data
     
