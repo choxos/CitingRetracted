@@ -385,11 +385,11 @@ class PerformanceAnalyticsView(View):
 
     def _get_cached_complex_data(self):
         """OPTIMIZED: Complex analytics with performance improvements and memory optimization"""
-        cache_key = 'analytics_complex_data_v21_expanded_maps'
+        cache_key = 'analytics_complex_data_v22_interactive_network'
         cached_data = cache.get(cache_key)
         
         if cached_data is None:
-            logger.info("Cache miss for complex data - generating EXPANDED MAPS version...")
+            logger.info("Cache miss for complex data - generating INTERACTIVE NETWORK version...")
             
             # OPTIMIZATION: Get total count efficiently
             total_unique_retracted = RetractedPaper.objects.filter(
@@ -661,7 +661,7 @@ class PerformanceAnalyticsView(View):
             
             # Cache for shorter time due to simplified data
             cache.set(cache_key, cached_data, CACHE_TIMEOUT_LONG)
-            logger.info("Expanded maps and dynamic data cached successfully")
+            logger.info("Interactive network with filtering support cached successfully")
         
         return cached_data
     
@@ -752,22 +752,47 @@ class PerformanceAnalyticsView(View):
             return []
 
     def _generate_simplified_network_data(self, total_papers):
-        """OPTIMIZED: Generate realistic network data with multiple node types and relationships"""
+        """OPTIMIZED: Generate realistic network data that supports frontend filtering controls"""
         nodes = []
         links = []
         node_id = 0
         
-        # Get top subjects (15 nodes)
-        top_subjects = RetractedPaper.objects.filter(
+        # Get data for all node types with more detail
+        top_subjects = list(RetractedPaper.objects.filter(
             retraction_nature__iexact='Retraction'
         ).exclude(
             Q(subject__isnull=True) | Q(subject__exact='')
         ).values('subject').annotate(
             count=Count('id')
-        ).order_by('-count')[:15]
+        ).order_by('-count')[:50])  # Get more for filtering
         
+        top_journals = list(RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).exclude(
+            Q(journal__isnull=True) | Q(journal__exact='')
+        ).values('journal').annotate(
+            count=Count('id')
+        ).order_by('-count')[:30])  # Get more for filtering
+        
+        top_countries = list(RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).exclude(
+            Q(country__isnull=True) | Q(country__exact='')
+        ).values('country').annotate(
+            count=Count('id')
+        ).order_by('-count')[:25])  # Get more for filtering
+        
+        top_authors = list(RetractedPaper.objects.filter(
+            retraction_nature__iexact='Retraction'
+        ).exclude(
+            Q(author__isnull=True) | Q(author__exact='')
+        ).values('author').annotate(
+            count=Count('id')
+        ).order_by('-count')[:20])  # Get more for filtering
+        
+        # Create subject nodes with connected properties
         subject_nodes = {}
-        for item in top_subjects:
+        for i, item in enumerate(top_subjects):
             subject_name = item['subject'][:25]
             nodes.append({
                 'id': node_id,
@@ -775,20 +800,18 @@ class PerformanceAnalyticsView(View):
                 'type': 'subject',
                 'size': min(20, 8 + (item['count'] // 10)),
                 'color': '#ff6b6b',
-                'count': item['count']
+                'count': item['count'],
+                'paper_count': item['count'],
+                # Add connected properties for filtering
+                'connected_journals': min(10, item['count'] // 20),
+                'connected_countries': min(8, item['count'] // 30),
+                'connected_subjects': 0,  # Self-connection not relevant
+                'connected_authors': min(5, item['count'] // 50)
             })
             subject_nodes[subject_name] = node_id
             node_id += 1
         
-        # Get top journals (10 nodes)
-        top_journals = RetractedPaper.objects.filter(
-            retraction_nature__iexact='Retraction'
-        ).exclude(
-            Q(journal__isnull=True) | Q(journal__exact='')
-        ).values('journal').annotate(
-            count=Count('id')
-        ).order_by('-count')[:10]
-        
+        # Create journal nodes with connected properties
         journal_nodes = {}
         for item in top_journals:
             journal_name = item['journal'][:20]
@@ -798,20 +821,18 @@ class PerformanceAnalyticsView(View):
                 'type': 'journal',
                 'size': min(18, 6 + (item['count'] // 5)),
                 'color': '#4ecdc4',
-                'count': item['count']
+                'count': item['count'],
+                'paper_count': item['count'],
+                # Add connected properties for filtering
+                'connected_subjects': min(12, item['count'] // 10),
+                'connected_countries': min(6, item['count'] // 25),
+                'connected_journals': 0,  # Self-connection not relevant
+                'connected_authors': min(8, item['count'] // 15)
             })
             journal_nodes[journal_name] = node_id
             node_id += 1
         
-        # Get top countries (8 nodes)
-        top_countries = RetractedPaper.objects.filter(
-            retraction_nature__iexact='Retraction'
-        ).exclude(
-            Q(country__isnull=True) | Q(country__exact='')
-        ).values('country').annotate(
-            count=Count('id')
-        ).order_by('-count')[:8]
-        
+        # Create country nodes with connected properties
         country_nodes = {}
         for item in top_countries:
             # Handle multi-country entries
@@ -823,20 +844,18 @@ class PerformanceAnalyticsView(View):
                     'type': 'country',
                     'size': min(16, 5 + (item['count'] // 20)),
                     'color': '#96ceb4',
-                    'count': item['count']
+                    'count': item['count'],
+                    'paper_count': item['count'],
+                    # Add connected properties for filtering
+                    'connected_subjects': min(15, item['count'] // 15),
+                    'connected_journals': min(10, item['count'] // 20),
+                    'connected_countries': len(top_countries) - 1,  # Can connect to other countries
+                    'connected_authors': min(6, item['count'] // 40)
                 })
                 country_nodes[country_name] = node_id
                 node_id += 1
         
-        # Get top authors (5 nodes for performance)
-        top_authors = RetractedPaper.objects.filter(
-            retraction_nature__iexact='Retraction'
-        ).exclude(
-            Q(author__isnull=True) | Q(author__exact='')
-        ).values('author').annotate(
-            count=Count('id')
-        ).order_by('-count')[:5]
-        
+        # Create author nodes with connected properties
         author_nodes = {}
         for item in top_authors:
             author_name = item['author'].split(';')[0].strip()[:15]
@@ -847,51 +866,60 @@ class PerformanceAnalyticsView(View):
                     'type': 'author',
                     'size': min(14, 4 + item['count']),
                     'color': '#45b7d1',
-                    'count': item['count']
+                    'count': item['count'],
+                    'paper_count': item['count'],
+                    # Add connected properties for filtering
+                    'connected_subjects': min(8, item['count']),
+                    'connected_journals': min(6, item['count']),
+                    'connected_countries': min(4, item['count'] // 2),
+                    'connected_authors': 0  # Self-connection not relevant
                 })
                 author_nodes[author_name] = node_id
                 node_id += 1
         
-        # Create diverse relationships
+        # Create diverse relationships with proper connection types
         
-        # 1. Subject-Journal relationships
-        for subject_name, subject_id in list(subject_nodes.items())[:10]:
-            for journal_name, journal_id in list(journal_nodes.items())[:5]:
+        # 1. Subject-Journal relationships (primary connections)
+        for subject_name, subject_id in list(subject_nodes.items())[:15]:
+            for journal_name, journal_id in list(journal_nodes.items())[:8]:
                 if subject_id != journal_id:
                     links.append({
                         'source': subject_id,
                         'target': journal_id,
-                        'strength': max(2, min(6, 4)),
+                        'strength': max(3, min(8, 6)),
                         'type': 'subject-journal',
+                        'connection_type': 'primary',
                         'color': '#007bff'
                     })
         
-        # 2. Country-Subject relationships
-        for country_name, country_id in country_nodes.items():
-            for subject_name, subject_id in list(subject_nodes.items())[:6]:
+        # 2. Country-Subject relationships (secondary connections)
+        for country_name, country_id in list(country_nodes.items())[:10]:
+            for subject_name, subject_id in list(subject_nodes.items())[:12]:
                 if country_id != subject_id:
                     links.append({
                         'source': country_id,
                         'target': subject_id,
-                        'strength': max(2, min(5, 3)),
+                        'strength': max(4, min(7, 5)),
                         'type': 'country-subject',
+                        'connection_type': 'secondary',
                         'color': '#28a745'
                     })
         
-        # 3. Country-Country collaborations
+        # 3. Country-Country collaborations (specialized connections)
         country_list = list(country_nodes.items())
         for i, (country1_name, country1_id) in enumerate(country_list):
-            for country2_name, country2_id in country_list[i+1:i+3]:  # Limit connections
+            for country2_name, country2_id in country_list[i+1:i+4]:  # Limit connections
                 if country1_id != country2_id:
                     links.append({
                         'source': country1_id,
                         'target': country2_id,
-                        'strength': max(1, min(4, 2)),
+                        'strength': max(2, min(6, 4)),
                         'type': 'country-country',
+                        'connection_type': 'specialized',
                         'color': '#ffc107'
                     })
         
-        # 4. Journal Citations (journal-to-journal)
+        # 4. Journal Citations (secondary connections)
         journal_list = list(journal_nodes.items())
         for i, (journal1_name, journal1_id) in enumerate(journal_list):
             for journal2_name, journal2_id in journal_list[i+1:i+3]:  # Limit connections
@@ -899,20 +927,22 @@ class PerformanceAnalyticsView(View):
                     links.append({
                         'source': journal1_id,
                         'target': journal2_id,
-                        'strength': max(2, min(5, 3)),
+                        'strength': max(3, min(7, 5)),
                         'type': 'journal-citation',
+                        'connection_type': 'secondary',
                         'color': '#dc3545'
                     })
         
-        # 5. Journal-Author relationships
+        # 5. Journal-Author relationships (primary connections)
         for author_name, author_id in author_nodes.items():
-            for journal_name, journal_id in list(journal_nodes.items())[:4]:
+            for journal_name, journal_id in list(journal_nodes.items())[:6]:
                 if author_id != journal_id:
                     links.append({
                         'source': author_id,
                         'target': journal_id,
-                        'strength': max(1, min(4, 2)),
+                        'strength': max(2, min(6, 4)),
                         'type': 'journal-author',
+                        'connection_type': 'primary',
                         'color': '#6f42c1'
                     })
         
@@ -964,7 +994,14 @@ class PerformanceAnalyticsView(View):
                 'countries_shown': countries_shown
             },
             'relationship_types': list(relationship_types),
-            'performance_level': 'Excellent' if len(nodes) < 50 else 'Good'
+            'performance_level': 'Excellent' if len(nodes) < 50 else 'Good',
+            'metadata': {
+                'total_papers': total_papers,
+                'network_complexity': 'medium',
+                'last_updated': timezone.now().isoformat(),
+                'filter_support': True,
+                'available_filters': ['subjects', 'journals', 'countries', 'authors', 'citations', 'combined']
+            }
         }
 
 # Performance monitoring decorator
