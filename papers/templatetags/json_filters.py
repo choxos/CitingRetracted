@@ -7,6 +7,29 @@ from urllib.parse import urlencode
 register = template.Library()
 
 @register.filter
+def map(queryset, field_name):
+    """
+    Extract a specific field from each object in a queryset/list.
+    Usage: {{ queryset|map:"field_name" }}
+    """
+    try:
+        if not queryset:
+            return []
+        
+        result = []
+        for obj in queryset:
+            if hasattr(obj, field_name):
+                value = getattr(obj, field_name)
+                result.append(value)
+            elif isinstance(obj, dict) and field_name in obj:
+                result.append(obj[field_name])
+        
+        return result
+    except Exception as e:
+        # Return empty list if something goes wrong
+        return []
+
+@register.filter
 def safe_json(value):
     """
     Safely serialize a value to JSON, handling None values and other edge cases
