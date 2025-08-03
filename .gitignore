@@ -65,3 +65,62 @@ htmlcov/
 # Temporary files
 tmp/
 temp/
+
+# Sensitive documentation and deployment guides
+*_GUIDE.md
+*_DOCUMENTATION.md
+DEPLOY*.md
+DEPLOYMENT.md
+DATABASE_*.md
+SSL_*.md
+*_MIGRATION_*.md
+*_SETUP_*.md
+*_CONFIGURATION_*.md
+PRCT_*.md
+PORT_*.md
+PERFORMANCE_*.md
+ANALYTICS_*.md
+API_DOCUMENTATION.md
+CROSSREF_*.md
+OPENCITATIONS_*.md
+RETRACTION_WATCH_*.md
+DOWNLOAD_OPTIMIZATION.md
+FEATURES.md
+USAGE_GUIDE.md
+THEME_*.md
+management_commands.md
+theme_migration.md
+
+# Deployment and setup scripts  
+deploy_*.sh
+setup_*.sh
+download_*.sh
+*_updater.py
+update_*.py
+
+# Server configuration files
+nginx_*.txt
+gunicorn_config_*.py
+*_config.py
+
+# Environment examples (may reveal structure)
+env.example
+.env.example
+
+# Top-level directories with potentially sensitive data
+top_2_perc/
+
+# Any other MD files that might contain sensitive info
+*.md
+!README.md
+!LICENSE.md
+
+# Cache and temporary Django files
+*.pyc
+__pycache__/
+.cache/
+celerybeat-schedule
+
+# Any test or development files
+test_*.py
+*_test.py
