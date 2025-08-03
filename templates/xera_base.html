@@ -247,16 +247,16 @@
     {% block extra_js %}{% endblock %}
     
     <!-- Analytics (if needed) -->
-    {% if not debug %}
+    {% if not debug and google_analytics_id %}
     <!-- Google Analytics 4 (GA4) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ google_analytics_id }}"></script>
     <script>
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
         
         // Configure GA4 with privacy-focused settings
-        gtag('config', 'G-XXXXXXXXXX', {
+        gtag('config', '{{ google_analytics_id }}', {
             // Privacy settings
             'anonymize_ip': true,
             'allow_google_signals': false,

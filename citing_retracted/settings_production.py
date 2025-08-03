@@ -107,4 +107,7 @@ LOGGING = {
             'propagate': False,
         },
     },
-} 
+}
+
+# Google Analytics Configuration
+GOOGLE_ANALYTICS_ID = os.getenv('GOOGLE_ANALYTICS_ID', '') 
