@@ -16,7 +16,7 @@
     <!-- Search Form -->
     <div class="xera-card mb-4">
         <div class="xera-card-body">
-            <form method="get" action="{% url 'papers:search' %}">
+            <form method="get" action="{% url 'papers:search' %}" onsubmit="trackSearchSubmission()">
                 <div class="row">
                     <div class="col-lg-6 mb-3">
                         <label for="q" class="form-label">Search Term</label>
@@ -703,6 +703,36 @@ function hideLoadingState() {
         btn.style.opacity = '1';
     });
 }
+
+// Track search form submissions
+function trackSearchSubmission() {
+    const searchQuery = document.getElementById('q').value;
+    const resultCount = {{ papers.paginator.count|default:0 }};
+    
+    if (typeof window.prctAnalytics !== 'undefined' && searchQuery) {
+        window.prctAnalytics.trackSearchQuery(searchQuery, resultCount);
+    }
+}
+
+// Track paper clicks from search results
+document.addEventListener('DOMContentLoaded', function() {
+    const paperLinks = document.querySelectorAll('a[href*="paper/"]');
+    paperLinks.forEach(function(link) {
+        link.addEventListener('click', function() {
+            const paperDoi = this.getAttribute('data-doi') || 'unknown';
+            if (typeof window.prctAnalytics !== 'undefined') {
+                window.prctAnalytics.trackRetractionView(paperDoi, 'search_result_click');
+            }
+        });
+    });
+    
+    // Track if search results were displayed (page load with results)
+    {% if search_query and papers %}
+    if (typeof window.prctAnalytics !== 'undefined') {
+        window.prctAnalytics.trackSearchQuery('{{ search_query|escapejs }}', {{ papers.paginator.count }});
+    }
+    {% endif %}
+});
 
 // Remove jQuery dependency - no autocomplete for now (performance)
 // Future: Implement with vanilla JS if needed

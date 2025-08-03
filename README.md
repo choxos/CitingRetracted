@@ -1,6 +1,36 @@
 # Post-Retraction Citation Tracker (PRCT)
 
-A comprehensive web application built with Django to track retracted scientific papers and analyze their post-retraction citation patterns. PRCT helps researchers and institutions identify potential issues in academic literature by monitoring which retracted papers continue to be cited in current research, providing critical insights for maintaining research integrity.
+A comprehensive database tracking retracted scientific papers and their post-retraction citations, helping researchers identify potential issues in the academic literature.
+
+## Features
+
+- **Retracted Paper Database**: Track papers that have been retracted, with expressions of concern, corrections, and other editorial notices
+- **Citation Analysis**: Monitor how many times retracted papers continue to be cited after retraction
+- **Advanced Search**: Filter by journal, subject, country, retraction reason, and more
+- **Analytics Dashboard**: Visualize citation patterns, geographic distribution, and temporal trends
+- **Real-time Data**: Regular updates from Retraction Watch and citation databases
+- **API Access**: Programmatic access to data for researchers
+
+## Analytics Implementation
+
+This application includes Google Analytics 4 (GA4) for tracking user interactions and research usage patterns:
+
+### Setup
+1. Replace `G-XXXXXXXXXX` in `templates/xera_base.html` with your actual GA4 Measurement ID
+2. The analytics code is only loaded in production (when `DEBUG=False`)
+
+### Privacy Features
+- IP anonymization enabled
+- Google Signals disabled
+- Ad personalization disabled
+- Academic research-focused event tracking
+
+### Tracked Events
+- **Search Queries**: Track what researchers search for and result counts
+- **Paper Views**: Monitor which retracted papers are accessed
+- **Citation Analysis**: Track interactions with citation data
+- **Dashboard Usage**: Monitor analytics dashboard engagement
+- **External Links**: Track clicks to DOI and PubMed links
 
 ## ✨ Key Features
 

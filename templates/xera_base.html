@@ -248,7 +248,74 @@
     
     <!-- Analytics (if needed) -->
     {% if not debug %}
-    <!-- Add your analytics code here -->
+    <!-- Google Analytics 4 (GA4) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        
+        // Configure GA4 with privacy-focused settings
+        gtag('config', 'G-XXXXXXXXXX', {
+            // Privacy settings
+            'anonymize_ip': true,
+            'allow_google_signals': false,
+            'allow_ad_personalization_signals': false,
+            
+            // Academic research tracking
+            'custom_map': {
+                'custom_parameter_1': 'research_category',
+                'custom_parameter_2': 'citation_type'
+            }
+        });
+        
+        // Track academic research interactions
+        function trackRetractionView(doi, retractionType) {
+            gtag('event', 'retraction_paper_view', {
+                'event_category': 'Research Content',
+                'event_label': doi,
+                'custom_parameter_1': 'retracted_paper',
+                'custom_parameter_2': retractionType,
+                'value': 1
+            });
+        }
+        
+        function trackCitationAnalysis(paperDoi, analysisType) {
+            gtag('event', 'citation_analysis', {
+                'event_category': 'Research Analysis',
+                'event_label': paperDoi,
+                'custom_parameter_1': 'citation_tracking',
+                'custom_parameter_2': analysisType,
+                'value': 1
+            });
+        }
+        
+        function trackSearchQuery(query, resultCount) {
+            gtag('event', 'search', {
+                'search_term': query,
+                'event_category': 'Research Search',
+                'custom_parameter_1': 'paper_search',
+                'value': resultCount
+            });
+        }
+        
+        function trackAnalyticsDashboard(section) {
+            gtag('event', 'analytics_view', {
+                'event_category': 'Research Analytics',
+                'event_label': section,
+                'custom_parameter_1': 'dashboard_interaction',
+                'value': 1
+            });
+        }
+        
+        // Make tracking functions globally available
+        window.prctAnalytics = {
+            trackRetractionView: trackRetractionView,
+            trackCitationAnalysis: trackCitationAnalysis,
+            trackSearchQuery: trackSearchQuery,
+            trackAnalyticsDashboard: trackAnalyticsDashboard
+        };
+    </script>
     {% endif %}
     
     <!-- Service Worker for PWA (optional) -->

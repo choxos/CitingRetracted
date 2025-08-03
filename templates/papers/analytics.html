@@ -3267,5 +3267,50 @@ function initializeSunburstChart(data) {
         radius: radius
     });
 }
+
+// Analytics tracking for dashboard interactions
+document.addEventListener('DOMContentLoaded', function() {
+    // Track analytics dashboard view
+    if (typeof window.prctAnalytics !== 'undefined') {
+        window.prctAnalytics.trackAnalyticsDashboard('main_dashboard');
+    }
+    
+    // Track chart interactions
+    const chartContainers = document.querySelectorAll('.chart-container');
+    chartContainers.forEach(function(container) {
+        container.addEventListener('click', function() {
+            const chartId = this.id || 'unknown_chart';
+            if (typeof window.prctAnalytics !== 'undefined') {
+                gtag('event', 'chart_interaction', {
+                    'event_category': 'Analytics Dashboard',
+                    'event_label': chartId,
+                    'value': 1
+                });
+            }
+        });
+    });
+    
+    // Track tab switches
+    const navTabs = document.querySelectorAll('.nav-tabs .nav-link');
+    navTabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            const tabName = this.textContent.trim();
+            if (typeof window.prctAnalytics !== 'undefined') {
+                window.prctAnalytics.trackAnalyticsDashboard(tabName.toLowerCase().replace(/\s+/g, '_'));
+            }
+        });
+    });
+    
+    // Track paper card clicks in analytics
+    const paperCards = document.querySelectorAll('.clickable-card');
+    paperCards.forEach(function(card) {
+        card.addEventListener('click', function() {
+            const paperDoi = this.getAttribute('data-doi') || 'unknown';
+            if (typeof window.prctAnalytics !== 'undefined') {
+                window.prctAnalytics.trackRetractionView(paperDoi, 'analytics_card_click');
+            }
+        });
+    });
+});
 </script>
 {% endblock %} 
