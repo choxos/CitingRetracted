@@ -884,8 +884,7 @@
                             <thead>
                                 <tr>
                                     <th>Variable</th>
-                                    <th>Rate Ratio</th>
-                                    <th>95% CI</th>
+                                    <th>Rate Ratio & 95% CrI</th>
                                     <th>P-value</th>
                                     <th>Interpretation</th>
                                 </tr>
@@ -894,8 +893,10 @@
                                 {% for effect in statistical_results.main_effects %}
                                 <tr>
                                     <td class="fw-bold">{{ effect.variable }}</td>
-                                    <td>{{ effect.rate_ratio }}</td>
-                                    <td>{{ effect.ci_lower }} - {{ effect.ci_upper }}</td>
+                                    <td>
+                                        <strong>Rate Ratio (RR):</strong><br>
+                                        {{ effect.rate_ratio|floatformat:3 }} (95% CrI: {{ effect.cri_lower|floatformat:2 }}-{{ effect.cri_upper|floatformat:2 }})
+                                    </td>
                                     <td class="fw-bold {% if effect.p_value == '< 0.001' or effect.p_value == '< 0.01' %}text-success{% else %}text-muted{% endif %}">
                                         {{ effect.p_value }}
                                     </td>
