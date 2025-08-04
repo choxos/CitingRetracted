@@ -428,6 +428,16 @@
                     <i class="fas fa-map me-2"></i>World Map
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="data-explorer-tab" data-bs-toggle="tab" data-bs-target="#data-explorer" type="button" role="tab">
+                    <i class="fas fa-table me-2"></i>Raw Data Explorer
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="model-diagnostics-tab" data-bs-toggle="tab" data-bs-target="#model-diagnostics" type="button" role="tab">
+                    <i class="fas fa-cogs me-2"></i>Model Diagnostics
+                </button>
+            </li>
         </ul>
         
         <div class="tab-content" id="chartTabContent">
@@ -559,6 +569,270 @@
                     </ul>
                 </div>
             </div>
+            
+            <!-- Raw Data Explorer -->
+            <div class="tab-pane fade" id="data-explorer" role="tabpanel">
+                <h3 class="h5 mb-3"><i class="fas fa-table me-2"></i>Raw Data Explorer</h3>
+                <p class="text-muted mb-4">Comprehensive overview of all variables in the democracy and retractions dataset</p>
+                
+                <!-- Data Coverage Summary -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card border-info">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="card-title mb-0"><i class="fas fa-database me-2"></i>Dataset Coverage</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <div class="text-center">
+                                            <h4 class="text-primary">{{ raw_data_explorer.coverage.total_countries|default:"N/A" }}</h4>
+                                            <small class="text-muted">Countries</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="text-center">
+                                            <h4 class="text-primary">{{ raw_data_explorer.coverage.total_years|default:"N/A" }}</h4>
+                                            <small class="text-muted">Years</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="text-center">
+                                            <h4 class="text-primary">{{ raw_data_explorer.coverage.total_observations|default:"N/A" }}</h4>
+                                            <small class="text-muted">Observations</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="text-center">
+                                            <h4 class="text-primary">{{ raw_data_explorer.coverage.year_range_min|default:"N/A" }}-{{ raw_data_explorer.coverage.year_range_max|default:"N/A" }}</h4>
+                                            <small class="text-muted">Time Span</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Variables Summary Table -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0"><i class="fas fa-list me-2"></i>Variable Definitions & Statistics</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>Variable</th>
+                                                <th>Description</th>
+                                                <th>Range</th>
+                                                <th>Mean</th>
+                                                <th>Min</th>
+                                                <th>Max</th>
+                                                <th>Observations</th>
+                                                <th>Missing (%)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for var_name, var_data in raw_data_explorer.variables.items %}
+                                            <tr>
+                                                <td><strong>{{ var_data.name }}</strong></td>
+                                                <td><small>{{ var_data.description }}</small></td>
+                                                <td><code>{{ var_data.range }}</code></td>
+                                                <td>{{ var_data.mean|default:"N/A" }}</td>
+                                                <td>{{ var_data.min|default:"N/A" }}</td>
+                                                <td>{{ var_data.max|default:"N/A" }}</td>
+                                                <td>{{ var_data.observations|default:"N/A" }}</td>
+                                                <td>
+                                                    <span class="badge {% if var_data.missing_pct < 10 %}bg-success{% elif var_data.missing_pct < 30 %}bg-warning{% else %}bg-danger{% endif %}">
+                                                        {{ var_data.missing_pct|default:"N/A" }}%
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Sample Data Preview -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0"><i class="fas fa-eye me-2"></i>Sample Data Preview (Top 10 by Publications)</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-striped">
+                                        <thead class="table-secondary">
+                                            <tr>
+                                                <th>Country</th>
+                                                <th>Year</th>
+                                                <th>Region</th>
+                                                <th>Democracy</th>
+                                                <th>Retractions</th>
+                                                <th>Publications</th>
+                                                <th>Retraction Rate</th>
+                                                <th>GDP</th>
+                                                <th>Corruption Control</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for row in raw_data_explorer.sample_data %}
+                                            <tr>
+                                                <td>{{ row.country }}</td>
+                                                <td>{{ row.year }}</td>
+                                                <td>{{ row.region }}</td>
+                                                <td>{{ row.democracy|floatformat:2 }}</td>
+                                                <td>{{ row.retractions }}</td>
+                                                <td>{{ row.publications|floatformat:0 }}</td>
+                                                <td>{{ row.retraction_rate|floatformat:4 }}</td>
+                                                <td>{{ row.gdp|floatformat:0 }}</td>
+                                                <td>{{ row.corruption_control|floatformat:2 }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Model Diagnostics -->
+            <div class="tab-pane fade" id="model-diagnostics" role="tabpanel">
+                <h3 class="h5 mb-3"><i class="fas fa-cogs me-2"></i>Bayesian Model Diagnostics</h3>
+                <p class="text-muted mb-4">Comprehensive diagnostics for the hierarchical Bayesian model</p>
+                
+                <!-- MCMC Convergence -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card border-success">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="card-title mb-0">{{ model_diagnostics.convergence.title }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    {% for metric in model_diagnostics.convergence.metrics %}
+                                    <div class="col-md-4 mb-3">
+                                        <div class="border rounded p-3">
+                                            <h6 class="fw-bold">{{ metric.name }}</h6>
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="h5 text-success mb-0">{{ metric.value }}</span>
+                                                <span class="badge bg-success">{{ metric.status|title }}</span>
+                                            </div>
+                                            <small class="text-muted">{{ metric.description }}</small>
+                                            <br><small><strong>Threshold:</strong> {{ metric.threshold }}</small>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Model Fit -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="card-title mb-0">{{ model_diagnostics.model_fit.title }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    {% for metric in model_diagnostics.model_fit.metrics %}
+                                    <div class="col-md-4 mb-3">
+                                        <div class="border rounded p-3">
+                                            <h6 class="fw-bold">{{ metric.name }}</h6>
+                                            <div class="h5 text-primary mb-1">{{ metric.value }}</div>
+                                            <small class="text-info fw-bold">{{ metric.comparison }}</small>
+                                            <br><small class="text-muted">{{ metric.description }}</small>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Hierarchical Structure -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card border-warning">
+                            <div class="card-header bg-warning text-dark">
+                                <h5 class="card-title mb-0">{{ model_diagnostics.hierarchical_structure.title }}</h5>
+                            </div>
+                            <div class="card-body">
+                                {% for level in model_diagnostics.hierarchical_structure.levels %}
+                                <div class="row mb-3">
+                                    <div class="col-md-3">
+                                        <h6 class="fw-bold text-warning">{{ level.level }}</h6>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <code>{{ level.description }}</code>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <span class="badge bg-secondary">{{ level.n_units }}</span>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Posterior Uncertainty -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card border-info">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="card-title mb-0">{{ model_diagnostics.posterior_uncertainty.title }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>Parameter</th>
+                                                <th>Posterior Mean</th>
+                                                <th>95% CrI</th>
+                                                <th>Additional Info</th>
+                                                <th>Interpretation</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for param in model_diagnostics.posterior_uncertainty.parameters %}
+                                            <tr>
+                                                <td><code>{{ param.parameter }}</code></td>
+                                                <td><strong>{{ param.posterior_mean }}</strong></td>
+                                                <td><span class="badge bg-info">{{ param.cri_95 }}</span></td>
+                                                <td>
+                                                    {% if param.prob_negative %}
+                                                    <small class="text-success">P(β < 0) = {{ param.prob_negative }}</small>
+                                                    {% endif %}
+                                                </td>
+                                                <td><small>{{ param.interpretation }}</small></td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
         </div>
     </div>
 </section>

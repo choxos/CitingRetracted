@@ -888,8 +888,8 @@ class DemocracyAnalysisResults(models.Model):
     coefficient = models.FloatField(help_text="Regression coefficient")
     std_error = models.FloatField(blank=True, null=True, help_text="Standard error")
     rate_ratio = models.FloatField(blank=True, null=True, help_text="Rate ratio (exp(coefficient))")
-    ci_lower = models.FloatField(blank=True, null=True, help_text="95% CI lower bound")
-    ci_upper = models.FloatField(blank=True, null=True, help_text="95% CI upper bound")
+    cri_lower = models.FloatField(blank=True, null=True, help_text="95% CrI lower bound")
+    cri_upper = models.FloatField(blank=True, null=True, help_text="95% CrI upper bound")
     p_value = models.FloatField(blank=True, null=True, help_text="P-value")
     p_value_text = models.CharField(max_length=20, blank=True, null=True, help_text="P-value as text (e.g., '< 0.001')")
     
