@@ -733,7 +733,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Scatter plot data type:', typeof data);
         console.log('Countries count:', data.countries ? data.countries.length : 0);
         
-        // Debug: Check first few countries
+        // Debug: Check first few countries and data ranges
         if (data.countries && data.countries.length > 0) {
             console.log('First country:', data.countries[0]);
             console.log('Sample mapping:', {
@@ -741,6 +741,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 y: data.countries[0].retraction_rate * 100,
                 label: data.countries[0].name
             });
+            
+            // Check data ranges
+            const democracyRange = {
+                min: Math.min(...data.countries.map(c => c.democracy)),
+                max: Math.max(...data.countries.map(c => c.democracy))
+            };
+            const retractionRange = {
+                min: Math.min(...data.countries.map(c => c.retraction_rate * 100)),
+                max: Math.max(...data.countries.map(c => c.retraction_rate * 100))
+            };
+            console.log('Democracy range:', democracyRange);
+            console.log('Retraction rate range (%):', retractionRange);
         }
         
         // Safety check
@@ -770,8 +782,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     backgroundColor: 'rgba(59, 130, 246, 0.6)',
                     borderColor: 'rgba(59, 130, 246, 1)',
                     borderWidth: 2,
-                    pointRadius: 6,
-                    pointHoverRadius: 8
+                    pointRadius: 8,
+                    pointHoverRadius: 12,
+                    pointBackgroundColor: 'rgba(59, 130, 246, 0.8)',
+                    pointBorderColor: 'rgba(59, 130, 246, 1)',
+                    pointBorderWidth: 2
                 }]
             },
             options: {
