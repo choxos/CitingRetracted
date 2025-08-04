@@ -9,6 +9,7 @@ urlpatterns = [
     path('search/', views.SearchView.as_view(), name='search'),
     path('analytics/', PerformanceAnalyticsView.as_view(), name='analytics'),  # Use optimized view
     path('analytics-legacy/', views.AnalyticsView.as_view(), name='analytics_legacy'),  # Keep old for backup
+    path('democracy-analysis/', views.DemocracyAnalysisView.as_view(), name='democracy_analysis'),
     path('paper/<str:record_id>/', views.PaperDetailView.as_view(), name='detail'),
     path('export-search/', views.ExportSearchView.as_view(), name='export_search'),
     
