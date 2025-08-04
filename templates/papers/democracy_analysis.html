@@ -781,6 +781,12 @@ document.addEventListener('DOMContentLoaded', function() {
             'Unknown': '#95A5A6'
         };
         
+        // Debug: Check what regions we have
+        const allRegions = data.countries.map(c => c.region || 'Unknown');
+        const uniqueRegions = [...new Set(allRegions)];
+        console.log('All regions found:', uniqueRegions);
+        console.log('Sample countries with regions:', data.countries.slice(0, 5).map(c => ({name: c.name, region: c.region})));
+        
         // Group countries by region for multiple datasets
         const regionDatasets = {};
         data.countries.forEach(country => {
