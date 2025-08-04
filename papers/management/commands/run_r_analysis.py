@@ -136,11 +136,11 @@ prepared_data <- combined_data %>%
 cat("Running complete Bayesian hierarchical model with all confounders...\\n")
 
 # Load additional required libraries for proper analysis
-suppressPackageStartupMessages({
+suppressPackageStartupMessages({{
     library(gamlss)
     library(mice)
     library(VIM)
-})
+}})
 
 # STEP 1: Multiple Imputation (MICE) for missing data
 predictors_for_imputation <- prepared_data %>%
@@ -182,15 +182,15 @@ model_multivariate <- gamlss(
 )
 
 # Extract results for all variables
-extract_results <- function(model, model_type) {
+extract_results <- function(model, model_type) {{
     summary_stats <- summary(model)
     coef_table <- summary_stats$coef.table
     
     results <- list()
     
-    for (i in 1:nrow(coef_table)) {
+    for (i in 1:nrow(coef_table)) {{
         var_name <- rownames(coef_table)[i]
-        if (var_name != "(Intercept)") {
+        if (var_name != "(Intercept)") {{
             coef_val <- coef_table[i, "Estimate"]
             se_val <- coef_table[i, "Std. Error"]
             p_val <- coef_table[i, "Pr(>|t|)"]
@@ -226,10 +226,10 @@ extract_results <- function(model, model_type) {
                 aic = AIC(model),
                 interpretation = interpretation
             )
-        }
-    }
+        }}
+    }}
     return(results)
-}
+}}
 
 # Extract results from both models
 univariate_results <- extract_results(model_univariate, "pig_univariate_main")
