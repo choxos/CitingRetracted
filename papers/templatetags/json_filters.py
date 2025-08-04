@@ -496,4 +496,13 @@ def country_emoji(country_name):
         'zimbabwe': '🇿🇼',
     }
     
-    return country_flags.get(country_clean, "") 
+    return country_flags.get(country_clean, "")
+
+@register.filter
+def jsonify(value):
+    """
+    Convert a Python value to a JSON string for use in JavaScript.
+    This is an alias for safe_json to match template usage.
+    Usage: {{ data|jsonify }}
+    """
+    return safe_json(value) 
