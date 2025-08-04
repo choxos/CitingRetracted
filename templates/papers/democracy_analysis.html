@@ -769,17 +769,17 @@ document.addEventListener('DOMContentLoaded', function() {
             existingChart.destroy();
         }
         
-        // Define region colors
-        const regionColors = {
-            'North America': '#FF6B6B',
-            'South America': '#4ECDC4', 
-            'Europe': '#45B7D1',
-            'Africa': '#96CEB4',
-            'Asia': '#FFEAA7',
-            'Oceania': '#DDA0DD',
-            'Middle East': '#FFB347',
-            'Unknown': '#95A5A6'
-        };
+                            // Define region colors (matching database region names exactly)
+                    const regionColors = {
+                        'North America': '#FF6B6B',
+                        'Latin America and the Caribbean': '#4ECDC4', 
+                        'Western Europe': '#45B7D1',
+                        'Central and Eastern Europe': '#74B9FF',
+                        'Sub-Saharan Africa': '#96CEB4',
+                        'Asia and Australasia': '#FFEAA7',
+                        'Middle East and North Africa': '#FFB347',
+                        'Unknown': '#95A5A6'
+                    };
         
         // Debug: Check what regions we have
         const allRegions = data.countries.map(c => c.region || 'Unknown');
