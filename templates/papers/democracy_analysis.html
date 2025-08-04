@@ -726,7 +726,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Democracy vs Retractions Scatter Plot
     function createScatterPlot() {
         const ctx = document.getElementById('democracyScatterChart').getContext('2d');
-        const data = {{ visualizations.scatter.data|jsonify }};
+                        const data = {{ visualizations.democracy_retraction_scatter.data|jsonify }};
         
         // Debug: Check what data we received
         console.log('Scatter plot data:', data);

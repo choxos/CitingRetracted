@@ -2908,11 +2908,29 @@ class DemocracyAnalysisView(View):
             ('regional_summary', 'Regional Patterns in Democracy and Research Integrity', 'Comparative analysis across world regions'),
             ('world_map', 'Global Distribution of Democracy and Retractions', 'Geographic visualization of key variables'),
         ]:
+            # TEMPORARY: Force live data generation for scatter plots to ensure regions are included
+            if chart_type == 'scatter':
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f"FORCED: Generating live data for {chart_type} to include regions")
+                
+                viz_data['democracy_retraction_scatter'] = {
+                    'title': title,
+                    'data': self._get_democracy_scatter_data(),
+                    'description': description
+                }
+                continue
+                
             try:
                 viz_obj = DemocracyVisualizationData.objects.get(
                     chart_type=chart_type,
                     is_current=True
                 )
+                # Debug: Log data source
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f"Using cached visualization data for {chart_type}")
+                
                 viz_data[chart_type.replace('_summary', '_analysis')] = {
                     'title': title,
                     'data': viz_obj.chart_data,
@@ -2920,6 +2938,10 @@ class DemocracyAnalysisView(View):
                 }
             except DemocracyVisualizationData.DoesNotExist:
                 # Fallback to generating data on-the-fly
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f"No cached data found for {chart_type}, generating live data")
+                
                 if chart_type == 'scatter':
                     viz_data['democracy_retraction_scatter'] = {
                         'title': title,
@@ -2963,8 +2985,17 @@ class DemocracyAnalysisView(View):
                 total_publications__gt=0
             ).order_by('-total_publications')  # Order by publications for better visualization
             
-            # Convert QuerySet to list for proper evaluation
-            country_data = list(country_data)
+                    # Convert QuerySet to list for proper evaluation
+        country_data = list(country_data)
+        
+        # Debug: Log first few entries to check region data
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Retrieved {len(country_data)} countries from database")
+        if country_data:
+            logger.info(f"Sample country data: {country_data[0]}")
+            regions = set(item['region'] for item in country_data[:10] if item['region'])
+            logger.info(f"Sample regions found: {regions}")
             
         except Exception as e:
             # Log the error and return fallback data
@@ -2987,7 +3018,7 @@ class DemocracyAnalysisView(View):
                     retraction_rate = (item['total_retractions'] or 0) / item['total_publications']
                     countries.append({
                         'name': item['country'],
-                        'iso3': item['iso3'],
+                        'iso': item['iso3'],  # Use 'iso' to match expected format
                         'region': item['region'] or 'Unknown',
                         'democracy': round(float(item['avg_democracy']), 2),
                         'retraction_rate': round(retraction_rate, 4),  # Keep more precision
