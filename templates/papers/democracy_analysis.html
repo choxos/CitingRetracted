@@ -769,26 +769,53 @@ document.addEventListener('DOMContentLoaded', function() {
             existingChart.destroy();
         }
         
+        // Define region colors
+        const regionColors = {
+            'North America': '#FF6B6B',
+            'South America': '#4ECDC4', 
+            'Europe': '#45B7D1',
+            'Africa': '#96CEB4',
+            'Asia': '#FFEAA7',
+            'Oceania': '#DDA0DD',
+            'Middle East': '#FFB347',
+            'Unknown': '#95A5A6'
+        };
+        
+        // Group countries by region for multiple datasets
+        const regionDatasets = {};
+        data.countries.forEach(country => {
+            const region = country.region || 'Unknown';
+            if (!regionDatasets[region]) {
+                regionDatasets[region] = [];
+            }
+            
+            // Calculate point size based on publications (log scale for better visualization)
+            const publications = country.publications || 1;
+            const pointSize = Math.max(4, Math.min(20, Math.log(publications) * 2));
+            
+            regionDatasets[region].push({
+                x: country.democracy,
+                y: country.retraction_rate * 100,
+                pointRadius: pointSize,
+                countryData: country
+            });
+        });
+        
+        // Create datasets for each region
+        const datasets = Object.keys(regionDatasets).map(region => ({
+            label: region,
+            data: regionDatasets[region],
+            backgroundColor: regionColors[region] || '#95A5A6',
+            borderColor: regionColors[region] || '#95A5A6',
+            borderWidth: 2,
+            pointHoverRadius: function(context) {
+                return context.parsed.pointRadius + 4;
+            }
+        }));
+
         new Chart(ctx, {
             type: 'scatter',
-            data: {
-                datasets: [{
-                    label: 'Countries',
-                    data: data.countries.map(country => ({
-                        x: country.democracy,
-                        y: country.retraction_rate * 100, // Convert to percentage
-                        label: country.name
-                    })),
-                    backgroundColor: 'rgba(59, 130, 246, 0.6)',
-                    borderColor: 'rgba(59, 130, 246, 1)',
-                    borderWidth: 2,
-                    pointRadius: 8,
-                    pointHoverRadius: 12,
-                    pointBackgroundColor: 'rgba(59, 130, 246, 0.8)',
-                    pointBorderColor: 'rgba(59, 130, 246, 1)',
-                    pointBorderWidth: 2
-                }]
-            },
+            data: { datasets: datasets },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -801,12 +828,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                const point = context.raw;
+                                const country = context.raw.countryData;
                                 return [
-                                    `Country: ${point.label}`,
-                                    `Democracy: ${point.x.toFixed(1)}`,
-                                    `Retraction Rate: ${point.y.toFixed(3)}%`,
-                                    `Publications: ${point.publications.toLocaleString()}`
+                                    `${country.name}`,
+                                    `Region: ${country.region}`,
+                                    `Democracy: ${country.democracy.toFixed(1)}`,
+                                    `Retraction Rate: ${(country.retraction_rate * 100).toFixed(2)}%`,
+                                    `Publications: ${country.publications.toLocaleString()}`
                                 ];
                             }
                         }

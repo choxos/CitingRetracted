@@ -2954,14 +2954,14 @@ class DemocracyAnalysisView(View):
         
         try:
             # Get country averages from actual data
-            country_data = DemocracyData.objects.values('country', 'iso3').annotate(
+            country_data = DemocracyData.objects.values('country', 'iso3', 'region').annotate(
                 avg_democracy=Avg('democracy'),
                 total_retractions=Sum('retractions'),
                 total_publications=Sum('publications')
             ).filter(
                 avg_democracy__isnull=False,
                 total_publications__gt=0
-            ).order_by('-total_publications')[:20]  # Order by publications for better visualization
+            ).order_by('-total_publications')  # Order by publications for better visualization
             
             # Convert QuerySet to list for proper evaluation
             country_data = list(country_data)
@@ -2987,6 +2987,8 @@ class DemocracyAnalysisView(View):
                     retraction_rate = (item['total_retractions'] or 0) / item['total_publications']
                     countries.append({
                         'name': item['country'],
+                        'iso3': item['iso3'],
+                        'region': item['region'] or 'Unknown',
                         'democracy': round(float(item['avg_democracy']), 2),
                         'retraction_rate': round(retraction_rate, 4),  # Keep more precision
                         'publications': item['total_publications']
