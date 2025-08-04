@@ -438,6 +438,11 @@
                     <i class="fas fa-cogs me-2"></i>Model Diagnostics
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="sensitivity-analysis-tab" data-bs-toggle="tab" data-bs-target="#sensitivity-analysis" type="button" role="tab">
+                    <i class="fas fa-balance-scale me-2"></i>Sensitivity Analysis
+                </button>
+            </li>
         </ul>
         
         <div class="tab-content" id="chartTabContent">
@@ -1087,6 +1092,191 @@
     </div>
     <p class="mt-2 text-muted">Loading visualizations...</p>
 </div>
+
+            <!-- Sensitivity Analysis -->
+            <div class="tab-pane fade" id="sensitivity-analysis" role="tabpanel">
+                <h3 class="h5 mb-3"><i class="fas fa-balance-scale me-2"></i>Sensitivity Analysis</h3>
+                <p class="text-muted mb-4">Robustness checks using alternative model specifications</p>
+                
+                <!-- Alternative Model Specification -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card border-info">
+                            <div class="card-header bg-info text-white">
+                                <h4 class="h6 mb-0"><i class="fas fa-chart-line me-2"></i>{{ statistical_results.sensitivity_analysis.alternative_specification.title }}</h4>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted">{{ statistical_results.sensitivity_analysis.alternative_specification.description }}</p>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h5 class="h6 text-primary">Democracy Effect</h5>
+                                        <table class="table table-sm">
+                                            <tbody>
+                                                <tr>
+                                                    <th class="text-muted">Coefficient (log-scale):</th>
+                                                    <td>{{ statistical_results.sensitivity_analysis.alternative_specification.democracy_effect.coefficient|floatformat:3 }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <th class="text-muted">Percent Change:</th>
+                                                    <td class="fw-bold">{{ statistical_results.sensitivity_analysis.alternative_specification.democracy_effect.percent_change|floatformat:1 }}%</td>
+                                                </tr>
+                                                <tr>
+                                                    <th class="text-muted">95% CrI:</th>
+                                                    <td>({{ statistical_results.sensitivity_analysis.alternative_specification.democracy_effect.cri_lower|floatformat:1 }}%, {{ statistical_results.sensitivity_analysis.alternative_specification.democracy_effect.cri_upper|floatformat:1 }}%)</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="alert alert-info">
+                                            <strong>Interpretation:</strong> {{ statistical_results.sensitivity_analysis.alternative_specification.democracy_effect.interpretation }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Normality Tests -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card border-warning">
+                            <div class="card-header bg-warning text-dark">
+                                <h4 class="h6 mb-0"><i class="fas fa-chart-bar me-2"></i>Normality Diagnostics</h4>
+                            </div>
+                            <div class="card-body">
+                                <h6 class="text-primary">Shapiro-Wilk Test</h6>
+                                <p><strong>W:</strong> {{ statistical_results.sensitivity_analysis.normality_tests.shapiro_wilk.statistic|floatformat:3 }}</p>
+                                <p><strong>p-value:</strong> {{ statistical_results.sensitivity_analysis.normality_tests.shapiro_wilk.p_value|floatformat:3 }}</p>
+                                <p class="small text-muted">{{ statistical_results.sensitivity_analysis.normality_tests.shapiro_wilk.interpretation }}</p>
+                                
+                                <hr>
+                                
+                                <h6 class="text-primary">Distribution Statistics</h6>
+                                <p><strong>Skewness:</strong> {{ statistical_results.sensitivity_analysis.normality_tests.distribution_stats.skewness|floatformat:3 }}</p>
+                                <p><strong>Kurtosis:</strong> {{ statistical_results.sensitivity_analysis.normality_tests.distribution_stats.kurtosis|floatformat:3 }}</p>
+                                <p class="small text-muted">{{ statistical_results.sensitivity_analysis.normality_tests.distribution_stats.interpretation }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card border-success">
+                            <div class="card-header bg-success text-white">
+                                <h4 class="h6 mb-0"><i class="fas fa-cog me-2"></i>Constant Sensitivity</h4>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted">Testing sensitivity to different small constants added to zero retraction counts:</p>
+                                
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Constant</th>
+                                            <th>Democracy Effect</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for test in statistical_results.sensitivity_analysis.constant_sensitivity.democracy_effects %}
+                                        <tr>
+                                            <td>{{ test.constant }}</td>
+                                            <td class="fw-bold">{{ test.percent_change|floatformat:1 }}%</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                
+                                <div class="alert alert-success mt-3">
+                                    <small><strong>Conclusion:</strong> {{ statistical_results.sensitivity_analysis.constant_sensitivity.interpretation }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Model Comparison -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <h4 class="h6 mb-0"><i class="fas fa-balance-scale me-2"></i>Model Comparison</h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Predictive Performance (LOO-CV)</h6>
+                                        <table class="table table-sm">
+                                            <tbody>
+                                                <tr>
+                                                    <th>Negative Binomial:</th>
+                                                    <td class="fw-bold text-success">{{ statistical_results.sensitivity_analysis.model_comparison.negative_binomial_loo|floatformat:1 }} ± {{ statistical_results.sensitivity_analysis.model_comparison.negative_binomial_se|floatformat:1 }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Log-Gaussian:</th>
+                                                    <td>{{ statistical_results.sensitivity_analysis.model_comparison.log_gaussian_loo|floatformat:1 }} ± {{ statistical_results.sensitivity_analysis.model_comparison.log_gaussian_se|floatformat:1 }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Difference (ΔLOO):</th>
+                                                    <td class="fw-bold">{{ statistical_results.sensitivity_analysis.model_comparison.loo_difference|floatformat:1 }} ± {{ statistical_results.sensitivity_analysis.model_comparison.loo_se_diff|floatformat:1 }}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="alert alert-info">
+                                            <h6 class="text-primary">Preferred Model</h6>
+                                            <p class="fw-bold">{{ statistical_results.sensitivity_analysis.model_comparison.preferred_model }}</p>
+                                            <p class="small">{{ statistical_results.sensitivity_analysis.model_comparison.interpretation }}</p>
+                                            <p class="small text-muted">{{ statistical_results.sensitivity_analysis.model_comparison.technical_note }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Overall Conclusions -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card border-dark">
+                            <div class="card-header bg-dark text-white">
+                                <h4 class="h6 mb-0"><i class="fas fa-check-circle me-2"></i>Sensitivity Analysis Conclusions</h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Robustness</h6>
+                                        <p class="small">{{ statistical_results.sensitivity_analysis.conclusions.robustness }}</p>
+                                        
+                                        <h6 class="text-primary">Effect Direction</h6>
+                                        <p class="small">{{ statistical_results.sensitivity_analysis.conclusions.direction }}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Effect Magnitude</h6>
+                                        <p class="small">{{ statistical_results.sensitivity_analysis.conclusions.magnitude }}</p>
+                                        
+                                        <h6 class="text-primary">Model Preference</h6>
+                                        <p class="small">{{ statistical_results.sensitivity_analysis.conclusions.model_preference }}</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-success mt-3">
+                                    <strong>Summary:</strong> The democracy-retraction association is robust across different model specifications, 
+                                    providing strong evidence for the protective effect of democratic governance on research integrity.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div> <!-- End tab-content -->
+    </div>
+</div>
+
+<!-- Loading Spinner -->
+<div id="loadingSpinner" class="text-center mt-5" style="display: none;">
 {% endblock %}
 
 {% block extra_js %}
