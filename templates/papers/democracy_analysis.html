@@ -575,6 +575,18 @@
                 <h3 class="h5 mb-3"><i class="fas fa-table me-2"></i>Raw Data Explorer</h3>
                 <p class="text-muted mb-4">Comprehensive overview of all variables in the democracy and retractions dataset</p>
                 
+                <!-- Debug Info -->
+                {% if debug %}
+                <div class="alert alert-info">
+                    <strong>Debug Info:</strong> 
+                    Raw Data Explorer Type: {{ raw_data_explorer|default:"Not Available" }}
+                    {% if raw_data_explorer %}
+                    | Variables Count: {{ raw_data_explorer.variables|length|default:"0" }}
+                    | Sample Data Count: {{ raw_data_explorer.sample_data|length|default:"0" }}
+                    {% endif %}
+                </div>
+                {% endif %}
+                
                 <!-- Data Coverage Summary -->
                 <div class="row mb-4">
                     <div class="col-md-12">
@@ -652,6 +664,15 @@
                                                     </span>
                                                 </td>
                                             </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="8" class="text-center text-muted">
+                                                    <em>No variable data available. Check backend data generation.</em>
+                                                    {% if raw_data_explorer.error %}
+                                                    <br><small class="text-danger">Error: {{ raw_data_explorer.error }}</small>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
                                             {% endfor %}
                                         </tbody>
                                     </table>
@@ -697,6 +718,12 @@
                                                 <td>{{ row.gdp|floatformat:0 }}</td>
                                                 <td>{{ row.corruption_control|floatformat:2 }}</td>
                                             </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="9" class="text-center text-muted">
+                                                    <em>No sample data available. Check backend data generation.</em>
+                                                </td>
+                                            </tr>
                                             {% endfor %}
                                         </tbody>
                                     </table>
@@ -711,6 +738,18 @@
             <div class="tab-pane fade" id="model-diagnostics" role="tabpanel">
                 <h3 class="h5 mb-3"><i class="fas fa-cogs me-2"></i>Bayesian Model Diagnostics</h3>
                 <p class="text-muted mb-4">Comprehensive diagnostics for the hierarchical Bayesian model</p>
+                
+                <!-- Debug Info -->
+                {% if debug %}
+                <div class="alert alert-info">
+                    <strong>Debug Info:</strong> 
+                    Model Diagnostics Type: {{ model_diagnostics|default:"Not Available" }}
+                    {% if model_diagnostics %}
+                    | Convergence Metrics: {{ model_diagnostics.convergence.metrics|length|default:"0" }}
+                    | Model Fit Metrics: {{ model_diagnostics.model_fit.metrics|length|default:"0" }}
+                    {% endif %}
+                </div>
+                {% endif %}
                 
                 <!-- MCMC Convergence -->
                 <div class="row mb-4">
