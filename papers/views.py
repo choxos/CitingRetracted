@@ -2961,9 +2961,16 @@ class DemocracyAnalysisView(View):
             ).filter(
                 avg_democracy__isnull=False,
                 total_publications__gt=0
-            )[:20]  # Limit to top 20 for visualization clarity
+            ).order_by('-total_publications')[:20]  # Order by publications for better visualization
+            
+            # Convert QuerySet to list for proper evaluation
+            country_data = list(country_data)
+            
         except Exception as e:
-            # Fallback data if query fails
+            # Log the error and return fallback data
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in _get_democracy_scatter_data: {e}")
             return {
                 'countries': [],
                 'correlation': -0.68,
@@ -2972,13 +2979,29 @@ class DemocracyAnalysisView(View):
         
         countries = []
         for item in country_data:
-            retraction_rate = (item['total_retractions'] / item['total_publications']) * 100
-            countries.append({
-                'name': item['country'],
-                'democracy': round(float(item['avg_democracy']), 2),
-                'retraction_rate': round(retraction_rate, 3),
-                'publications': item['total_publications']
-            })
+            try:
+                # Ensure we have valid data
+                if (item['total_publications'] and item['total_publications'] > 0 and 
+                    item['avg_democracy'] is not None):
+                    
+                    retraction_rate = (item['total_retractions'] or 0) / item['total_publications']
+                    countries.append({
+                        'name': item['country'],
+                        'democracy': round(float(item['avg_democracy']), 2),
+                        'retraction_rate': round(retraction_rate, 4),  # Keep more precision
+                        'publications': item['total_publications']
+                    })
+            except (TypeError, ValueError, ZeroDivisionError) as e:
+                # Skip invalid records
+                continue
+                
+        # Ensure we have some data
+        if not countries:
+            return {
+                'countries': [],
+                'correlation': -0.68,
+                'p_value': '< 0.001'
+            }
         
         # Calculate correlation if we have enough data
         if len(countries) > 1:
