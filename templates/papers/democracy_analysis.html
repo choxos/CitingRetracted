@@ -728,6 +728,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const ctx = document.getElementById('democracyScatterChart').getContext('2d');
         const data = {{ visualizations.democracy_retraction_scatter.data|jsonify }};
         
+        // Debug: Check what data we received
+        console.log('Scatter plot data:', data);
+        
+        // Safety check
+        if (!data || !data.countries || !Array.isArray(data.countries)) {
+            console.error('Invalid scatter plot data structure:', data);
+            document.getElementById('democracyScatterChart').parentElement.innerHTML = 
+                '<div class="alert alert-warning">No data available for scatter plot</div>';
+            return;
+        }
+        
         new Chart(ctx, {
             type: 'scatter',
             data: {
@@ -798,6 +809,17 @@ document.addEventListener('DOMContentLoaded', function() {
     function createTemporalChart() {
         const ctx = document.getElementById('temporalTrendsChart').getContext('2d');
         const data = {{ visualizations.temporal_trends.data|jsonify }};
+        
+        // Debug: Check what data we received
+        console.log('Temporal trends data:', data);
+        
+        // Safety check
+        if (!data || !data.years || !Array.isArray(data.years)) {
+            console.error('Invalid temporal trends data structure:', data);
+            document.getElementById('temporalTrendsChart').parentElement.innerHTML = 
+                '<div class="alert alert-warning">No data available for temporal trends</div>';
+            return;
+        }
         
         new Chart(ctx, {
             type: 'line',
@@ -875,6 +897,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // World Map Visualization
     function createWorldMap() {
         const data = {{ visualizations.world_map.data|jsonify }};
+        
+        // Debug: Check what data we received
+        console.log('World map data:', data);
+        
+        // Safety check
+        if (!data || !data.countries || !Array.isArray(data.countries)) {
+            console.error('Invalid world map data structure:', data);
+            document.getElementById('worldMapChart').innerHTML = 
+                '<div class="alert alert-warning">No data available for world map</div>';
+            return;
+        }
         
         const plotData = [{
             type: 'choropleth',
