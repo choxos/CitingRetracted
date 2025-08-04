@@ -731,7 +731,17 @@ document.addEventListener('DOMContentLoaded', function() {
         // Debug: Check what data we received
         console.log('Scatter plot data:', data);
         console.log('Scatter plot data type:', typeof data);
-        console.log('Scatter plot data JSON:', JSON.stringify(data));
+        console.log('Countries count:', data.countries ? data.countries.length : 0);
+        
+        // Debug: Check first few countries
+        if (data.countries && data.countries.length > 0) {
+            console.log('First country:', data.countries[0]);
+            console.log('Sample mapping:', {
+                x: data.countries[0].democracy,
+                y: data.countries[0].retraction_rate * 100,
+                label: data.countries[0].name
+            });
+        }
         
         // Safety check
         if (!data || !data.countries || !Array.isArray(data.countries)) {
@@ -755,16 +765,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     data: data.countries.map(country => ({
                         x: country.democracy,
                         y: country.retraction_rate * 100, // Convert to percentage
-                        label: country.name,
-                        publications: country.publications
+                        label: country.name
                     })),
                     backgroundColor: 'rgba(59, 130, 246, 0.6)',
                     borderColor: 'rgba(59, 130, 246, 1)',
                     borderWidth: 2,
-                    pointRadius: function(context) {
-                        const value = context.parsed.publications;
-                        return Math.max(5, Math.min(15, value / 30000));
-                    }
+                    pointRadius: 6,
+                    pointHoverRadius: 8
                 }]
             },
             options: {
