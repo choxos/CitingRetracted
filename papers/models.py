@@ -837,7 +837,7 @@ class DemocracyData(models.Model):
     pdi = models.FloatField(blank=True, null=True, help_text="Power Distance Index")
     
     # Calculated fields
-    retraction_rate = models.FloatField(blank=True, null=True, help_text="Retractions per publication")
+    retraction_rate = models.FloatField(blank=True, null=True, help_text="Retractions per 100K publications")
     
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
@@ -854,9 +854,9 @@ class DemocracyData(models.Model):
         ]
     
     def save(self, *args, **kwargs):
-        # Calculate retraction rate when saving
+        # Calculate retraction rate per 100K publications when saving
         if self.publications and self.publications > 0:
-            self.retraction_rate = self.retractions / self.publications
+            self.retraction_rate = (self.retractions / self.publications) * 100000
         super().save(*args, **kwargs)
     
     def __str__(self):

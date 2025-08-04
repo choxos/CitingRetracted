@@ -489,8 +489,8 @@
                             </div>
                             <div class="col-6">
                                 <div class="text-center">
-                                    <div class="h4 text-danger">{{ region.avg_retraction_rate|floatformat:3 }}</div>
-                                    <div class="small text-muted">Retraction Rate</div>
+                                    <div class="h4 text-danger">{{ region.avg_retraction_rate|floatformat:1 }}</div>
+                                    <div class="small text-muted">Retraction Rate (per 100K)</div>
                                 </div>
                             </div>
                         </div>
@@ -711,7 +711,7 @@
                                                 <th>Democracy</th>
                                                 <th>Retractions</th>
                                                 <th>Publications</th>
-                                                <th>Retraction Rate</th>
+                                                <th>Retraction Rate (per 100K)</th>
                                                 <th>GDP</th>
                                                 <th>Corruption Control</th>
                                             </tr>
@@ -725,7 +725,7 @@
                                                 <td>{{ row.democracy|floatformat:2 }}</td>
                                                 <td>{{ row.retractions }}</td>
                                                 <td>{{ row.publications|floatformat:0 }}</td>
-                                                <td>{{ row.retraction_rate|floatformat:4 }}</td>
+                                                <td>{{ row.retraction_rate|floatformat:1 }}</td>
                                                 <td>{{ row.gdp|floatformat:0 }}</td>
                                                 <td>{{ row.corruption_control|floatformat:2 }}</td>
                                             </tr>
@@ -1096,7 +1096,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('First country:', data.countries[0]);
             console.log('Sample mapping:', {
                 x: data.countries[0].democracy,
-                y: data.countries[0].retraction_rate * 100,
+                y: data.countries[0].retraction_rate,
                 label: data.countries[0].name
             });
             
@@ -1106,11 +1106,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 max: Math.max(...data.countries.map(c => c.democracy))
             };
             const retractionRange = {
-                min: Math.min(...data.countries.map(c => c.retraction_rate * 100)),
-                max: Math.max(...data.countries.map(c => c.retraction_rate * 100))
+                min: Math.min(...data.countries.map(c => c.retraction_rate)),
+                max: Math.max(...data.countries.map(c => c.retraction_rate))
             };
             console.log('Democracy range:', democracyRange);
-            console.log('Retraction rate range (%):', retractionRange);
+            console.log('Retraction rate range (per 100K):', retractionRange);
         }
         
         // Safety check
@@ -1159,7 +1159,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             regionDatasets[region].push({
                 x: country.democracy,
-                y: country.retraction_rate * 100,
+                y: country.retraction_rate,
                 pointRadius: pointSize,
                 countryData: country
             });
@@ -1221,7 +1221,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 return [
                                     `Region: ${country.region}`,
                                     `Democracy Score: ${country.democracy.toFixed(1)}`,
-                                    `Retraction Rate: ${(country.retraction_rate * 100).toFixed(2)}%`,
+                                    `Retraction Rate: ${country.retraction_rate.toFixed(1)} per 100K`,
                                     `Publications: ${country.publications.toLocaleString()}`
                                 ];
                             }
@@ -1241,7 +1241,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     y: {
                         title: {
                             display: true,
-                            text: 'Retraction Rate (%)',
+                            text: 'Retraction Rate (per 100K articles)',
                             font: { weight: 'bold' }
                         },
                         min: 0
@@ -1288,8 +1288,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         fill: true
                     },
                     {
-                        label: 'Retraction Rate (%)',
-                        data: data.retraction_rate.map(x => x * 100),
+                        label: 'Retraction Rate (per 100K)',
+                        data: data.retraction_rate,
                         borderColor: 'rgba(220, 38, 38, 1)',
                         backgroundColor: 'rgba(220, 38, 38, 0.1)',
                         yAxisID: 'y1',
@@ -1334,7 +1334,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         position: 'right',
                         title: {
                             display: true,
-                            text: 'Retraction Rate (%)',
+                            text: 'Retraction Rate (per 100K)',
                             font: { weight: 'bold' }
                         },
                         grid: {
@@ -1366,7 +1366,7 @@ document.addEventListener('DOMContentLoaded', function() {
             locations: data.countries.map(c => c.iso),
             z: data.countries.map(c => c.democracy),
             text: data.countries.map(c => 
-                `Country: ${c.iso}<br>Democracy: ${c.democracy}<br>Retraction Rate: ${(c.retraction_rate * 100).toFixed(3)}%`
+                `Country: ${c.iso}<br>Democracy: ${c.democracy}<br>Retraction Rate: ${c.retraction_rate.toFixed(1)} per 100K`
             ),
             colorscale: [
                 [0, 'rgb(220, 38, 38)'],
