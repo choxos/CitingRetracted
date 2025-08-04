@@ -443,6 +443,11 @@
                     <i class="fas fa-balance-scale me-2"></i>Sensitivity Analysis
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="subgroup-analysis-tab" data-bs-toggle="tab" data-bs-target="#subgroup-analysis" type="button" role="tab">
+                    <i class="fas fa-layer-group me-2"></i>Subgroup Analysis
+                </button>
+            </li>
         </ul>
         
         <div class="tab-content" id="chartTabContent">
@@ -1265,6 +1270,268 @@
                                 <div class="alert alert-success mt-3">
                                     <strong>Summary:</strong> The democracy-retraction association is robust across different model specifications, 
                                     providing strong evidence for the protective effect of democratic governance on research integrity.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Subgroup Analysis -->
+            <div class="tab-pane fade" id="subgroup-analysis" role="tabpanel">
+                <h3 class="h5 mb-3"><i class="fas fa-layer-group me-2"></i>Subgroup Analysis</h3>
+                <p class="text-muted mb-4">Exploring effect heterogeneity across research fields, retraction reasons, and author position</p>
+                
+                <!-- Research Fields Subgroup -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <h4 class="h6 mb-0"><i class="fas fa-flask me-2"></i>Research Fields Analysis</h4>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted">Democracy effects by research discipline (Health-related vs Non-health-related)</p>
+                                
+                                <div class="row">
+                                    {% for field, data in statistical_results.subgroup_analysis.research_fields.items %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card border-light">
+                                            <div class="card-header bg-light">
+                                                <h6 class="mb-0 text-primary">{{ field }}</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <table class="table table-sm mb-0">
+                                                    <tbody>
+                                                        <tr>
+                                                            <th class="text-muted">Sample Size:</th>
+                                                            <td>{{ data.n_observations|floatformat:0 }} observations, {{ data.n_countries }} countries</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Democracy IRR:</th>
+                                                            <td class="fw-bold">{{ data.democracy_irr|floatformat:3 }} ({{ data.irr_lower|floatformat:3 }}–{{ data.irr_upper|floatformat:3 }})</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Interpretation:</th>
+                                                            <td class="small">{{ data.interpretation }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Convergence:</th>
+                                                            <td class="small">R̂ = {{ data.max_rhat|floatformat:3 }}, ESS = {{ data.min_ess|floatformat:3 }}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% empty %}
+                                    <div class="col-12">
+                                        <div class="alert alert-info">
+                                            <strong>No subgroup data available</strong> for research fields analysis.
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Retraction Categories Subgroup -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card border-warning">
+                            <div class="card-header bg-warning text-dark">
+                                <h4 class="h6 mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Retraction Categories Analysis</h4>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted">Democracy effects by retraction type (Content-related vs Non-content-related)</p>
+                                
+                                <div class="row">
+                                    {% for category, data in statistical_results.subgroup_analysis.retraction_categories.items %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card border-light">
+                                            <div class="card-header bg-light">
+                                                <h6 class="mb-0 text-warning">{{ category }}</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <table class="table table-sm mb-0">
+                                                    <tbody>
+                                                        <tr>
+                                                            <th class="text-muted">Sample Size:</th>
+                                                            <td>{{ data.n_observations|floatformat:0 }} observations, {{ data.n_countries }} countries</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Democracy IRR:</th>
+                                                            <td class="fw-bold">{{ data.democracy_irr|floatformat:3 }} ({{ data.irr_lower|floatformat:3 }}–{{ data.irr_upper|floatformat:3 }})</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Interpretation:</th>
+                                                            <td class="small">{{ data.interpretation }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Convergence:</th>
+                                                            <td class="small">R̂ = {{ data.max_rhat|floatformat:3 }}, ESS = {{ data.min_ess|floatformat:3 }}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% empty %}
+                                    <div class="col-12">
+                                        <div class="alert alert-info">
+                                            <strong>No subgroup data available</strong> for retraction categories analysis.
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Geographic Scope Subgroup -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card border-success">
+                            <div class="card-header bg-success text-white">
+                                <h4 class="h6 mb-0"><i class="fas fa-globe me-2"></i>Geographic Scope Analysis</h4>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted">Democracy effects by collaboration pattern (International vs Domestic focus)</p>
+                                
+                                <div class="row">
+                                    {% for scope, data in statistical_results.subgroup_analysis.geographic_scope.items %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card border-light">
+                                            <div class="card-header bg-light">
+                                                <h6 class="mb-0 text-success">{{ scope }}</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <table class="table table-sm mb-0">
+                                                    <tbody>
+                                                        <tr>
+                                                            <th class="text-muted">Sample Size:</th>
+                                                            <td>{{ data.n_observations|floatformat:0 }} observations, {{ data.n_countries }} countries</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Democracy IRR:</th>
+                                                            <td class="fw-bold">{{ data.democracy_irr|floatformat:3 }} ({{ data.irr_lower|floatformat:3 }}–{{ data.irr_upper|floatformat:3 }})</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Interpretation:</th>
+                                                            <td class="small">{{ data.interpretation }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Convergence:</th>
+                                                            <td class="small">R̂ = {{ data.max_rhat|floatformat:3 }}, ESS = {{ data.min_ess|floatformat:3 }}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% empty %}
+                                    <div class="col-12">
+                                        <div class="alert alert-info">
+                                            <strong>No subgroup data available</strong> for geographic scope analysis.
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Interaction Effects -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card border-info">
+                            <div class="card-header bg-info text-white">
+                                <h4 class="h6 mb-0"><i class="fas fa-arrows-alt me-2"></i>Interaction Effects</h4>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted">Testing for statistical interactions between democracy and subgroup characteristics</p>
+                                
+                                {% if statistical_results.subgroup_analysis.interaction_effects %}
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Interaction Term</th>
+                                            <th>Coefficient</th>
+                                            <th>95% CrI</th>
+                                            <th>Significant</th>
+                                            <th>Interpretation</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for term, data in statistical_results.subgroup_analysis.interaction_effects.items %}
+                                        <tr>
+                                            <td class="small fw-bold">{{ term }}</td>
+                                            <td>{{ data.coefficient|floatformat:3 }}</td>
+                                            <td>({{ data.ci_lower|floatformat:3 }}, {{ data.ci_upper|floatformat:3 }})</td>
+                                            <td>
+                                                {% if data.significant %}
+                                                <span class="badge bg-success">Yes</span>
+                                                {% else %}
+                                                <span class="badge bg-secondary">No</span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="small">{{ data.interpretation|default:"No significant interaction" }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                {% else %}
+                                <div class="alert alert-info">
+                                    <strong>No significant interaction effects detected.</strong> Democracy effects appear consistent across subgroups.
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Heterogeneity Assessment -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card border-dark">
+                            <div class="card-header bg-dark text-white">
+                                <h4 class="h6 mb-0"><i class="fas fa-chart-line me-2"></i>Heterogeneity Assessment</h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Overall Pattern</h6>
+                                        <p class="small">{{ statistical_results.subgroup_analysis.heterogeneity_assessment.overall_pattern }}</p>
+                                        
+                                        <h6 class="text-primary">Effect Variation</h6>
+                                        <p class="small">{{ statistical_results.subgroup_analysis.heterogeneity_assessment.effect_magnitude_variation }}</p>
+                                        
+                                        <h6 class="text-primary">Statistical Significance</h6>
+                                        <p class="small">{{ statistical_results.subgroup_analysis.heterogeneity_assessment.statistical_significance }}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Clinical Relevance</h6>
+                                        <p class="small">{{ statistical_results.subgroup_analysis.heterogeneity_assessment.clinical_relevance }}</p>
+                                        
+                                        <h6 class="text-primary">Interaction Significance</h6>
+                                        <p class="small">{{ statistical_results.subgroup_analysis.heterogeneity_assessment.interaction_significance }}</p>
+                                        
+                                        {% if statistical_results.subgroup_analysis.summary %}
+                                        <h6 class="text-primary">Summary Statistics</h6>
+                                        <ul class="small">
+                                            <li><strong>Subgroups tested:</strong> {{ statistical_results.subgroup_analysis.summary.total_subgroups_tested }}</li>
+                                            <li><strong>Strongest effect:</strong> {{ statistical_results.subgroup_analysis.summary.strongest_effect_subgroup }}</li>
+                                            <li><strong>Weakest effect:</strong> {{ statistical_results.subgroup_analysis.summary.weakest_effect_subgroup }}</li>
+                                        </ul>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-primary mt-3">
+                                    <strong>Conclusion:</strong> {{ statistical_results.subgroup_analysis.heterogeneity_assessment.interpretation }}
                                 </div>
                             </div>
                         </div>

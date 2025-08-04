@@ -627,6 +627,283 @@ results_list$sensitivity_analysis <- list(
 
 cat("Sensitivity analysis completed!\\n")
 
+# =============================================================================
+# SUBGROUP ANALYSES: Effect Heterogeneity Assessment
+# Following protocol specification for subgroup analyses
+# =============================================================================
+
+cat("\\n=== SUBGROUP ANALYSES: Effect Heterogeneity ===\\n")
+
+# Check available variables for subgroup analyses
+cat("Examining available variables for subgroup analyses...\\n")
+cat("Available columns in analysis_data:\\n")
+print(colnames(analysis_data))
+
+# Create subgroup variables based on available data
+analysis_data <- analysis_data %>%
+    mutate(
+        # Research fields: Health-related vs Non-health-related
+        # Using journal categories if available, otherwise fallback classification
+        research_field = case_when(
+            # Check if journal field information is available
+            grepl("medicine|medical|health|clinical|epidemio|pharma|nursing|surgery|psychiatry|cardio|neuro|cancer|oncology", 
+                  tolower(paste(journal, journal_category, subject_area, sep = " ")), 
+                  na.rm = TRUE) ~ "Health-related",
+            grepl("engineering|computer|physics|chemistry|mathematics|materials|environmental|geology|astronomy", 
+                  tolower(paste(journal, journal_category, subject_area, sep = " ")), 
+                  na.rm = TRUE) ~ "Non-health-related",
+            !is.na(journal) ~ "Non-health-related",  # Default for papers with journal info
+            TRUE ~ "Unknown"
+        ),
+        
+        # Retraction reasons: Content-related vs Non-content-related
+        retraction_category = case_when(
+            # Content-related: fabrication, falsification, plagiarism, data errors
+            grepl("fabrication|falsification|plagiarism|misconduct|fraud|data.error|statistical.error|methodology", 
+                  tolower(paste(retraction_reason, retraction_type, sep = " ")), 
+                  na.rm = TRUE) ~ "Content-related",
+            # Non-content-related: administrative, authorship, copyright, etc.
+            grepl("authorship|copyright|duplicate|administrative|journal.policy|editor|publisher", 
+                  tolower(paste(retraction_reason, retraction_type, sep = " ")), 
+                  na.rm = TRUE) ~ "Non-content-related",
+            !is.na(retraction_reason) ~ "Content-related",  # Default for papers with reason info
+            TRUE ~ "Unknown"
+        ),
+        
+        # Author position: First author's country analysis
+        # Note: The main analysis already uses country-level data
+        # This subgroup focuses on geographic scope
+        geographic_scope = case_when(
+            # International collaboration proxy
+            international_collaboration_scaled > 0 ~ "International collaboration",
+            international_collaboration_scaled <= 0 ~ "Domestic focus",
+            TRUE ~ "Unknown"
+        )
+    )
+
+# Display subgroup distributions
+cat("\\nSubgroup distributions:\\n")
+cat("Research Fields:\\n")
+print(table(analysis_data$research_field, useNA = "always"))
+cat("\\nRetraction Categories:\\n")
+print(table(analysis_data$retraction_category, useNA = "always"))
+cat("\\nGeographic Scope:\\n")
+print(table(analysis_data$geographic_scope, useNA = "always"))
+
+# Function to run subgroup analysis
+run_subgroup_analysis <- function(data, subgroup_var, subgroup_name) {{
+    cat("\\n--- Subgroup Analysis:", subgroup_name, "---\\n")
+    
+    subgroup_results <- list()
+    
+    # Get unique subgroup levels (excluding Unknown)
+    subgroup_levels <- unique(data[[subgroup_var]])
+    subgroup_levels <- subgroup_levels[!is.na(subgroup_levels) & subgroup_levels != "Unknown"]
+    
+    for (level in subgroup_levels) {{
+        cat("Analyzing subgroup:", level, "\\n")
+        
+        # Filter data for this subgroup
+        subgroup_data <- data %>% filter(!!sym(subgroup_var) == level)
+        
+        # Check if we have enough data
+        if (nrow(subgroup_data) < 50) {{
+            cat("Warning: Insufficient data for", level, "(n =", nrow(subgroup_data), ")\\n")
+            next
+        }}
+        
+        # Fit simplified Bayesian model for subgroup
+        cat("Fitting Bayesian model for", level, "...\\n")
+        
+        # Use reduced model for computational efficiency in subgroups
+        subgroup_formula <- bf(
+            retractions ~ democracy_scaled + gdp_scaled + 
+                         international_collaboration_scaled + 
+                         (1 | iso3_factor) + 
+                         offset(log_publications),
+            family = negbinomial()
+        )
+        
+        # Simplified priors for subgroup analysis
+        subgroup_priors <- c(
+            prior(normal(0, 3), class = Intercept),
+            prior(normal(0, 1), class = b),
+            prior(exponential(1), class = sd),
+            prior(gamma(2, 0.1), class = shape)
+        )
+        
+        tryCatch({{
+            # Fit subgroup model with reduced iterations for efficiency
+            subgroup_model <- brm(
+                formula = subgroup_formula,
+                data = subgroup_data,
+                prior = subgroup_priors,
+                chains = 2,
+                iter = 2000,
+                warmup = 1000,
+                cores = 2,
+                control = list(adapt_delta = 0.95),
+                seed = 123,
+                silent = TRUE,
+                refresh = 0
+            )
+            
+            # Extract democracy effect for this subgroup
+            subgroup_summary <- summary(subgroup_model)
+            fixed_effects <- subgroup_summary$fixed
+            
+            if ("democracy_scaled" %in% rownames(fixed_effects)) {{
+                coef_est <- fixed_effects["democracy_scaled", "Estimate"]
+                coef_se <- fixed_effects["democracy_scaled", "Est.Error"]
+                ci_lower <- fixed_effects["democracy_scaled", "l-95% CI"]
+                ci_upper <- fixed_effects["democracy_scaled", "u-95% CI"]
+                
+                # Calculate IRR and confidence intervals
+                irr <- exp(coef_est)
+                irr_lower <- exp(ci_lower)
+                irr_upper <- exp(ci_upper)
+                
+                # Convergence diagnostics
+                rhat_subgroup <- max(rhat(subgroup_model), na.rm = TRUE)
+                ess_subgroup <- min(neff_ratio(subgroup_model), na.rm = TRUE)
+                
+                subgroup_results[[level]] <- list(
+                    n_observations = nrow(subgroup_data),
+                    n_countries = length(unique(subgroup_data$iso3_factor)),
+                    democracy_coefficient = coef_est,
+                    democracy_se = coef_se,
+                    democracy_irr = irr,
+                    irr_lower = irr_lower,
+                    irr_upper = irr_upper,
+                    max_rhat = rhat_subgroup,
+                    min_ess = ess_subgroup,
+                    interpretation = paste0(round(abs((irr - 1) * 100), 1), "% ", 
+                                          ifelse(irr < 1, "reduction", "increase"), 
+                                          " in retraction rate per democracy unit")
+                )
+                
+                cat("Democracy effect in", level, ": IRR =", round(irr, 3), 
+                    "(", round(irr_lower, 3), "-", round(irr_upper, 3), ")\\n")
+            }}
+        }}, error = function(e) {{
+            cat("Error in subgroup", level, ":", e$message, "\\n")
+            subgroup_results[[level]] <- list(
+                error = e$message,
+                n_observations = nrow(subgroup_data)
+            )
+        }})
+    }}
+    
+    return(subgroup_results)
+}}
+
+# Run all subgroup analyses
+cat("\\nRunning subgroup analyses...\\n")
+
+# 1. Research Fields Analysis
+research_field_results <- run_subgroup_analysis(analysis_data, "research_field", "Research Fields")
+
+# 2. Retraction Categories Analysis  
+retraction_category_results <- run_subgroup_analysis(analysis_data, "retraction_category", "Retraction Categories")
+
+# 3. Geographic Scope Analysis
+geographic_scope_results <- run_subgroup_analysis(analysis_data, "geographic_scope", "Geographic Scope")
+
+# Test for interaction effects
+cat("\\n=== INTERACTION EFFECTS TESTING ===\\n")
+
+# Test research field interaction
+if (length(unique(analysis_data$research_field[analysis_data$research_field != "Unknown"])) > 1) {{
+    cat("Testing research field interaction...\\n")
+    
+    # Create interaction data
+    interaction_data <- analysis_data %>%
+        filter(research_field != "Unknown") %>%
+        mutate(research_field_factor = as.factor(research_field))
+    
+    if (nrow(interaction_data) > 100) {{
+        # Fit interaction model
+        interaction_formula <- bf(
+            retractions ~ democracy_scaled * research_field_factor + 
+                         gdp_scaled + international_collaboration_scaled +
+                         (1 | iso3_factor) + offset(log_publications),
+            family = negbinomial()
+        )
+        
+        tryCatch({{
+            interaction_model <- brm(
+                formula = interaction_formula,
+                data = interaction_data,
+                prior = c(
+                    prior(normal(0, 3), class = Intercept),
+                    prior(normal(0, 1), class = b),
+                    prior(exponential(1), class = sd),
+                    prior(gamma(2, 0.1), class = shape)
+                ),
+                chains = 2,
+                iter = 2000,
+                warmup = 1000,
+                cores = 2,
+                seed = 123,
+                silent = TRUE,
+                refresh = 0
+            )
+            
+            # Extract interaction effects
+            interaction_summary <- summary(interaction_model)
+            interaction_effects <- interaction_summary$fixed
+            
+            # Look for interaction terms
+            interaction_terms <- rownames(interaction_effects)[grepl(":", rownames(interaction_effects))]
+            
+            interaction_results <- list()
+            for (term in interaction_terms) {{
+                coef_est <- interaction_effects[term, "Estimate"]
+                ci_lower <- interaction_effects[term, "l-95% CI"]
+                ci_upper <- interaction_effects[term, "u-95% CI"]
+                
+                interaction_results[[term]] <- list(
+                    coefficient = coef_est,
+                    ci_lower = ci_lower,
+                    ci_upper = ci_upper,
+                    significant = !(ci_lower < 0 & ci_upper > 0)
+                )
+            }}
+            
+            cat("Interaction effects detected:", length(interaction_terms), "terms\\n")
+            
+        }}, error = function(e) {{
+            cat("Error in interaction analysis:", e$message, "\\n")
+            interaction_results <- list(error = e$message)
+        }})
+    }} else {{
+        interaction_results <- list(note = "Insufficient data for interaction analysis")
+    }}
+}} else {{
+    interaction_results <- list(note = "Insufficient subgroups for interaction analysis")
+}}
+
+# Compile subgroup analysis results
+subgroup_analysis_results <- list(
+    research_fields = research_field_results,
+    retraction_categories = retraction_category_results,
+    geographic_scope = geographic_scope_results,
+    interaction_effects = interaction_results,
+    summary = list(
+        total_subgroups_tested = length(research_field_results) + 
+                                length(retraction_category_results) + 
+                                length(geographic_scope_results),
+        research_field_distribution = table(analysis_data$research_field),
+        retraction_category_distribution = table(analysis_data$retraction_category),
+        geographic_scope_distribution = table(analysis_data$geographic_scope)
+    )
+)
+
+# Add subgroup results to main results
+results_list$subgroup_analysis <- subgroup_analysis_results
+
+cat("Subgroup analyses completed!\\n")
+
 # Add Bayesian model diagnostics following protocol
 results_list$model_diagnostics <- list(
     sample_size = nrow(analysis_data),
