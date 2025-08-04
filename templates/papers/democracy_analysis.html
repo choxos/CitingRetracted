@@ -838,7 +838,7 @@
 </section>
 
 <!-- Statistical Results Section -->
-<section class="py-5">
+<section class="py-3">
     <div class="container">
         <h2 class="section-header">
             <i class="fas fa-calculator text-primary me-2"></i>Statistical Results
@@ -878,34 +878,56 @@
                         </div>
                     </div>
                     
-                    <h3 class="h5 text-purple fw-bold mb-3">Main Effects</h3>
+                    <h3 class="h5 text-purple fw-bold mb-3">Complete Regression Results</h3>
                     <div class="interactive-table">
                         <table class="table table-striped mb-0">
                             <thead>
                                 <tr>
                                     <th>Variable</th>
+                                    <th>Analysis Type</th>
                                     <th>Rate Ratio & 95% CrI</th>
                                     <th>P-value</th>
                                     <th>Interpretation</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for effect in statistical_results.main_effects %}
+                                {% for effect in statistical_results.all_effects %}
                                 <tr>
                                     <td class="fw-bold">{{ effect.variable }}</td>
+                                    <td>
+                                        <span class="badge {% if 'univariate' in effect.analysis_type|lower %}bg-primary{% else %}bg-secondary{% endif %}">
+                                            {{ effect.analysis_type|default:"PIG Model" }}
+                                        </span>
+                                    </td>
                                     <td>
                                         <strong>Rate Ratio (RR):</strong><br>
                                         {{ effect.rate_ratio|floatformat:3 }} (95% CrI: {{ effect.cri_lower|floatformat:2 }}-{{ effect.cri_upper|floatformat:2 }})
                                     </td>
-                                    <td class="fw-bold {% if effect.p_value == '< 0.001' or effect.p_value == '< 0.01' %}text-success{% else %}text-muted{% endif %}">
+                                    <td class="fw-bold {% if effect.p_value == '< 0.001' or effect.p_value == '< 0.01' %}text-success{% elif effect.p_value == '< 0.05' %}text-warning{% else %}text-muted{% endif %}">
                                         {{ effect.p_value }}
                                     </td>
                                     <td class="small">{{ effect.interpretation }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">
+                                        <em>Regression results are being prepared. Please check back shortly.</em>
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
+                    
+                    {% if statistical_results.all_effects %}
+                    <div class="mt-3">
+                        <p class="small text-muted">
+                            <strong>Analysis Types:</strong>
+                            <span class="badge bg-primary ms-1">Univariate</span> Single-variable models
+                            <span class="badge bg-secondary ms-1">Multivariate</span> Adjusted models with control variables
+                        </p>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
             
