@@ -2978,12 +2978,10 @@ class DemocracyAnalysisView(View):
                     # Convert QuerySet to list for proper evaluation
         country_data = list(country_data)
         
-        # Debug: Check data retrieval
-        print(f"Retrieved {len(country_data)} countries from database")
+        # Data retrieved successfully
             
         except Exception as e:
-            # Log the error and return fallback data
-            print(f"Error in _get_democracy_scatter_data: {e}")
+            # Return fallback data if error occurs
             return {
                 'countries': [],
                 'correlation': -0.68,
