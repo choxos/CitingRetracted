@@ -587,6 +587,17 @@
                 </div>
                 {% endif %}
                 
+                <!-- Show simple data display first -->
+                {% if raw_data_explorer.variables %}
+                <div class="alert alert-success">
+                    <strong>Data Available:</strong> {{ raw_data_explorer.variables|length }} variables loaded successfully
+                </div>
+                {% else %}
+                <div class="alert alert-warning">
+                    <strong>No Data:</strong> Raw data explorer variables not found
+                </div>
+                {% endif %}
+                
                 <!-- Data Coverage Summary -->
                 <div class="row mb-4">
                     <div class="col-md-12">
@@ -748,6 +759,17 @@
                     | Convergence Metrics: {{ model_diagnostics.convergence.metrics|length|default:"0" }}
                     | Model Fit Metrics: {{ model_diagnostics.model_fit.metrics|length|default:"0" }}
                     {% endif %}
+                </div>
+                {% endif %}
+                
+                <!-- Show simple data display first -->
+                {% if model_diagnostics.convergence %}
+                <div class="alert alert-success">
+                    <strong>Diagnostics Available:</strong> {{ model_diagnostics.convergence.metrics|length }} convergence metrics loaded
+                </div>
+                {% else %}
+                <div class="alert alert-warning">
+                    <strong>No Diagnostics:</strong> Model diagnostics not found
                 </div>
                 {% endif %}
                 
