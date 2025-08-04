@@ -815,7 +815,9 @@ document.addEventListener('DOMContentLoaded', function() {
             borderColor: regionColors[region] || '#95A5A6',
             borderWidth: 2,
             pointHoverRadius: function(context) {
-                return context.parsed.pointRadius + 4;
+                // Get the base radius from the data point, add hover effect
+                const baseRadius = context.raw.pointRadius || 6;
+                return baseRadius + 3;
             }
         }));
 
@@ -825,6 +827,11 @@ document.addEventListener('DOMContentLoaded', function() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: {
+                    mode: 'nearest',
+                    intersect: false,
+                    includeInvisible: false
+                },
                 plugins: {
                     title: {
                         display: true,
@@ -832,13 +839,30 @@ document.addEventListener('DOMContentLoaded', function() {
                         font: { size: 16, weight: 'bold' }
                     },
                     tooltip: {
+                        enabled: true,
+                        mode: 'nearest',
+                        intersect: false,
+                        animation: {
+                            duration: 200
+                        },
+                        displayColors: true,
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: 'white',
+                        bodyColor: 'white',
+                        borderColor: 'rgba(255, 255, 255, 0.1)',
+                        borderWidth: 1,
+                        cornerRadius: 6,
+                        caretPadding: 10,
                         callbacks: {
+                            title: function(context) {
+                                const country = context[0].raw.countryData;
+                                return country.name;
+                            },
                             label: function(context) {
                                 const country = context.raw.countryData;
                                 return [
-                                    `${country.name}`,
                                     `Region: ${country.region}`,
-                                    `Democracy: ${country.democracy.toFixed(1)}`,
+                                    `Democracy Score: ${country.democracy.toFixed(1)}`,
                                     `Retraction Rate: ${(country.retraction_rate * 100).toFixed(2)}%`,
                                     `Publications: ${country.publications.toLocaleString()}`
                                 ];
