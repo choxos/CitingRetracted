@@ -96,7 +96,7 @@ setwd("{os.path.abspath(self.working_dir)}")
 
 # Load required libraries with error checking
 required_packages <- c("dplyr", "mice", "brms", "lme4", "performance", 
-                       "bayestestR", "jsonlite", "loo", "naniar", "tidyr")
+                       "bayestestR", "jsonlite", "loo", "naniar", "tidyr", "moments")
 
 cat("Checking required packages...\\n")
 for(pkg in required_packages) {{
@@ -280,7 +280,12 @@ imputed_data <- complete(mice_config, 1)
 # Combine imputed predictors with outcome and hierarchical structure
 analysis_data <- prepared_data_selected %>%
     select(retractions, log_publications, iso3_factor, year_factor, year, Country, Region, iso3) %>%
-    bind_cols(imputed_data)
+    bind_cols(imputed_data) %>%
+    # Add publications back for sensitivity analysis
+    left_join(
+        prepared_data_yearly_scaled %>% select(iso3, year, publications),
+        by = c("iso3", "year")
+    )
 
 # Fit the main model
 nb_model <- brm(
@@ -379,6 +384,248 @@ multivariate_results <- extract_irr_results(nb_model, "negbin_multivariate")
 
 # Results from the negative binomial model  
 results_list <- multivariate_results
+
+# =============================================================================
+# SENSITIVITY ANALYSIS: Log-transformed Gaussian Model
+# Following protocol specification for alternative outcome specification
+# =============================================================================
+
+cat("\\n=== SENSITIVITY ANALYSIS: Log-transformed Gaussian Model ===\\n")
+
+# Create log-transformed retraction rates with small constant for zeros
+cat("Creating log-transformed retraction rates...\\n")
+analysis_data <- analysis_data %>%
+    mutate(
+        # Add small constant (0.5) to retraction counts for zeros before transformation
+        retractions_adjusted = retractions + 0.5,
+        # Calculate retraction rate per paper
+        retraction_rate_raw = retractions_adjusted / publications,
+        # Log-transform the rate
+        log_retraction_rate = log(retraction_rate_raw)
+    )
+
+# Normality diagnostic tests for log-transformed outcome
+cat("\\nPerforming normality diagnostic tests on log-transformed rates...\\n")
+
+# Shapiro-Wilk test (on sample if N > 5000)
+if(nrow(analysis_data) > 5000) {{
+    sample_indices <- sample(nrow(analysis_data), 5000)
+    shapiro_test <- shapiro.test(analysis_data$log_retraction_rate[sample_indices])
+    cat("Shapiro-Wilk test (sample, n=5000): W =", round(shapiro_test$statistic, 4), 
+        ", p-value =", format(shapiro_test$p.value, scientific = TRUE), "\\n")
+}} else {{
+    shapiro_test <- shapiro.test(analysis_data$log_retraction_rate)
+    cat("Shapiro-Wilk test: W =", round(shapiro_test$statistic, 4), 
+        ", p-value =", format(shapiro_test$p.value, scientific = TRUE), "\\n")
+}}
+
+# Descriptive statistics for log-transformed outcome
+log_stats <- summary(analysis_data$log_retraction_rate)
+cat("Log-transformed rate statistics:\\n")
+print(log_stats)
+
+# Check for extreme values
+cat("Extreme values check:\\n")
+cat("Min log rate:", min(analysis_data$log_retraction_rate, na.rm = TRUE), "\\n")
+cat("Max log rate:", max(analysis_data$log_retraction_rate, na.rm = TRUE), "\\n")
+cat("Skewness:", round(moments::skewness(analysis_data$log_retraction_rate, na.rm = TRUE), 3), "\\n")
+cat("Kurtosis:", round(moments::kurtosis(analysis_data$log_retraction_rate, na.rm = TRUE), 3), "\\n")
+
+# Fit Bayesian hierarchical Gaussian model on log-transformed rates
+cat("\\nFitting Bayesian hierarchical Gaussian model on log-transformed rates...\\n")
+
+# Define model formula for log-transformed outcome
+log_model_formula <- bf(
+    log_retraction_rate ~ democracy_scaled + english_proficiency_scaled +
+                         gdp_scaled + corruption_control_scaled +
+                         government_effectiveness_scaled + regulatory_quality_scaled +
+                         rule_of_law_scaled + international_collaboration_scaled +
+                         PDI_scaled + rnd_scaled + press_freedom_scaled +
+                         (1 | iso3_factor) + (1 | year_factor),
+    family = gaussian()
+)
+
+# Define priors for Gaussian model
+log_priors <- c(
+    prior(normal(0, 2), class = Intercept),
+    prior(normal(0, 0.5), class = b),
+    prior(exponential(1), class = sd),
+    prior(exponential(1), class = sigma)  # residual standard deviation
+)
+
+cat("Fitting log-transformed Gaussian model (this may take several minutes)...\\n")
+
+# Fit the model
+log_gaussian_model <- brm(
+    log_model_formula,
+    data = analysis_data,
+    prior = log_priors,
+    chains = 4,
+    iter = 4000,
+    warmup = 2000,
+    cores = 4,
+    seed = 12345,
+    control = list(adapt_delta = 0.95),
+    save_pars = save_pars(all = TRUE)
+)
+
+cat("Log-transformed Gaussian model fitting completed!\\n")
+
+# Model diagnostics for log-transformed model
+cat("Computing diagnostics for log-transformed model...\\n")
+log_rhat_check <- rhat(log_gaussian_model)
+log_ess_check <- neff_ratio(log_gaussian_model)
+
+cat("Log model - Max R-hat:", round(max(log_rhat_check, na.rm = TRUE), 4), "\\n")
+cat("Log model - Min ESS ratio:", round(min(log_ess_check, na.rm = TRUE), 4), "\\n")
+
+# LOO-CV for log-transformed model
+log_loo_result <- loo(log_gaussian_model)
+cat("Log model - LOO-CV estimate:", round(log_loo_result$estimates["looic", "Estimate"], 2), "\\n")
+
+# Extract results from log-transformed model
+extract_gaussian_results <- function(model, analysis_type) {{
+    # Get posterior samples
+    posterior_samples <- as_draws_df(model)
+    
+    # Extract fixed effects (excluding Intercept)
+    fixed_effects <- fixef(model)
+    param_names <- rownames(fixed_effects)
+    param_names <- param_names[param_names != "Intercept"]
+    
+    results <- list()
+    
+    for (param in param_names) {{
+        if (param != "Intercept") {{
+            # Extract coefficient statistics
+            coef_est <- fixed_effects[param, "Estimate"]
+            coef_se <- fixed_effects[param, "Est.Error"]
+            coef_lower <- fixed_effects[param, "Q2.5"]
+            coef_upper <- fixed_effects[param, "Q97.5"]
+            
+            # For log-transformed outcome, coefficients represent log-scale changes
+            # Convert to percentage changes: (exp(coef) - 1) * 100
+            pct_change <- (exp(coef_est) - 1) * 100
+            pct_lower <- (exp(coef_lower) - 1) * 100
+            pct_upper <- (exp(coef_upper) - 1) * 100
+            
+            # Calculate posterior probabilities
+            param_col <- paste0("b_", param)
+            if (param_col %in% colnames(posterior_samples)) {{
+                param_samples <- posterior_samples[[param_col]]
+                prob_positive <- mean(param_samples > 0)
+                prob_negative <- mean(param_samples < 0)
+            }} else {{
+                prob_positive <- NA
+                prob_negative <- NA
+            }}
+            
+            # Create interpretation
+            effect_direction <- ifelse(coef_est < 0, "decrease", "increase")
+            effect_magnitude <- abs(pct_change)
+            
+            interpretation <- paste0(
+                round(effect_magnitude, 1), "% ", effect_direction,
+                " in retraction rate per unit increase in ",
+                gsub("_scaled", "", param), " (log-scale)"
+            )
+            
+            # Clean variable name
+            clean_name <- gsub("_scaled", "", param)
+            
+            results[[paste0(analysis_type, "_", clean_name)]] <- list(
+                coefficient = coef_est,
+                std_error = coef_se,
+                percent_change = pct_change,
+                cri_lower = coef_lower,
+                cri_upper = coef_upper,
+                pct_change_lower = pct_lower,
+                pct_change_upper = pct_upper,
+                prob_positive = prob_positive,
+                prob_negative = prob_negative,
+                interpretation = interpretation
+            )
+        }}
+    }}
+    return(results)
+}}
+
+# Extract results from log-transformed model
+cat("Extracting results from log-transformed Gaussian model...\\n")
+log_gaussian_results <- extract_gaussian_results(log_gaussian_model, "log_gaussian_multivariate")
+
+# Add log model results to main results
+results_list$log_gaussian_results <- log_gaussian_results
+
+# Compare model fit between negative binomial and log-transformed Gaussian
+cat("\\n=== MODEL COMPARISON ===\\n")
+cat("Negative Binomial LOO-CV:", round(loo_result$estimates["looic", "Estimate"], 2), "±", 
+    round(loo_result$estimates["looic", "SE"], 2), "\\n")
+cat("Log-Gaussian LOO-CV:", round(log_loo_result$estimates["looic", "Estimate"], 2), "±", 
+    round(log_loo_result$estimates["looic", "SE"], 2), "\\n")
+
+# Sensitivity to constant adjustment
+cat("\\n=== SENSITIVITY TO CONSTANT ADJUSTMENT ===\\n")
+
+# Test with different constants (0.1, 0.5, 1.0)
+constants_to_test <- c(0.1, 0.5, 1.0)
+sensitivity_results <- list()
+
+for (const in constants_to_test) {{
+    cat("Testing with constant =", const, "\\n")
+    
+    # Create alternative log-transformed outcome
+    analysis_data_alt <- analysis_data %>%
+        mutate(
+            retractions_alt = retractions + const,
+            retraction_rate_alt = retractions_alt / publications,
+            log_retraction_rate_alt = log(retraction_rate_alt)
+        )
+    
+    # Fit simplified model for sensitivity
+    alt_model <- brm(
+        log_retraction_rate_alt ~ democracy_scaled + (1 | iso3_factor),
+        data = analysis_data_alt,
+        prior = c(
+            prior(normal(0, 2), class = Intercept),
+            prior(normal(0, 0.5), class = b),
+            prior(exponential(1), class = sd),
+            prior(exponential(1), class = sigma)
+        ),
+        chains = 2,
+        iter = 2000,
+        warmup = 1000,
+        cores = 2,
+        seed = 12345
+    )
+    
+    # Extract democracy coefficient
+    democracy_coef <- fixef(alt_model)["democracy_scaled", "Estimate"]
+    democracy_pct <- (exp(democracy_coef) - 1) * 100
+    
+    sensitivity_results[[paste0("constant_", const)]] <- list(
+        constant = const,
+        democracy_coefficient = democracy_coef,
+        democracy_percent_change = democracy_pct
+    )
+    
+    cat("Democracy effect with constant", const, ":", round(democracy_pct, 2), "% change\\n")
+}}
+
+# Add sensitivity results
+results_list$sensitivity_analysis <- list(
+    constant_sensitivity = sensitivity_results,
+    normality_tests = list(
+        shapiro_wilk_statistic = shapiro_test$statistic,
+        shapiro_wilk_p_value = shapiro_test$p.value,
+        log_rate_mean = mean(analysis_data$log_retraction_rate, na.rm = TRUE),
+        log_rate_sd = sd(analysis_data$log_retraction_rate, na.rm = TRUE),
+        skewness = moments::skewness(analysis_data$log_retraction_rate, na.rm = TRUE),
+        kurtosis = moments::kurtosis(analysis_data$log_retraction_rate, na.rm = TRUE)
+    )
+)
+
+cat("Sensitivity analysis completed!\\n")
 
 # Add Bayesian model diagnostics following protocol
 results_list$model_diagnostics <- list(
