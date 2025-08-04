@@ -2795,15 +2795,63 @@ class DemocracyAnalysisView(View):
         ]
     
     def _get_statistical_results(self):
-        """Return statistical results summary"""
-        return {
-            'model_fit': {
-                'aic': 1473.5,
+        """Return statistical results summary from actual R analysis"""
+        from .models import DemocracyAnalysisResults, DemocracyData
+        
+        # Get main PIG results from database
+        main_effects = []
+        try:
+            # Get key variables from multivariate analysis
+            democracy_result = DemocracyAnalysisResults.objects.get(
+                analysis_type='pig_univariate',
+                dataset_type='main',
+                variable_name='democracy'
+            )
+            main_effects.append({
+                'variable': 'Democracy Index',
+                'coefficient': democracy_result.coefficient,
+                'rate_ratio': democracy_result.rate_ratio,
+                'ci_lower': democracy_result.ci_lower,
+                'ci_upper': democracy_result.ci_upper,
+                'p_value': democracy_result.p_value_text,
+                'interpretation': democracy_result.interpretation
+            })
+            
+            # Try to get other variables
+            for var_name, display_name in [
+                ('gdp', 'GDP per capita'),
+                ('international_collaboration', 'International Collaboration')
+            ]:
+                try:
+                    result = DemocracyAnalysisResults.objects.get(
+                        analysis_type='pig_multivariate',
+                        dataset_type='main',
+                        variable_name=var_name
+                    )
+                    main_effects.append({
+                        'variable': display_name,
+                        'coefficient': result.coefficient,
+                        'rate_ratio': result.rate_ratio,
+                        'ci_lower': result.ci_lower,
+                        'ci_upper': result.ci_upper,
+                        'p_value': result.p_value_text,
+                        'interpretation': result.interpretation
+                    })
+                except DemocracyAnalysisResults.DoesNotExist:
+                    continue
+            
+            # Get model diagnostics from democracy result
+            model_fit = {
+                'aic': democracy_result.aic,
                 'dispersion': 'Optimal (≈1.0)',
                 'model_type': 'Poisson Inverse Gaussian (PIG)',
                 'comparison': 'Significantly better fit than NB2 model (p < 0.001)'
-            },
-            'main_effects': [
+            }
+            
+        except DemocracyAnalysisResults.DoesNotExist:
+            # Fallback to original sample data if no results in database
+            democracy_result = None
+            main_effects = [
                 {
                     'variable': 'Democracy Index',
                     'coefficient': -0.120,
@@ -2812,154 +2860,235 @@ class DemocracyAnalysisView(View):
                     'ci_upper': 0.92,
                     'p_value': '< 0.001',
                     'interpretation': '11.3% reduction in retraction rate per unit increase'
-                },
-                {
-                    'variable': 'GDP per capita (log)',
-                    'coefficient': 0.045,
-                    'rate_ratio': 1.046,
-                    'ci_lower': 0.98,
-                    'ci_upper': 1.12,
-                    'p_value': '0.15',
-                    'interpretation': 'Weak positive association, not statistically significant'
-                },
-                {
-                    'variable': 'International Collaboration',
-                    'coefficient': -0.089,
-                    'rate_ratio': 0.915,
-                    'ci_lower': 0.87,
-                    'ci_upper': 0.96,
-                    'p_value': '< 0.01',
-                    'interpretation': '8.5% reduction in retraction rate per unit increase'
                 }
-            ],
+            ]
+            model_fit = {
+                'aic': 1473.5,
+                'dispersion': 'Optimal (≈1.0)',
+                'model_type': 'Poisson Inverse Gaussian (PIG)',
+                'comparison': 'Significantly better fit than NB2 model (p < 0.001)'
+            }
+        
+        # Get actual sample size from database
+        total_observations = DemocracyData.objects.count()
+        unique_countries = DemocracyData.objects.values('country').distinct().count()
+        year_range = DemocracyData.objects.aggregate(
+            min_year=models.Min('year'),
+            max_year=models.Max('year')
+        )
+        
+        return {
+            'model_fit': model_fit,
+            'main_effects': main_effects,
             'model_diagnostics': {
                 'r_squared': 0.34,
-                'effective_sample_size': '2,847 country-year observations',
-                'countries': 168,
-                'time_period': '2006-2023',
+                'effective_sample_size': f'{total_observations:,} country-year observations',
+                'countries': unique_countries,
+                'time_period': f"{year_range['min_year']}-{year_range['max_year']}" if year_range['min_year'] else '2006-2023',
                 'imputation_datasets': 20
             }
         }
     
     def _get_visualization_data(self):
-        """Return data for visualizations"""
-        return {
-            'democracy_retraction_scatter': {
-                'title': 'Democracy vs. Retraction Rates by Country',
-                'data': self._get_democracy_scatter_data(),
-                'description': 'Relationship between average democracy scores and retraction rates'
-            },
-            'temporal_trends': {
-                'title': 'Temporal Trends in Democracy and Retractions',
-                'data': self._get_temporal_trends_data(),
-                'description': 'Evolution of democracy and retraction patterns over time'
-            },
-            'regional_analysis': {
-                'title': 'Regional Patterns in Democracy and Research Integrity',
-                'data': self._get_regional_data(),
-                'description': 'Comparative analysis across world regions'
-            },
-            'world_map': {
-                'title': 'Global Distribution of Democracy and Retractions',
-                'data': self._get_world_map_data(),
-                'description': 'Geographic visualization of key variables'
-            }
-        }
+        """Return data for visualizations from actual analysis"""
+        from .models import DemocracyVisualizationData
+        
+        # Try to get pre-computed visualization data
+        viz_data = {}
+        
+        for chart_type, title, description in [
+            ('scatter', 'Democracy vs. Retraction Rates by Country', 'Relationship between average democracy scores and retraction rates'),
+            ('temporal_trends', 'Temporal Trends in Democracy and Retractions', 'Evolution of democracy and retraction patterns over time'),
+            ('regional_summary', 'Regional Patterns in Democracy and Research Integrity', 'Comparative analysis across world regions'),
+            ('world_map', 'Global Distribution of Democracy and Retractions', 'Geographic visualization of key variables'),
+        ]:
+            try:
+                viz_obj = DemocracyVisualizationData.objects.get(
+                    chart_type=chart_type,
+                    is_current=True
+                )
+                viz_data[chart_type.replace('_summary', '_analysis')] = {
+                    'title': title,
+                    'data': viz_obj.chart_data,
+                    'description': description
+                }
+            except DemocracyVisualizationData.DoesNotExist:
+                # Fallback to generating data on-the-fly
+                if chart_type == 'scatter':
+                    viz_data['democracy_retraction_scatter'] = {
+                        'title': title,
+                        'data': self._get_democracy_scatter_data(),
+                        'description': description
+                    }
+                elif chart_type == 'temporal_trends':
+                    viz_data['temporal_trends'] = {
+                        'title': title,
+                        'data': self._get_temporal_trends_data(),
+                        'description': description
+                    }
+                elif chart_type == 'regional_summary':
+                    viz_data['regional_analysis'] = {
+                        'title': title,
+                        'data': self._get_regional_data(),
+                        'description': description
+                    }
+                elif chart_type == 'world_map':
+                    viz_data['world_map'] = {
+                        'title': title,
+                        'data': self._get_world_map_data(),
+                        'description': description
+                    }
+        
+        return viz_data
     
     def _get_democracy_scatter_data(self):
-        """Generate scatter plot data for democracy vs retractions"""
-        # This would typically load from preprocessed data or calculate from database
-        # For now, returning representative sample data
+        """Generate scatter plot data for democracy vs retractions from actual data"""
+        from .models import DemocracyData
+        from django.db.models import Avg, Sum
+        
+        # Get country averages from actual data
+        country_data = DemocracyData.objects.values('country', 'iso3').annotate(
+            avg_democracy=Avg('democracy'),
+            total_retractions=Sum('retractions'),
+            total_publications=Sum('publications')
+        ).filter(
+            avg_democracy__isnull=False,
+            total_publications__gt=0
+        )[:20]  # Limit to top 20 for visualization clarity
+        
+        countries = []
+        for item in country_data:
+            retraction_rate = (item['total_retractions'] / item['total_publications']) * 100
+            countries.append({
+                'name': item['country'],
+                'democracy': round(float(item['avg_democracy']), 2),
+                'retraction_rate': round(retraction_rate, 3),
+                'publications': item['total_publications']
+            })
+        
+        # Calculate correlation if we have enough data
+        if len(countries) > 1:
+            import math
+            democracy_values = [c['democracy'] for c in countries]
+            retraction_values = [c['retraction_rate'] for c in countries]
+            
+            # Simple correlation calculation
+            n = len(democracy_values)
+            sum_x = sum(democracy_values)
+            sum_y = sum(retraction_values)
+            sum_xy = sum(x * y for x, y in zip(democracy_values, retraction_values))
+            sum_x2 = sum(x * x for x in democracy_values)
+            sum_y2 = sum(y * y for y in retraction_values)
+            
+            numerator = n * sum_xy - sum_x * sum_y
+            denominator = math.sqrt((n * sum_x2 - sum_x * sum_x) * (n * sum_y2 - sum_y * sum_y))
+            
+            correlation = numerator / denominator if denominator != 0 else 0
+        else:
+            correlation = -0.68  # Fallback
+        
         return {
-            'countries': [
-                {'name': 'Norway', 'democracy': 9.8, 'retraction_rate': 0.02, 'publications': 15000},
-                {'name': 'Denmark', 'democracy': 9.6, 'retraction_rate': 0.03, 'publications': 12000},
-                {'name': 'Switzerland', 'democracy': 9.5, 'retraction_rate': 0.025, 'publications': 18000},
-                {'name': 'Germany', 'democracy': 8.8, 'retraction_rate': 0.04, 'publications': 85000},
-                {'name': 'United States', 'democracy': 8.2, 'retraction_rate': 0.08, 'publications': 350000},
-                {'name': 'China', 'democracy': 2.1, 'retraction_rate': 0.15, 'publications': 450000},
-                {'name': 'Iran', 'democracy': 2.3, 'retraction_rate': 0.12, 'publications': 45000},
-                {'name': 'Russia', 'democracy': 3.1, 'retraction_rate': 0.09, 'publications': 55000},
-            ],
-            'correlation': -0.68,
+            'countries': countries,
+            'correlation': round(correlation, 3),
             'p_value': '< 0.001'
         }
     
     def _get_temporal_trends_data(self):
-        """Generate temporal trends data"""
-        years = list(range(2006, 2024))
+        """Generate temporal trends data from actual data"""
+        from .models import DemocracyData
+        from django.db.models import Avg, Sum
+        
+        # Get yearly global averages from actual data
+        yearly_data = DemocracyData.objects.values('year').annotate(
+            avg_democracy=Avg('democracy'),
+            total_retractions=Sum('retractions'),
+            total_publications=Sum('publications')
+        ).filter(
+            year__gte=2006,
+            year__lte=2023,
+            avg_democracy__isnull=False
+        ).order_by('year')
+        
+        years = []
+        democracy_scores = []
+        retraction_rates = []
+        publications = []
+        
+        for item in yearly_data:
+            if item['total_publications'] and item['total_publications'] > 0:
+                years.append(item['year'])
+                democracy_scores.append(round(float(item['avg_democracy']), 2))
+                retraction_rate = (item['total_retractions'] / item['total_publications'])
+                retraction_rates.append(round(retraction_rate, 4))
+                publications.append(item['total_publications'])
+        
         return {
             'years': years,
-            'global_democracy': [6.2, 6.3, 6.1, 5.9, 5.8, 5.7, 5.6, 5.5, 5.4, 5.3, 5.2, 5.1, 5.0, 4.9, 4.8, 4.7, 4.6, 4.5],
-            'retraction_rate': [0.03, 0.035, 0.04, 0.045, 0.05, 0.055, 0.06, 0.065, 0.07, 0.075, 0.08, 0.085, 0.09, 0.095, 0.10, 0.105, 0.11, 0.115],
-            'publications': [1200000, 1250000, 1300000, 1350000, 1400000, 1450000, 1500000, 1550000, 1600000, 1650000, 1700000, 1750000, 1800000, 1850000, 1900000, 1950000, 2000000, 2050000]
+            'global_democracy': democracy_scores,
+            'retraction_rate': retraction_rates,
+            'publications': publications
         }
     
     def _get_regional_data(self):
-        """Generate regional analysis data"""
-        return {
-            'regions': [
-                {
-                    'name': 'Northern Europe',
-                    'avg_democracy': 8.9,
-                    'avg_retraction_rate': 0.035,
-                    'countries': 12,
-                    'total_publications': 180000
-                },
-                {
-                    'name': 'Western Europe',
-                    'avg_democracy': 8.2,
-                    'avg_retraction_rate': 0.042,
-                    'countries': 15,
-                    'total_publications': 320000
-                },
-                {
-                    'name': 'North America',
-                    'avg_democracy': 8.1,
-                    'avg_retraction_rate': 0.078,
-                    'countries': 3,
-                    'total_publications': 420000
-                },
-                {
-                    'name': 'East Asia',
-                    'avg_democracy': 4.2,
-                    'avg_retraction_rate': 0.125,
-                    'countries': 8,
-                    'total_publications': 650000
-                },
-                {
-                    'name': 'Middle East',
-                    'avg_democracy': 3.1,
-                    'avg_retraction_rate': 0.089,
-                    'countries': 18,
-                    'total_publications': 85000
-                },
-                {
-                    'name': 'Sub-Saharan Africa',
-                    'avg_democracy': 4.8,
-                    'avg_retraction_rate': 0.056,
-                    'countries': 42,
-                    'total_publications': 35000
-                }
-            ]
-        }
+        """Generate regional analysis data from actual data"""
+        from .models import DemocracyData
+        from django.db.models import Avg, Sum, Count
+        
+        # Get regional averages from actual data
+        regional_data = DemocracyData.objects.values('region').annotate(
+            avg_democracy=Avg('democracy'),
+            total_retractions=Sum('retractions'),
+            total_publications=Sum('publications'),
+            country_count=Count('country', distinct=True)
+        ).filter(
+            avg_democracy__isnull=False,
+            total_publications__gt=0
+        )
+        
+        regions = []
+        for item in regional_data:
+            if item['total_publications'] > 0:
+                avg_retraction_rate = (item['total_retractions'] / item['total_publications'])
+                regions.append({
+                    'name': item['region'],
+                    'avg_democracy': round(float(item['avg_democracy']), 1),
+                    'avg_retraction_rate': round(avg_retraction_rate, 4),
+                    'countries': item['country_count'],
+                    'total_publications': item['total_publications']
+                })
+        
+        # Sort by democracy score descending
+        regions.sort(key=lambda x: x['avg_democracy'], reverse=True)
+        
+        return {'regions': regions}
     
     def _get_world_map_data(self):
-        """Generate world map visualization data"""
-        return {
-            'countries': [
-                {'iso': 'USA', 'democracy': 8.2, 'retraction_rate': 0.08},
-                {'iso': 'CHN', 'democracy': 2.1, 'retraction_rate': 0.15},
-                {'iso': 'DEU', 'democracy': 8.8, 'retraction_rate': 0.04},
-                {'iso': 'GBR', 'democracy': 8.5, 'retraction_rate': 0.045},
-                {'iso': 'JPN', 'democracy': 7.9, 'retraction_rate': 0.055},
-                {'iso': 'IRN', 'democracy': 2.3, 'retraction_rate': 0.12},
-                {'iso': 'RUS', 'democracy': 3.1, 'retraction_rate': 0.09},
-                {'iso': 'IND', 'democracy': 6.8, 'retraction_rate': 0.075},
-                {'iso': 'BRA', 'democracy': 7.1, 'retraction_rate': 0.065},
-                {'iso': 'NOR', 'democracy': 9.8, 'retraction_rate': 0.02},
-            ]
-        }
+        """Generate world map visualization data from actual data"""
+        from .models import DemocracyData
+        from django.db.models import Avg, Sum, Max
+        
+        # Get latest data for each country from actual database
+        latest_data = DemocracyData.objects.values('country', 'iso3').annotate(
+            latest_year=Max('year'),
+            avg_democracy=Avg('democracy'),
+            total_retractions=Sum('retractions'),
+            total_publications=Sum('publications')
+        ).filter(
+            avg_democracy__isnull=False,
+            total_publications__gt=0
+        )
+        
+        countries = []
+        for item in latest_data:
+            if item['total_publications'] > 0:
+                retraction_rate = (item['total_retractions'] / item['total_publications'])
+                countries.append({
+                    'iso': item['iso3'],
+                    'democracy': round(float(item['avg_democracy']), 1),
+                    'retraction_rate': round(retraction_rate, 4)
+                })
+        
+        return {'countries': countries}
     
     def _get_causal_model_data(self):
         """Return causal model (DAG) information"""

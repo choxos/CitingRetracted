@@ -803,3 +803,139 @@ class DataImportLog(models.Model):
         if self.end_time:
             return self.end_time - self.start_time
         return None
+
+
+class DemocracyData(models.Model):
+    """Model for democracy and retractions analysis data"""
+    
+    # Country and year identifiers
+    country = models.CharField(max_length=100, help_text="Country name")
+    iso3 = models.CharField(max_length=3, help_text="ISO3 country code")
+    region = models.CharField(max_length=100, help_text="Geographic region")
+    regime_type = models.CharField(max_length=50, blank=True, null=True, help_text="Political regime type")
+    year = models.IntegerField(help_text="Year of observation")
+    
+    # Main variables
+    democracy = models.FloatField(blank=True, null=True, help_text="Democracy index score (0-10)")
+    retractions = models.IntegerField(default=0, help_text="Number of retractions")
+    publications = models.IntegerField(blank=True, null=True, help_text="Number of publications")
+    
+    # Economic and development indicators
+    gdp = models.FloatField(blank=True, null=True, help_text="GDP per capita")
+    rnd = models.FloatField(blank=True, null=True, help_text="R&D spending")
+    
+    # Governance indicators
+    corruption_control = models.FloatField(blank=True, null=True, help_text="Control of corruption")
+    government_effectiveness = models.FloatField(blank=True, null=True, help_text="Government effectiveness")
+    regulatory_quality = models.FloatField(blank=True, null=True, help_text="Regulatory quality")
+    rule_of_law = models.FloatField(blank=True, null=True, help_text="Rule of law")
+    
+    # Other indicators
+    international_collaboration = models.FloatField(blank=True, null=True, help_text="International collaboration %")
+    press_freedom = models.FloatField(blank=True, null=True, help_text="Press freedom index")
+    english_proficiency = models.FloatField(blank=True, null=True, help_text="English proficiency score")
+    pdi = models.FloatField(blank=True, null=True, help_text="Power Distance Index")
+    
+    # Calculated fields
+    retraction_rate = models.FloatField(blank=True, null=True, help_text="Retractions per publication")
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ('country', 'year')
+        ordering = ['country', '-year']
+        indexes = [
+            models.Index(fields=['country', 'year']),
+            models.Index(fields=['region', 'year']),
+            models.Index(fields=['democracy']),
+            models.Index(fields=['retraction_rate']),
+        ]
+    
+    def save(self, *args, **kwargs):
+        # Calculate retraction rate when saving
+        if self.publications and self.publications > 0:
+            self.retraction_rate = self.retractions / self.publications
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"{self.country} ({self.year}): Democracy={self.democracy}, Retractions={self.retractions}"
+
+
+class DemocracyAnalysisResults(models.Model):
+    """Model to store statistical analysis results"""
+    
+    ANALYSIS_TYPES = [
+        ('pig_univariate', 'PIG Univariate'),
+        ('pig_multivariate', 'PIG Multivariate'),
+        ('linear_univariate', 'Linear Univariate'),
+        ('linear_multivariate', 'Linear Multivariate'),
+    ]
+    
+    DATASET_TYPES = [
+        ('main', 'Main Dataset'),
+        ('zero_truncated', 'Zero Truncated'),
+        ('outlier_removed', 'Outlier Removed'),
+    ]
+    
+    # Analysis identifiers
+    analysis_type = models.CharField(max_length=50, choices=ANALYSIS_TYPES)
+    dataset_type = models.CharField(max_length=50, choices=DATASET_TYPES)
+    variable_name = models.CharField(max_length=100, help_text="Variable name (e.g., democracy, gdp, etc.)")
+    
+    # Statistical results
+    coefficient = models.FloatField(help_text="Regression coefficient")
+    std_error = models.FloatField(blank=True, null=True, help_text="Standard error")
+    rate_ratio = models.FloatField(blank=True, null=True, help_text="Rate ratio (exp(coefficient))")
+    ci_lower = models.FloatField(blank=True, null=True, help_text="95% CI lower bound")
+    ci_upper = models.FloatField(blank=True, null=True, help_text="95% CI upper bound")
+    p_value = models.FloatField(blank=True, null=True, help_text="P-value")
+    p_value_text = models.CharField(max_length=20, blank=True, null=True, help_text="P-value as text (e.g., '< 0.001')")
+    
+    # Model diagnostics
+    aic = models.FloatField(blank=True, null=True, help_text="AIC value")
+    r_squared = models.FloatField(blank=True, null=True, help_text="R-squared value")
+    dispersion = models.FloatField(blank=True, null=True, help_text="Dispersion statistic")
+    
+    # Interpretation
+    interpretation = models.TextField(blank=True, null=True, help_text="Human-readable interpretation")
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ('analysis_type', 'dataset_type', 'variable_name')
+        ordering = ['analysis_type', 'dataset_type', 'variable_name']
+    
+    def __str__(self):
+        return f"{self.get_analysis_type_display()} - {self.variable_name} ({self.get_dataset_type_display()})"
+
+
+class DemocracyVisualizationData(models.Model):
+    """Model to store pre-computed visualization data for performance"""
+    
+    CHART_TYPES = [
+        ('scatter', 'Democracy vs Retractions Scatter'),
+        ('temporal_trends', 'Temporal Trends'),
+        ('regional_summary', 'Regional Summary'),
+        ('world_map', 'World Map Data'),
+        ('correlation_matrix', 'Correlation Matrix'),
+    ]
+    
+    chart_type = models.CharField(max_length=50, choices=CHART_TYPES)
+    chart_data = models.JSONField(help_text="JSON data for chart visualization")
+    metadata = models.JSONField(blank=True, null=True, help_text="Additional metadata")
+    
+    # Cache management
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_current = models.BooleanField(default=True, help_text="Whether this data is current")
+    
+    class Meta:
+        unique_together = ('chart_type', 'is_current')
+        ordering = ['-updated_at']
+    
+    def __str__(self):
+        return f"{self.get_chart_type_display()} ({'Current' if self.is_current else 'Outdated'})"
