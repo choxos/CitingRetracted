@@ -150,7 +150,7 @@ prepared_data <- prepared_data %>%
         regulatory_quality_centered = scale(regulatory_quality)[,1],
         rule_of_law_centered = scale(rule_of_law)[,1],
         international_collaboration_centered = scale(international_collaboration)[,1],
-        pdi_centered = scale(pdi)[,1],
+        pdi_centered = scale(PDI)[,1],
         press_freedom_centered = scale(press_freedom)[,1],
         
         # Use adjusted English proficiency
