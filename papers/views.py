@@ -2910,10 +2910,6 @@ class DemocracyAnalysisView(View):
         ]:
             # TEMPORARY: Force live data generation for scatter plots to ensure regions are included
             if chart_type == 'scatter':
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.info(f"FORCED: Generating live data for {chart_type} to include regions")
-                
                 viz_data['democracy_retraction_scatter'] = {
                     'title': title,
                     'data': self._get_democracy_scatter_data(),
@@ -2926,10 +2922,7 @@ class DemocracyAnalysisView(View):
                     chart_type=chart_type,
                     is_current=True
                 )
-                # Debug: Log data source
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.info(f"Using cached visualization data for {chart_type}")
+                # Debug: Using cached visualization data
                 
                 viz_data[chart_type.replace('_summary', '_analysis')] = {
                     'title': title,
@@ -2938,9 +2931,6 @@ class DemocracyAnalysisView(View):
                 }
             except DemocracyVisualizationData.DoesNotExist:
                 # Fallback to generating data on-the-fly
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.info(f"No cached data found for {chart_type}, generating live data")
                 
                 if chart_type == 'scatter':
                     viz_data['democracy_retraction_scatter'] = {
@@ -2988,20 +2978,12 @@ class DemocracyAnalysisView(View):
                     # Convert QuerySet to list for proper evaluation
         country_data = list(country_data)
         
-        # Debug: Log first few entries to check region data
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info(f"Retrieved {len(country_data)} countries from database")
-        if country_data:
-            logger.info(f"Sample country data: {country_data[0]}")
-            regions = set(item['region'] for item in country_data[:10] if item['region'])
-            logger.info(f"Sample regions found: {regions}")
+        # Debug: Check data retrieval
+        print(f"Retrieved {len(country_data)} countries from database")
             
         except Exception as e:
             # Log the error and return fallback data
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error in _get_democracy_scatter_data: {e}")
+            print(f"Error in _get_democracy_scatter_data: {e}")
             return {
                 'countries': [],
                 'correlation': -0.68,
@@ -3017,15 +2999,12 @@ class DemocracyAnalysisView(View):
                     
                     retraction_rate = (item['total_retractions'] or 0) / item['total_publications']
                     
-                    # CRITICAL: Data validation - flag impossible retraction rates
+                    # CRITICAL: Data validation - cap impossible retraction rates
                     if retraction_rate > 1.0:  # Over 100%
-                        import logging
-                        logger = logging.getLogger(__name__)
-                        logger.warning(f"IMPOSSIBLE RETRACTION RATE: {item['country']} has {item['total_retractions']} retractions / {item['total_publications']} publications = {retraction_rate:.4f} ({retraction_rate*100:.1f}%)")
-                        
-                        # Cap at 100% for visualization, but log the issue
-                        retraction_rate_display = min(retraction_rate, 1.0)
-                        logger.warning(f"Capping {item['country']} retraction rate at 100% for display (was {retraction_rate*100:.1f}%)")
+                        # Cap at 100% for visualization  
+                        retraction_rate_display = 1.0
+                        # Log the issue (simplified to avoid import issues)
+                        print(f"⚠️ CAPPED: {item['country']} had {retraction_rate*100:.1f}% retraction rate")
                     else:
                         retraction_rate_display = retraction_rate
                     
@@ -3035,8 +3014,7 @@ class DemocracyAnalysisView(View):
                         'region': item['region'] or 'Unknown',
                         'democracy': round(float(item['avg_democracy']), 2),
                         'retraction_rate': round(retraction_rate_display, 4),  # Use capped rate for display
-                        'publications': item['total_publications'],
-                        'raw_retraction_rate': round(retraction_rate, 4) if retraction_rate > 1.0 else None  # Store original for debugging
+                        'publications': item['total_publications']
                     })
             except (TypeError, ValueError, ZeroDivisionError) as e:
                 # Skip invalid records
