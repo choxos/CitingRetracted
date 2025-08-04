@@ -99,9 +99,12 @@ suppressPackageStartupMessages({{
     library(dplyr)
     library(mice)
     library(brms)
+    library(lme4)
+    library(performance)
     library(bayestestR)
     library(jsonlite)
     library(loo)
+    library(naniar)
 }})
 
 # Source the main analysis script (up to the model fitting part)
@@ -112,86 +115,118 @@ cat("Loading analysis functions...\\n")
 cat("Loading democracy data...\\n")
 combined_data <- read.csv("data/combined_data.csv")
 
-# Data preprocessing following the protocol methodology
-cat("Data preprocessing and centering...\\n")
+# Data preprocessing following the exact protocol methodology
+cat("Data preprocessing following protocol...\\n")
 
-# Filter for complete cases for key variables
+# Filter for complete cases for key variables  
 prepared_data <- combined_data %>%
     filter(!is.na(democracy), !is.na(publications), publications > 0)
 
-# Special handling for English proficiency (methodology change in 2013)
-cat("Handling English proficiency methodology change...\\n")
-prepared_data <- prepared_data %>%
+# Function to scale within groups (year-by-year scaling as per protocol)
+scale_by_year <- function(x, year) {{
+    ave(x, year, FUN = function(x) scale(x)[,1])
+}}
+
+cat("Applying year-by-year scaling following protocol...\\n")
+
+# Create year-specific scaled variables following the exact protocol
+prepared_data_yearly_scaled <- prepared_data %>%
     mutate(
-        # Handle English proficiency scale change in 2013
-        english_proficiency_adjusted = ifelse(
-            year < 2013,
-            # Pre-2013: multiply by -1 then standardize
-            scale(-english_proficiency)[,1],
-            # Post-2013: standardize directly
-            scale(english_proficiency)[,1]
-        )
+        # Year-specific scaling for all variables
+        democracy_scaled = scale_by_year(democracy, year),
+        english_proficiency_scaled = scale_by_year(english_proficiency, year),
+        gdp_scaled = scale_by_year(gdp, year),
+        corruption_control_scaled = scale_by_year(corruption_control, year),
+        government_effectiveness_scaled = scale_by_year(government_effectiveness, year),
+        regulatory_quality_scaled = scale_by_year(regulatory_quality, year),
+        rule_of_law_scaled = scale_by_year(rule_of_law, year),
+        international_collaboration_scaled = scale_by_year(international_collaboration, year),
+        PDI_scaled = scale_by_year(PDI, year),
+        rnd_scaled = scale_by_year(rnd, year),
+        press_freedom_scaled = scale_by_year(press_freedom, year),
+        
+        # Log transform publications for offset
+        log_publications = log(publications),
+        
+        # Create proper identifiers
+        iso3_factor = as.factor(iso3),
+        year_factor = as.factor(year)
     )
 
-# Center all continuous covariates as per protocol
-cat("Centering continuous covariates...\\n")
-prepared_data <- prepared_data %>%
-    mutate(
-        # Democracy Index centered at midpoint (5)
-        democracy_centered = democracy - 5,
-        
-        # GDP per capita: log-transform then center
-        gdp_log_centered = scale(log(gdp + 1))[,1],
-        
-        # All other variables: mean-centered
-        rnd_centered = scale(rnd)[,1],
-        corruption_control_centered = scale(corruption_control)[,1],
-        government_effectiveness_centered = scale(government_effectiveness)[,1], 
-        regulatory_quality_centered = scale(regulatory_quality)[,1],
-        rule_of_law_centered = scale(rule_of_law)[,1],
-        international_collaboration_centered = scale(international_collaboration)[,1],
-        pdi_centered = scale(PDI)[,1],
-        press_freedom_centered = scale(press_freedom)[,1],
-        
-        # Use adjusted English proficiency
-        english_proficiency_centered = english_proficiency_adjusted,
-        
-        # Create country and year factors
-        country_factor = as.factor(Country),
-        year_factor = as.factor(year)
+# Create dataset with selected variables following protocol
+prepared_data_selected <- prepared_data_yearly_scaled %>%
+    select(
+        retractions,
+        democracy_scaled,
+        english_proficiency_scaled,
+        gdp_scaled,
+        corruption_control_scaled,
+        government_effectiveness_scaled,
+        regulatory_quality_scaled,
+        rule_of_law_scaled,
+        international_collaboration_scaled,
+        PDI_scaled,
+        rnd_scaled,
+        press_freedom_scaled,
+        log_publications,
+        year,
+        Country,
+        region,
+        iso3,
+        iso3_factor,
+        year_factor
     )
 
 cat("Running complete Bayesian hierarchical model with all confounders...\\n")
 
-# STEP 1: Multiple Imputation using MICE (40 imputations as per protocol)
-cat("Performing MICE imputation with 40 datasets...\\n")
+# STEP 1: Multiple Imputation using MICE following protocol
+cat("Performing MICE imputation following protocol methodology...\\n")
 
-# Simplified imputation approach to avoid computational singularity
-# Include only continuous variables and simplified categorical predictors
-imputation_vars <- prepared_data %>%
-    select(retractions, publications, democracy_centered, english_proficiency_centered,
-           gdp_log_centered, corruption_control_centered, government_effectiveness_centered,
-           regulatory_quality_centered, rule_of_law_centered, 
-           international_collaboration_centered, pdi_centered,
-           rnd_centered, press_freedom_centered, year) %>%
-    # Add region as auxiliary variable instead of country (fewer levels)
-    bind_cols(
-        prepared_data %>% select(region) 
+# Select variables for imputation (predictors only, following protocol)
+predictors_for_imputation <- prepared_data_selected %>%
+    select(-retractions, -log_publications, -year, -Country, -region, -iso3, -iso3_factor, -year_factor)
+
+cat("Conducting Little's MCAR test...\\n")
+# Conduct Little's MCAR test on predictors
+mcar_test_result <- mcar_test(predictors_for_imputation)
+cat("MCAR test p-value:", mcar_test_result$p.value, "\\n")
+
+# Create temporal variables for key predictors (as per protocol)
+create_temporal_vars <- function(data, var_name, id_col = "iso3", time_col = "year") {{
+    data %>%
+        group_by(!!sym(id_col)) %>%
+        arrange(!!sym(time_col)) %>%
+        mutate(
+            !!paste0(var_name, "_lag1") := lag(!!sym(var_name), 1),
+            !!paste0(var_name, "_lead1") := lead(!!sym(var_name), 1)
+        ) %>%
+        ungroup()
+}}
+
+# Prepare comprehensive imputation dataset following protocol
+imputation_data <- prepared_data_selected %>%
+    # Add auxiliary variables
+    mutate(
+        country_num = as.numeric(iso3_factor),
+        year_num = as.numeric(year_factor)
     )
 
-# Create region factor with fewer levels
-imputation_vars <- imputation_vars %>%
-    mutate(region_factor = as.factor(region))
+# Create temporal variables for key predictors
+temporal_vars <- c("democracy_scaled", "gdp_scaled", "corruption_control_scaled",
+                   "government_effectiveness_scaled", "regulatory_quality_scaled",
+                   "rule_of_law_scaled", "international_collaboration_scaled")
 
-# MICE configuration with simplified predictor matrix
+for(var in temporal_vars) {{
+    imputation_data <- create_temporal_vars(imputation_data, var, "iso3", "year")
+}}
+
+# Set up MICE configuration following protocol
 set.seed(123)
-
-# Initialize MICE with reduced complexity
-mice_config <- mice(imputation_vars %>% select(-region), 
-                   m = 20,  # Reduce to 20 imputations for stability
+mice_config <- mice(predictors_for_imputation, 
+                   m = 20,  # 20 imputations for computational stability
                    method = "pmm", 
                    printFlag = FALSE, 
-                   maxit = 5)  # Reduce iterations
+                   maxit = 10)
 
 cat("MICE imputation completed with 20 datasets\\n")
 
@@ -206,22 +241,22 @@ options(mc.cores = parallel::detectCores())
 # logμi,t = log(Publicationsi,t) + αi + β1Democracyi,t + β2Xi,t + γt
 
 model_formula <- bf(
-    retractions ~ democracy_centered + english_proficiency_centered + 
-                 gdp_log_centered + corruption_control_centered +
-                 government_effectiveness_centered + regulatory_quality_centered +
-                 rule_of_law_centered + international_collaboration_centered +
-                 pdi_centered + rnd_centered + press_freedom_centered +
-                 (1 | country_factor) + (1 | year_factor) + 
-                 offset(log(publications)),
+    retractions ~ democracy_scaled + english_proficiency_scaled +
+                 gdp_scaled + corruption_control_scaled +
+                 government_effectiveness_scaled + regulatory_quality_scaled +
+                 rule_of_law_scaled + international_collaboration_scaled +
+                 PDI_scaled + rnd_scaled + press_freedom_scaled +
+                 (1 | iso3_factor) + (1 | year_factor) +
+                 offset(log_publications),
     family = negbinomial()
 )
 
-# Weakly informative priors as per protocol
+# Weakly informative priors following exact protocol
 model_priors <- c(
-    prior(normal(0, 1), class = Intercept),
-    prior(normal(0, 0.5), class = b),
-    prior(exponential(1), class = sd),
-    prior(gamma(2, 0.1), class = shape)
+    prior(normal(0, 3), class = Intercept),   # Protocol: normal(0, 3) for intercept
+    prior(normal(0, 1), class = b),           # Protocol: normal(0, 1) for coefficients
+    prior(exponential(1), class = sd),        # Protocol: exponential(1) for random effects
+    prior(gamma(2, 0.1), class = shape)       # Protocol: gamma(2, 0.1) for overdispersion
 )
 
 cat("Fitting Bayesian hierarchical negative binomial model...\\n")
@@ -229,13 +264,10 @@ cat("Fitting Bayesian hierarchical negative binomial model...\\n")
 # Fit model on first imputed dataset (protocol specifies pooling results)
 imputed_data <- complete(mice_config, 1)
 
-# Combine with hierarchical factors from original data
-analysis_data <- imputed_data %>%
-    bind_cols(
-        prepared_data %>% 
-        select(country_factor, year_factor) %>%
-        slice(1:nrow(imputed_data))  # Match rows
-    )
+# Combine imputed predictors with outcome and hierarchical structure
+analysis_data <- prepared_data_selected %>%
+    select(retractions, log_publications, iso3_factor, year_factor, year, Country, region, iso3) %>%
+    bind_cols(imputed_data)
 
 # Fit the main model
 nb_model <- brm(
@@ -307,11 +339,11 @@ extract_irr_results <- function(model, analysis_type) {{
             interpretation <- paste0(
                 round(effect_magnitude, 1), "% ", effect_direction,
                 " in retraction rate per unit increase in ",
-                gsub("_centered", "", param)
+                gsub("_scaled", "", param)
             )
             
             # Clean variable name
-            clean_name <- gsub("_centered", "", param)
+            clean_name <- gsub("_scaled", "", param)
             
             results[[paste0(analysis_type, "_", clean_name)]] <- list(
                 coefficient = coef_est,
@@ -440,28 +472,20 @@ cat("Summary stats exported to:", summary_file, "\\n")
             with open(results_file, 'r') as f:
                 r_results = json.load(f)
             
-            # Map R results to Django models - ALL confounding variables
+            # Map R results to Django models - ALL confounding variables following protocol
             confounding_variables = [
                 'democracy', 'english_proficiency', 'gdp', 'corruption_control',
                 'government_effectiveness', 'regulatory_quality', 'rule_of_law',
-                'international_collaboration', 'pdi', 'rnd', 'press_freedom'
+                'international_collaboration', 'PDI', 'rnd', 'press_freedom'
             ]
             
             result_mappings = []
             
-            # Add univariate results (democracy only)
-            result_mappings.append({
-                'key': 'pig_univariate_main_democracy',
-                'analysis_type': 'pig_univariate',
-                'dataset_type': 'main',
-                'variable_name': 'democracy'
-            })
-            
-            # Add multivariate results for ALL confounding variables
+            # Add multivariate results for ALL confounding variables following protocol
             for var in confounding_variables:
                 result_mappings.append({
-                    'key': f'pig_multivariate_main_{var}',
-                    'analysis_type': 'pig_multivariate',
+                    'key': f'negbin_multivariate_main_{var}',
+                    'analysis_type': 'negbin_multivariate',
                     'dataset_type': 'main',
                     'variable_name': var
                 })
