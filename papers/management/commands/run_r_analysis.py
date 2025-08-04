@@ -94,7 +94,19 @@ class Command(BaseCommand):
 # Set working directory
 setwd("{os.path.abspath(self.working_dir)}")
 
-# Load required libraries
+# Load required libraries with error checking
+required_packages <- c("dplyr", "mice", "brms", "lme4", "performance", 
+                       "bayestestR", "jsonlite", "loo", "naniar", "tidyr")
+
+cat("Checking required packages...\\n")
+for(pkg in required_packages) {{
+    if (!require(pkg, character.only = TRUE, quietly = TRUE)) {{
+        stop(paste("Package", pkg, "is not installed. Please run: Rscript install_r_packages.R"))
+    }}
+}}
+
+cat("All required packages loaded successfully\\n")
+
 suppressPackageStartupMessages({{
     library(dplyr)
     library(mice)
@@ -105,6 +117,7 @@ suppressPackageStartupMessages({{
     library(jsonlite)
     library(loo)
     library(naniar)
+    library(tidyr)
 }})
 
 # Source the main analysis script (up to the model fitting part)

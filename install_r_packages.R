@@ -1,5 +1,6 @@
 # Install required R packages for democracy analysis following protocol
-packages_needed <- c("brms", "mice", "dplyr", "bayestestR", "jsonlite", "loo", "rstanarm")
+packages_needed <- c("brms", "mice", "dplyr", "bayestestR", "jsonlite", "loo", "rstanarm", 
+                      "lme4", "performance", "naniar", "tidyr")
 
 # Function to install packages if not already installed
 install_if_missing <- function(pkg) {
