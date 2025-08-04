@@ -2881,8 +2881,8 @@ class DemocracyAnalysisView(View):
                     'variable': 'Democracy Index',
                     'coefficient': -0.120,
                     'rate_ratio': 0.887,
-                    'cri_lower': 0.85,
-                    'cri_upper': 0.92,
+                    'cri_lower': 0.850,
+                    'cri_upper': 0.920,
                     'p_value': '< 0.001',
                     'interpretation': '11.3% reduction in retraction rate per unit increase',
                     'analysis_type': 'Pig Univariate'
@@ -2891,8 +2891,8 @@ class DemocracyAnalysisView(View):
                     'variable': 'GDP per Capita',
                     'coefficient': 0.045,
                     'rate_ratio': 1.046,
-                    'cri_lower': 0.98,
-                    'cri_upper': 1.12,
+                    'cri_lower': 0.980,
+                    'cri_upper': 1.120,
                     'p_value': '= 0.15',
                     'interpretation': 'Weak positive association, not statistically significant',
                     'analysis_type': 'Pig Multivariate'
