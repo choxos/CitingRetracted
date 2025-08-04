@@ -354,7 +354,7 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="correlation-badge">
-                                {{ key_findings.primary_finding.effect_size }}
+                                {{ key_findings.primary_finding.effect_size|linebreaksbr }}
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -961,8 +961,8 @@
                                         </span>
                                     </td>
                                     <td>
-                                        <strong>Rate Ratio (RR):</strong><br>
-                                        {{ effect.rate_ratio|floatformat:3 }} (95% CrI: {{ effect.cri_lower|floatformat:2 }}-{{ effect.cri_upper|floatformat:2 }})
+                                        {{ effect.rate_ratio|floatformat:3 }}<br>
+                                        ({{ effect.cri_lower|floatformat:3 }}–{{ effect.cri_upper|floatformat:3 }})
                                     </td>
                                     <td class="fw-bold {% if effect.p_value == '< 0.001' or effect.p_value == '< 0.01' %}text-success{% elif effect.p_value == '< 0.05' %}text-warning{% else %}text-muted{% endif %}">
                                         {{ effect.p_value }}

@@ -2734,7 +2734,7 @@ class DemocracyAnalysisView(View):
                 'description': '''Countries with higher democracy scores have significantly fewer 
                                  retractions per published paper, even after controlling for 
                                  multiple confounding factors.''',
-                'effect_size': 'Rate Ratio: 0.887 (95% CrI: 0.85-0.92)',
+                'effect_size': 'Rate Ratio (RR):\n0.887 (95% CrI: 0.850-0.920)',
                 'interpretation': 'Each 1-unit increase in democracy score reduces retraction rate by 11.3%'
             },
             'secondary_findings': [
