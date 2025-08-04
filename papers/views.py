@@ -3016,13 +3016,27 @@ class DemocracyAnalysisView(View):
                     item['avg_democracy'] is not None):
                     
                     retraction_rate = (item['total_retractions'] or 0) / item['total_publications']
+                    
+                    # CRITICAL: Data validation - flag impossible retraction rates
+                    if retraction_rate > 1.0:  # Over 100%
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.warning(f"IMPOSSIBLE RETRACTION RATE: {item['country']} has {item['total_retractions']} retractions / {item['total_publications']} publications = {retraction_rate:.4f} ({retraction_rate*100:.1f}%)")
+                        
+                        # Cap at 100% for visualization, but log the issue
+                        retraction_rate_display = min(retraction_rate, 1.0)
+                        logger.warning(f"Capping {item['country']} retraction rate at 100% for display (was {retraction_rate*100:.1f}%)")
+                    else:
+                        retraction_rate_display = retraction_rate
+                    
                     countries.append({
                         'name': item['country'],
                         'iso': item['iso3'],  # Use 'iso' to match expected format
                         'region': item['region'] or 'Unknown',
                         'democracy': round(float(item['avg_democracy']), 2),
-                        'retraction_rate': round(retraction_rate, 4),  # Keep more precision
-                        'publications': item['total_publications']
+                        'retraction_rate': round(retraction_rate_display, 4),  # Use capped rate for display
+                        'publications': item['total_publications'],
+                        'raw_retraction_rate': round(retraction_rate, 4) if retraction_rate > 1.0 else None  # Store original for debugging
                     })
             except (TypeError, ValueError, ZeroDivisionError) as e:
                 # Skip invalid records

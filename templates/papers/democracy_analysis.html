@@ -751,8 +751,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 min: Math.min(...data.countries.map(c => c.retraction_rate * 100)),
                 max: Math.max(...data.countries.map(c => c.retraction_rate * 100))
             };
-            console.log('Democracy range:', democracyRange);
-            console.log('Retraction rate range (%):', retractionRange);
+                                    console.log('Democracy range:', democracyRange);
+                        console.log('Retraction rate range (%):', retractionRange);
+                        
+                        // Check for impossible retraction rates (>100%)
+                        const impossibleRates = data.countries.filter(c => c.retraction_rate > 1.0);
+                        if (impossibleRates.length > 0) {
+                            console.warn(`⚠️ FOUND ${impossibleRates.length} COUNTRIES WITH IMPOSSIBLE RETRACTION RATES (>100%):`);
+                            impossibleRates.forEach(country => {
+                                console.warn(`❌ ${country.name}: ${(country.retraction_rate * 100).toFixed(1)}%`);
+                            });
+                            console.warn('These indicate data quality issues that should be investigated.');
+                        }
         }
         
         // Safety check
@@ -883,10 +893,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     y: {
                         title: {
                             display: true,
-                            text: 'Retraction Rate (%)',
+                            text: 'Retraction Rate (%) - Capped at 100%',
                             font: { weight: 'bold' }
                         },
-                        min: 0
+                        min: 0,
+                        max: 100  // Cap at 100% for visualization clarity
                     }
                 }
             }
