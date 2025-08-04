@@ -730,6 +730,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Debug: Check what data we received
         console.log('Scatter plot data:', data);
+        console.log('Scatter plot data type:', typeof data);
+        console.log('Scatter plot data JSON:', JSON.stringify(data));
         
         // Safety check
         if (!data || !data.countries || !Array.isArray(data.countries)) {
