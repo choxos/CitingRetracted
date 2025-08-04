@@ -2998,22 +2998,12 @@ class DemocracyAnalysisView(View):
                     item['avg_democracy'] is not None):
                     
                     retraction_rate = (item['total_retractions'] or 0) / item['total_publications']
-                    
-                    # CRITICAL: Data validation - cap impossible retraction rates
-                    if retraction_rate > 1.0:  # Over 100%
-                        # Cap at 100% for visualization  
-                        retraction_rate_display = 1.0
-                        # Log the issue (simplified to avoid import issues)
-                        print(f"⚠️ CAPPED: {item['country']} had {retraction_rate*100:.1f}% retraction rate")
-                    else:
-                        retraction_rate_display = retraction_rate
-                    
                     countries.append({
                         'name': item['country'],
                         'iso': item['iso3'],  # Use 'iso' to match expected format
                         'region': item['region'] or 'Unknown',
                         'democracy': round(float(item['avg_democracy']), 2),
-                        'retraction_rate': round(retraction_rate_display, 4),  # Use capped rate for display
+                        'retraction_rate': round(retraction_rate, 4),  # Back to simple rate
                         'publications': item['total_publications']
                     })
             except (TypeError, ValueError, ZeroDivisionError) as e:
