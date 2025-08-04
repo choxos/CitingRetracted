@@ -184,7 +184,7 @@ prepared_data_selected <- prepared_data_yearly_scaled %>%
         log_publications,
         year,
         Country,
-        region,
+        Region,
         iso3,
         iso3_factor,
         year_factor
@@ -197,7 +197,7 @@ cat("Performing MICE imputation following protocol methodology...\\n")
 
 # Select variables for imputation (predictors only, following protocol)
 predictors_for_imputation <- prepared_data_selected %>%
-    select(-retractions, -log_publications, -year, -Country, -region, -iso3, -iso3_factor, -year_factor)
+    select(-retractions, -log_publications, -year, -Country, -Region, -iso3, -iso3_factor, -year_factor)
 
 cat("Conducting Little's MCAR test...\\n")
 # Conduct Little's MCAR test on predictors
@@ -279,7 +279,7 @@ imputed_data <- complete(mice_config, 1)
 
 # Combine imputed predictors with outcome and hierarchical structure
 analysis_data <- prepared_data_selected %>%
-    select(retractions, log_publications, iso3_factor, year_factor, year, Country, region, iso3) %>%
+    select(retractions, log_publications, iso3_factor, year_factor, year, Country, Region, iso3) %>%
     bind_cols(imputed_data)
 
 # Fit the main model
@@ -316,8 +316,8 @@ cat("Model diagnostics completed\\n")
 # STEP 4: Extract Incidence Rate Ratios (IRRs) following protocol
 cat("Extracting Incidence Rate Ratios (IRRs)...\\n")
 
-# Extract posterior samples for IRR calculation
-posterior_samples <- posterior_samples(nb_model)
+# Extract posterior samples for IRR calculation 
+posterior_samples <- as_draws_df(nb_model)
 
 # Extract coefficients and calculate IRRs
 extract_irr_results <- function(model, analysis_type) {{
@@ -383,8 +383,8 @@ results_list <- multivariate_results
 # Add Bayesian model diagnostics following protocol
 results_list$model_diagnostics <- list(
     sample_size = nrow(analysis_data),
-    countries = length(unique(analysis_data$country_factor)),
-    years = paste(range(analysis_data$year_factor, na.rm = TRUE), collapse = "-"),
+    countries = length(unique(analysis_data$iso3_factor)),
+    years = paste(range(analysis_data$year, na.rm = TRUE), collapse = "-"),
     max_rhat = max(rhat_check, na.rm = TRUE),
     min_ess_ratio = min(ess_check, na.rm = TRUE),
     chains = 4,
