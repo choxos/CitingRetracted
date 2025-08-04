@@ -569,13 +569,29 @@
                     </ul>
                 </div>
             </div>
-            
-            <!-- Raw Data Explorer -->
-            <div class="tab-pane fade" id="data-explorer" role="tabpanel">
-                <h3 class="h5 mb-3"><i class="fas fa-table me-2"></i>Raw Data Explorer</h3>
-                <p class="text-muted mb-4">Comprehensive overview of all variables in the democracy and retractions dataset</p>
-                
-                <!-- Debug Info -->
+        </div>
+    </div>
+</section>
+
+<!-- Statistical Results Section -->
+<section class="py-3">
+    <div class="container">
+        <h2 class="section-header">
+            <i class="fas fa-calculator text-primary me-2"></i>Statistical Results
+        </h2>
+        
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="statistical-results">
+                    <h3 class="h5 text-purple fw-bold mb-4">
+                        <i class="fas fa-chart-bar me-2"></i>Model Performance
+                    </h3>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="model-diagnostic text-center">
+                                <h4 class="h5 text-primary">{{ statistical_results.model_fit.aic }}</h4>
+                                <div class="small text-muted">AIC Score</div>
                 {% if debug %}
                 <div class="alert alert-info">
                     <strong>Debug Info:</strong> 
