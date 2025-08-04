@@ -62,6 +62,11 @@ class Command(BaseCommand):
         # Create output directory if it doesn't exist
         os.makedirs(self.output_dir, exist_ok=True)
         
+        # Make paths absolute to avoid confusion
+        self.working_dir = os.path.abspath(self.working_dir)
+        self.output_dir = os.path.abspath(self.output_dir)
+        self.r_script_path = os.path.abspath(self.r_script_path)
+        
         self.stdout.write(
             self.style.SUCCESS(f"Starting R analysis from: {self.r_script_path}")
         )
@@ -198,8 +203,18 @@ cat("Summary stats exported to:", summary_file, "\\n")
         self.stdout.write("Running R analysis...")
         
         try:
-            # Run R script
-            cmd = ['R', '--vanilla', '-f', self.r_results_script]
+            # Make sure the script file exists and is readable
+            if not os.path.exists(self.r_results_script):
+                raise CommandError(f"R script not found: {self.r_results_script}")
+            
+            # Use absolute path for R script
+            abs_script_path = os.path.abspath(self.r_results_script)
+            
+            # Run R script with absolute path
+            cmd = ['R', '--vanilla', '-f', abs_script_path]
+            self.stdout.write(f"Running command: {' '.join(cmd)}")
+            self.stdout.write(f"Working directory: {self.working_dir}")
+            
             result = subprocess.run(
                 cmd,
                 cwd=self.working_dir,

@@ -69,9 +69,20 @@ run_django_import() {
 run_r_analysis() {
     log_message "Running R statistical analysis..."
     
+    # Create output directory if it doesn't exist
+    mkdir -p "./r_analysis_output"
+    
+    # Check if R analysis directory exists
+    if [[ ! -d "$R_ANALYSIS_DIR" ]]; then
+        log_message "⚠️  R analysis directory not found: $R_ANALYSIS_DIR"
+        log_message "⚠️  Skipping R analysis, using existing statistical results"
+        return
+    fi
+    
     python3 manage.py run_r_analysis \
         --r-script-path "$R_ANALYSIS_DIR/retraction_democracy_analysis.R" \
         --working-dir "$R_ANALYSIS_DIR" \
+        --output-dir "./r_analysis_output" \
         --update-db \
         2>&1 | tee -a "$LOG_FILE"
     
@@ -79,6 +90,7 @@ run_r_analysis() {
         log_message "✅ R analysis completed successfully"
     else
         log_message "⚠️  R analysis failed, but continuing with existing data"
+        log_message "⚠️  This is normal if R packages are missing or retractions_democracy repo is not available"
     fi
 }
 
