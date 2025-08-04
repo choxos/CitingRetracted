@@ -2985,17 +2985,17 @@ class DemocracyAnalysisView(View):
                 total_publications__gt=0
             ).order_by('-total_publications')  # Order by publications for better visualization
             
-                    # Convert QuerySet to list for proper evaluation
-        country_data = list(country_data)
-        
-        # Debug: Log first few entries to check region data
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info(f"Retrieved {len(country_data)} countries from database")
-        if country_data:
-            logger.info(f"Sample country data: {country_data[0]}")
-            regions = set(item['region'] for item in country_data[:10] if item['region'])
-            logger.info(f"Sample regions found: {regions}")
+            # Convert QuerySet to list for proper evaluation
+            country_data = list(country_data)
+            
+            # Debug: Log first few entries to check region data
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Retrieved {len(country_data)} countries from database")
+            if country_data:
+                logger.info(f"Sample country data: {country_data[0]}")
+                regions = set(item['region'] for item in country_data[:10] if item['region'])
+                logger.info(f"Sample regions found: {regions}")
             
         except Exception as e:
             # Log the error and return fallback data
