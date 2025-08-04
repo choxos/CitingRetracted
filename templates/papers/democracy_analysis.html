@@ -1112,7 +1112,8 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('First country:', data.countries[0]);
             console.log('Sample mapping:', {
                 x: data.countries[0].democracy,
-                y: data.countries[0].retraction_rate,
+                y_original: data.countries[0].retraction_rate,
+                y_log10: Math.log10(Math.max(0.1, data.countries[0].retraction_rate)),
                 label: data.countries[0].name
             });
             
@@ -1125,8 +1126,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 min: Math.min(...data.countries.map(c => c.retraction_rate)),
                 max: Math.max(...data.countries.map(c => c.retraction_rate))
             };
+            const retractionRangeLog = {
+                min: Math.min(...data.countries.map(c => Math.log10(Math.max(0.1, c.retraction_rate)))),
+                max: Math.max(...data.countries.map(c => Math.log10(Math.max(0.1, c.retraction_rate))))
+            };
             console.log('Democracy range:', democracyRange);
             console.log('Retraction rate range (per 100K):', retractionRange);
+            console.log('Retraction rate range (log₁₀):', retractionRangeLog);
         }
         
         // Safety check
@@ -1175,7 +1181,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             regionDatasets[region].push({
                 x: country.democracy,
-                y: country.retraction_rate,
+                y: Math.log10(Math.max(0.1, country.retraction_rate)), // Log10 transformation, min 0.1 to avoid log(0)
                 pointRadius: pointSize,
                 countryData: country
             });
@@ -1257,10 +1263,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     y: {
                         title: {
                             display: true,
-                            text: 'Retraction Rate (per 100K articles)',
+                            text: 'Retraction Rate (log₁₀ scale)',
                             font: { weight: 'bold' }
-                        },
-                        min: 0
+                        }
                     }
                 }
             }
