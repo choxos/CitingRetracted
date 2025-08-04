@@ -20,4 +20,12 @@ urlpatterns = [
     path('api/analytics-data/', views.AnalyticsDataAPIView.as_view(), name='analytics_data_api'),
     path('api/analytics-realtime/', views.analytics_data_ajax, name='analytics_realtime_api'),
     path('api/export/', views.export_data, name='export_data'),
+    
+    # Democracy Analysis API endpoints
+    path('api/democracy/overview/', views.DemocracyAnalysisAPIView.as_view(), name='democracy_analysis_api'),
+    path('api/democracy/raw-data/', views.DemocracyRawDataAPIView.as_view(), name='democracy_raw_data_api'),
+    path('api/democracy/visualizations/', views.DemocracyVisualizationsAPIView.as_view(), name='democracy_visualizations_api'),
+    path('api/democracy/model-diagnostics/', views.DemocracyModelDiagnosticsAPIView.as_view(), name='democracy_model_diagnostics_api'),
+    path('api/democracy/statistical-results/', views.DemocracyStatisticalResultsAPIView.as_view(), name='democracy_statistical_results_api'),
+    path('api/democracy/methodology/', views.DemocracyMethodologyAPIView.as_view(), name='democracy_methodology_api'),
 ] 

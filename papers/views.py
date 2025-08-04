@@ -3428,3 +3428,219 @@ class DemocracyAnalysisView(View):
                 'Year (temporal control)'
             ]
         }
+
+
+# =============================================================================
+# DEMOCRACY ANALYSIS API ENDPOINTS
+# =============================================================================
+
+class DemocracyAnalysisAPIView(View):
+    """API endpoint for complete democracy analysis data"""
+    
+    def get(self, request):
+        """Return complete democracy analysis data as JSON"""
+        try:
+            # Reuse the same context generation method
+            democracy_view = DemocracyAnalysisView()
+            context = democracy_view._get_analysis_context()
+            
+            # Add API-specific metadata
+            api_response = {
+                'status': 'success',
+                'data': context,
+                'metadata': {
+                    'endpoint': 'democracy-analysis',
+                    'version': '1.0',
+                    'generated_at': timezone.now().isoformat(),
+                    'description': 'Complete democracy and scientific retractions analysis data'
+                }
+            }
+            
+            return api_success_response(api_response)
+            
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Democracy analysis API error: {e}")
+            return api_error_response("Internal server error", 500, "DEMOCRACY_API_ERROR")
+
+
+class DemocracyRawDataAPIView(View):
+    """API endpoint for democracy raw data explorer"""
+    
+    def get(self, request):
+        """Return raw data explorer information"""
+        try:
+            democracy_view = DemocracyAnalysisView()
+            raw_data = democracy_view._get_raw_data_explorer()
+            
+            # Add query parameters for filtering
+            country = request.GET.get('country')
+            year = request.GET.get('year')
+            region = request.GET.get('region')
+            limit = int(request.GET.get('limit', 100))
+            offset = int(request.GET.get('offset', 0))
+            
+            # Filter sample data if parameters provided
+            if any([country, year, region]):
+                filtered_data = []
+                for row in raw_data.get('sample_data', []):
+                    if country and row.get('country', '').lower() != country.lower():
+                        continue
+                    if year and row.get('year') != int(year):
+                        continue
+                    if region and row.get('region', '').lower() != region.lower():
+                        continue
+                    filtered_data.append(row)
+                raw_data['sample_data'] = filtered_data[offset:offset+limit]
+            else:
+                raw_data['sample_data'] = raw_data.get('sample_data', [])[offset:offset+limit]
+            
+            api_response = {
+                'status': 'success',
+                'data': raw_data,
+                'filters': {
+                    'country': country,
+                    'year': year,
+                    'region': region,
+                    'limit': limit,
+                    'offset': offset
+                },
+                'metadata': {
+                    'endpoint': 'democracy-raw-data',
+                    'description': 'Raw data explorer for democracy analysis variables'
+                }
+            }
+            
+            return api_success_response(api_response)
+            
+        except ValueError:
+            return api_error_response("Invalid year, limit, or offset parameter", 400, "INVALID_PARAMETER")
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Democracy raw data API error: {e}")
+            return api_error_response("Internal server error", 500, "RAW_DATA_API_ERROR")
+
+
+class DemocracyVisualizationsAPIView(View):
+    """API endpoint for democracy analysis visualizations"""
+    
+    def get(self, request):
+        """Return visualization data"""
+        try:
+            democracy_view = DemocracyAnalysisView()
+            visualizations = democracy_view._get_visualization_data()
+            
+            # Allow filtering by chart type
+            chart_type = request.GET.get('chart_type')
+            if chart_type:
+                if chart_type in visualizations:
+                    visualizations = {chart_type: visualizations[chart_type]}
+                else:
+                    return api_error_response(f"Chart type '{chart_type}' not found", 404, "CHART_NOT_FOUND")
+            
+            api_response = {
+                'status': 'success',
+                'data': visualizations,
+                'available_charts': list(visualizations.keys()),
+                'metadata': {
+                    'endpoint': 'democracy-visualizations',
+                    'description': 'Visualization data for democracy analysis charts'
+                }
+            }
+            
+            return api_success_response(api_response)
+            
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Democracy visualizations API error: {e}")
+            return api_error_response("Internal server error", 500, "VISUALIZATION_API_ERROR")
+
+
+class DemocracyModelDiagnosticsAPIView(View):
+    """API endpoint for Bayesian model diagnostics"""
+    
+    def get(self, request):
+        """Return model diagnostics data"""
+        try:
+            democracy_view = DemocracyAnalysisView()
+            diagnostics = democracy_view._get_model_diagnostics()
+            
+            api_response = {
+                'status': 'success',
+                'data': diagnostics,
+                'metadata': {
+                    'endpoint': 'democracy-model-diagnostics',
+                    'description': 'Comprehensive Bayesian model diagnostics for democracy analysis'
+                }
+            }
+            
+            return api_success_response(api_response)
+            
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Democracy model diagnostics API error: {e}")
+            return api_error_response("Internal server error", 500, "DIAGNOSTICS_API_ERROR")
+
+
+class DemocracyStatisticalResultsAPIView(View):
+    """API endpoint for statistical results"""
+    
+    def get(self, request):
+        """Return statistical analysis results"""
+        try:
+            democracy_view = DemocracyAnalysisView()
+            results = democracy_view._get_statistical_results()
+            
+            api_response = {
+                'status': 'success',
+                'data': results,
+                'metadata': {
+                    'endpoint': 'democracy-statistical-results',
+                    'description': 'Statistical analysis results from Bayesian hierarchical model'
+                }
+            }
+            
+            return api_success_response(api_response)
+            
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Democracy statistical results API error: {e}")
+            return api_error_response("Internal server error", 500, "STATISTICAL_API_ERROR")
+
+
+class DemocracyMethodologyAPIView(View):
+    """API endpoint for methodology information"""
+    
+    def get(self, request):
+        """Return methodology and data sources"""
+        try:
+            democracy_view = DemocracyAnalysisView()
+            methodology = democracy_view._get_methodology_data()
+            data_sources = democracy_view._get_data_sources()
+            key_findings = democracy_view._get_key_findings()
+            
+            api_response = {
+                'status': 'success',
+                'data': {
+                    'methodology': methodology,
+                    'data_sources': data_sources,
+                    'key_findings': key_findings
+                },
+                'metadata': {
+                    'endpoint': 'democracy-methodology',
+                    'description': 'Methodology, data sources, and key findings for democracy analysis'
+                }
+            }
+            
+            return api_success_response(api_response)
+            
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Democracy methodology API error: {e}")
+            return api_error_response("Internal server error", 500, "METHODOLOGY_API_ERROR")
