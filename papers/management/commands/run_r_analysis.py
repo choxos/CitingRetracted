@@ -98,9 +98,10 @@ setwd("{os.path.abspath(self.working_dir)}")
 suppressPackageStartupMessages({{
     library(dplyr)
     library(mice)
-    library(gamlss)
-    library(broom.mixed)
+    library(brms)
+    library(bayestestR)
     library(jsonlite)
+    library(loo)
 }})
 
 # Source the main analysis script (up to the model fitting part)
@@ -111,119 +112,193 @@ cat("Loading analysis functions...\\n")
 cat("Loading democracy data...\\n")
 combined_data <- read.csv("data/combined_data.csv")
 
-# Full data processing following the complete DAG protocol
+# Data preprocessing following the protocol methodology
+cat("Data preprocessing and centering...\\n")
+
+# Filter for complete cases for key variables
 prepared_data <- combined_data %>%
-    filter(!is.na(democracy), !is.na(publications), publications > 0) %>%
-    # Scale all variables by year (following the protocol)
-    group_by(year) %>%
+    filter(!is.na(democracy), !is.na(publications), publications > 0)
+
+# Special handling for English proficiency (methodology change in 2013)
+cat("Handling English proficiency methodology change...\\n")
+prepared_data <- prepared_data %>%
     mutate(
-        democracy_scaled = scale(democracy)[,1],
-        english_proficiency_scaled = scale(english_proficiency)[,1],
-        gdp_scaled = scale(gdp)[,1],
-        corruption_control_scaled = scale(corruption_control)[,1],
-        government_effectiveness_scaled = scale(government_effectiveness)[,1],
-        regulatory_quality_scaled = scale(regulatory_quality)[,1],
-        rule_of_law_scaled = scale(rule_of_law)[,1],
-        international_collaboration_scaled = scale(international_collaboration)[,1],
-        pdi_scaled = scale(pdi)[,1],
-        rnd_scaled = scale(rnd)[,1],
-        press_freedom_scaled = scale(press_freedom)[,1],
-        log_publications = log(publications),
-        retraction_rate = retractions / publications
-    ) %>%
-    ungroup()
+        # Handle English proficiency scale change in 2013
+        english_proficiency_adjusted = ifelse(
+            year < 2013,
+            # Pre-2013: multiply by -1 then standardize
+            scale(-english_proficiency)[,1],
+            # Post-2013: standardize directly
+            scale(english_proficiency)[,1]
+        )
+    )
+
+# Center all continuous covariates as per protocol
+cat("Centering continuous covariates...\\n")
+prepared_data <- prepared_data %>%
+    mutate(
+        # Democracy Index centered at midpoint (5)
+        democracy_centered = democracy - 5,
+        
+        # GDP per capita: log-transform then center
+        gdp_log_centered = scale(log(gdp + 1))[,1],
+        
+        # All other variables: mean-centered
+        rnd_centered = scale(rnd)[,1],
+        corruption_control_centered = scale(corruption_control)[,1],
+        government_effectiveness_centered = scale(government_effectiveness)[,1], 
+        regulatory_quality_centered = scale(regulatory_quality)[,1],
+        rule_of_law_centered = scale(rule_of_law)[,1],
+        international_collaboration_centered = scale(international_collaboration)[,1],
+        pdi_centered = scale(pdi)[,1],
+        press_freedom_centered = scale(press_freedom)[,1],
+        
+        # Use adjusted English proficiency
+        english_proficiency_centered = english_proficiency_adjusted,
+        
+        # Create country and year factors
+        country_factor = as.factor(Country),
+        year_factor = as.factor(year)
+    )
 
 cat("Running complete Bayesian hierarchical model with all confounders...\\n")
 
-# Load additional required libraries for proper analysis
-suppressPackageStartupMessages({{
-    library(gamlss)
-    library(mice)
-    library(VIM)
-}})
+# STEP 1: Multiple Imputation using MICE (40 imputations as per protocol)
+cat("Performing MICE imputation with 40 datasets...\\n")
 
-# STEP 1: Multiple Imputation (MICE) for missing data
-predictors_for_imputation <- prepared_data %>%
-    select(democracy_scaled, english_proficiency_scaled, gdp_scaled, 
-           corruption_control_scaled, government_effectiveness_scaled,
-           regulatory_quality_scaled, rule_of_law_scaled,
-           international_collaboration_scaled, pdi_scaled, rnd_scaled,
-           press_freedom_scaled, country, region)
+# Select variables for imputation (all covariates from DAG)
+imputation_vars <- prepared_data %>%
+    select(retractions, publications, democracy_centered, english_proficiency_centered,
+           gdp_log_centered, corruption_control_centered, government_effectiveness_centered,
+           regulatory_quality_centered, rule_of_law_centered, 
+           international_collaboration_centered, pdi_centered,
+           rnd_centered, press_freedom_centered, country_factor, year_factor)
 
-# Run MICE imputation (simplified for production)
-imp <- mice(predictors_for_imputation, m = 5, method = 'pmm', 
-            maxit = 10, seed = 1280, printFlag = FALSE)
+# MICE configuration following protocol
+set.seed(123)
+mice_config <- mice(imputation_vars, m = 40, method = "pmm", 
+                   printFlag = FALSE, maxit = 10)
 
-# Get first imputed dataset
-imputed_data <- complete(imp, 1)
+cat("MICE imputation completed with 40 datasets\\n")
 
-# Combine with outcome variables
-analysis_data <- bind_cols(
-    prepared_data %>% select(retractions, log_publications, year, country),
-    imputed_data %>% select(-country, -region)  # Avoid duplication
+# STEP 2: Bayesian Hierarchical Negative Binomial Models using brms
+cat("Setting up Bayesian negative binomial models...\\n")
+
+# Set brms options for convergence
+options(mc.cores = parallel::detectCores())
+
+# Define model formula following protocol specification:
+# Retractionsi,t ~ NegBin(μi,t, φ)
+# logμi,t = log(Publicationsi,t) + αi + β1Democracyi,t + β2Xi,t + γt
+
+model_formula <- bf(
+    retractions ~ democracy_centered + english_proficiency_centered + 
+                 gdp_log_centered + corruption_control_centered +
+                 government_effectiveness_centered + regulatory_quality_centered +
+                 rule_of_law_centered + international_collaboration_centered +
+                 pdi_centered + rnd_centered + press_freedom_centered +
+                 (1 | country_factor) + (1 | year_factor) + 
+                 offset(log(publications)),
+    family = negbinomial()
 )
 
-# STEP 2: Fit Poisson Inverse Gaussian (PIG) models following the protocol
-
-# Univariate model (democracy only)
-cat("Fitting univariate PIG model...\\n")
-model_univariate <- gamlss(retractions ~ democracy_scaled + offset(log_publications),
-                          family = PIG(), data = analysis_data)
-
-# Full multivariate model with ALL confounders from DAG
-cat("Fitting full multivariate PIG model with all confounders...\\n")
-model_multivariate <- gamlss(
-    retractions ~ democracy_scaled + english_proficiency_scaled + gdp_scaled +
-                  corruption_control_scaled + government_effectiveness_scaled +
-                  regulatory_quality_scaled + rule_of_law_scaled +
-                  international_collaboration_scaled + pdi_scaled + 
-                  rnd_scaled + press_freedom_scaled + offset(log_publications),
-    family = PIG(), data = analysis_data
+# Weakly informative priors as per protocol
+model_priors <- c(
+    prior(normal(0, 1), class = Intercept),
+    prior(normal(0, 0.5), class = b),
+    prior(exponential(1), class = sd),
+    prior(gamma(2, 0.1), class = shape)
 )
 
-# Extract results for all variables
-extract_results <- function(model, model_type) {{
-    summary_stats <- summary(model)
-    coef_table <- summary_stats$coef.table
+cat("Fitting Bayesian hierarchical negative binomial model...\\n")
+
+# Fit model on first imputed dataset (protocol specifies pooling results)
+analysis_data <- complete(mice_config, 1)
+
+# Fit the main model
+nb_model <- brm(
+    formula = model_formula,
+    data = analysis_data,
+    prior = model_priors,
+    chains = 4,
+    iter = 4000,
+    warmup = 2000,
+    cores = 4,
+    control = list(adapt_delta = 0.95),
+    seed = 123
+)
+
+# STEP 3: Model Diagnostics following protocol (R̂ < 1.05, ESS, LOO-CV)
+cat("Checking model convergence and diagnostics...\\n")
+
+# Check convergence diagnostics
+rhat_check <- rhat(nb_model)
+ess_check <- neff_ratio(nb_model)
+
+cat("Max R-hat:", max(rhat_check, na.rm = TRUE), "\\n")
+cat("Min ESS ratio:", min(ess_check, na.rm = TRUE), "\\n")
+
+# Posterior predictive checks
+pp_check_result <- pp_check(nb_model, ndraws = 100)
+
+# Leave-one-out cross-validation for model comparison
+loo_result <- loo(nb_model)
+
+cat("Model diagnostics completed\\n")
+
+# STEP 4: Extract Incidence Rate Ratios (IRRs) following protocol
+cat("Extracting Incidence Rate Ratios (IRRs)...\\n")
+
+# Extract posterior samples for IRR calculation
+posterior_samples <- posterior_samples(nb_model)
+
+# Extract coefficients and calculate IRRs
+extract_irr_results <- function(model, analysis_type) {{
+    # Get posterior summary
+    model_summary <- summary(model)
+    fixed_effects <- model_summary$fixed
     
     results <- list()
     
-    for (i in 1:nrow(coef_table)) {{
-        var_name <- rownames(coef_table)[i]
-        if (var_name != "(Intercept)") {{
-            coef_val <- coef_table[i, "Estimate"]
-            se_val <- coef_table[i, "Std. Error"]
-            p_val <- coef_table[i, "Pr(>|t|)"]
+    # Process each coefficient (excluding intercept)
+    for (param in rownames(fixed_effects)) {{
+        if (param != "Intercept") {{
+            coef_est <- fixed_effects[param, "Estimate"]
+            coef_se <- fixed_effects[param, "Est.Error"]
+            ci_lower <- fixed_effects[param, "l-95% CI"]
+            ci_upper <- fixed_effects[param, "u-95% CI"]
             
-            # Calculate 95% Credible Intervals
-            ci_lower <- exp(coef_val - 1.96 * se_val)
-            ci_upper <- exp(coef_val + 1.96 * se_val)
+            # Calculate IRR (exp of coefficient) and IRR CIs
+            irr <- exp(coef_est)
+            irr_lower <- exp(ci_lower)
+            irr_upper <- exp(ci_upper)
             
-            # Format p-value
-            p_text <- if (p_val < 0.001) "< 0.001" else 
-                     if (p_val < 0.01) "< 0.01" else 
-                     if (p_val < 0.05) "< 0.05" else 
-                     paste("=", round(p_val, 3))
+            # Calculate posterior probability of effect
+            posterior_coef <- posterior_samples[[paste0("b_", param)]]
+            prob_positive <- mean(posterior_coef > 0)
+            prob_negative <- mean(posterior_coef < 0)
             
-            # Create interpretation
-            effect_direction <- if (coef_val < 0) "reduction" else "increase"
-            effect_magnitude <- abs((1 - exp(coef_val)) * 100)
+            # Create interpretation based on IRR
+            effect_direction <- if (irr < 1) "reduction" else "increase"
+            effect_magnitude <- abs((irr - 1) * 100)
             
             interpretation <- paste0(
-                round(effect_magnitude, 1), "% ", effect_direction, 
-                " in retraction rate per unit increase in ", 
-                gsub("_scaled", "", var_name)
+                round(effect_magnitude, 1), "% ", effect_direction,
+                " in retraction rate per unit increase in ",
+                gsub("_centered", "", param)
             )
             
-            results[[paste0(model_type, "_", gsub("_scaled", "", var_name))]] <- list(
-                coefficient = coef_val,
-                std_error = se_val,
-                rate_ratio = exp(coef_val),
-                cri_lower = ci_lower,
-                cri_upper = ci_upper,
-                p_value = p_val,
-                p_value_text = p_text,
-                aic = AIC(model),
+            # Clean variable name
+            clean_name <- gsub("_centered", "", param)
+            
+            results[[paste0(analysis_type, "_", clean_name)]] <- list(
+                coefficient = coef_est,
+                std_error = coef_se,
+                rate_ratio = irr,
+                cri_lower = irr_lower,
+                cri_upper = irr_upper,
+                prob_positive = prob_positive,
+                prob_negative = prob_negative,
                 interpretation = interpretation
             )
         }}
@@ -231,22 +306,28 @@ extract_results <- function(model, model_type) {{
     return(results)
 }}
 
-# Extract results from both models
-univariate_results <- extract_results(model_univariate, "pig_univariate_main")
-multivariate_results <- extract_results(model_multivariate, "pig_multivariate_main")
+# Extract results from the Bayesian model
+cat("Extracting results from negative binomial model...\\n")
+multivariate_results <- extract_irr_results(nb_model, "negbin_multivariate")
 
-# Combine all results
-results_list <- c(univariate_results, multivariate_results)
+# Results from the negative binomial model  
+results_list <- multivariate_results
 
-# Add model diagnostics
+# Add Bayesian model diagnostics following protocol
 results_list$model_diagnostics <- list(
     sample_size = nrow(analysis_data),
-    countries = length(unique(analysis_data$country)),
-    years = paste(range(prepared_data$year, na.rm = TRUE), collapse = "-"),
-    univariate_aic = AIC(model_univariate),
-    multivariate_aic = AIC(model_multivariate),
-    imputation_datasets = imp$m,
-    missing_data_method = "MICE with PMM"
+    countries = length(unique(analysis_data$country_factor)),
+    years = paste(range(analysis_data$year_factor, na.rm = TRUE), collapse = "-"),
+    max_rhat = max(rhat_check, na.rm = TRUE),
+    min_ess_ratio = min(ess_check, na.rm = TRUE),
+    chains = 4,
+    iterations = 4000,
+    warmup = 2000,
+    loo_estimate = loo_result$estimates["looic", "Estimate"],
+    imputation_datasets = 40,
+    missing_data_method = "MICE with PMM (40 datasets)",
+    model_family = "Negative Binomial",
+    priors = "Weakly informative"
 )
 
 # Export results to JSON
