@@ -1321,6 +1321,8 @@ function createTemporalTrendsChart(canvasId, data) {
                         type: 'linear',
                         display: true,
                         position: 'right',
+                        min: 0,
+                        max: 10,
                         title: {
                             display: true,
                             text: 'Democracy Score'
@@ -1490,14 +1492,20 @@ function createWorldMapPlotly(divId, data) {
 
 // Show loading spinner during chart creation
 function showLoading() {
-    document.getElementById('loadingSpinner').style.display = 'block';
+    const spinner = document.getElementById('loadingSpinner');
+    if (spinner) {
+        spinner.style.display = 'block';
+    }
 }
 
 function hideLoading() {
-    document.getElementById('loadingSpinner').style.display = 'none';
+    const spinner = document.getElementById('loadingSpinner');
+    if (spinner) {
+        spinner.style.display = 'none';
+    }
 }
 
-// Hide loading spinner after initial load
+// Hide loading spinner after initial load (if it exists)
 setTimeout(hideLoading, 1000);
 </script>
 {% endblock %}
