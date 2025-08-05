@@ -202,6 +202,34 @@
     border-radius: 10px;
     overflow: hidden;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: none;
+}
+
+.interactive-table table {
+    width: 100%;
+    font-size: 0.95rem;
+    table-layout: fixed;
+}
+
+.interactive-table th:nth-child(1) { /* Variable */
+    width: 20%;
+}
+
+.interactive-table th:nth-child(2) { /* Analysis Type */
+    width: 15%;
+}
+
+.interactive-table th:nth-child(3) { /* Rate Ratio & 95% CrI */
+    width: 20%;
+}
+
+.interactive-table th:nth-child(4) { /* P-value */
+    width: 10%;
+}
+
+.interactive-table th:nth-child(5) { /* Interpretation */
+    width: 35%;
 }
 
 .interactive-table th {
@@ -215,6 +243,12 @@
 .interactive-table td {
     padding: 0.75rem 1rem;
     border-bottom: 1px solid #e2e8f0;
+    word-wrap: break-word;
+    vertical-align: top;
+}
+
+.interactive-table td:nth-child(5) { /* Interpretation column */
+    line-height: 1.4;
 }
 
 .interactive-table tbody tr:hover {
