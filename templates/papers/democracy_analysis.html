@@ -641,7 +641,7 @@
                                         <td>{{ var_data.observations|default:"N/A" }}</td>
                                         <td>
                                             <span class="badge {% if var_data.missing_pct < 10 %}bg-success{% elif var_data.missing_pct < 30 %}bg-warning{% else %}bg-danger{% endif %}">
-                                                {{ var_data.missing_pct|default:"N/A" }}%
+                                                {% if var_data.missing_pct is not None %}{{ var_data.missing_pct }}{% else %}N/A{% endif %}%
                                             </span>
                                         </td>
                                     </tr>
@@ -1131,7 +1131,7 @@
                                                 <td>{{ var_data.observations|default:"N/A" }}</td>
                                                 <td>
                                                     <span class="badge {% if var_data.missing_pct < 10 %}bg-success{% elif var_data.missing_pct < 30 %}bg-warning{% else %}bg-danger{% endif %}">
-                                                        {{ var_data.missing_pct|default:"N/A" }}%
+                                                        {% if var_data.missing_pct is not None %}{{ var_data.missing_pct }}{% else %}N/A{% endif %}%
                                                     </span>
                                                 </td>
                                             </tr>
