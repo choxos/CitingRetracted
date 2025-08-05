@@ -1,0 +1,391 @@
+{
+  "negbin_multivariate_democracy": {
+    "coefficient": [-0.3214],
+    "std_error": [0.0785],
+    "rate_ratio": [0.7251],
+    "cri_lower": [0.6232],
+    "cri_upper": [0.8488],
+    "prob_positive": [0],
+    "prob_negative": [1],
+    "interpretation": ["27.5% reduction in retraction rate per unit increase in democracy"]
+  },
+  "negbin_multivariate_english_proficiency": {
+    "coefficient": [-0.0542],
+    "std_error": [0.0333],
+    "rate_ratio": [0.9473],
+    "cri_lower": [0.8876],
+    "cri_upper": [1.011],
+    "prob_positive": [0.0489],
+    "prob_negative": [0.9511],
+    "interpretation": ["5.3% reduction in retraction rate per unit increase in english_proficiency"]
+  },
+  "negbin_multivariate_gdp": {
+    "coefficient": [-0.0529],
+    "std_error": [0.062],
+    "rate_ratio": [0.9485],
+    "cri_lower": [0.8404],
+    "cri_upper": [1.0719],
+    "prob_positive": [0.197],
+    "prob_negative": [0.803],
+    "interpretation": ["5.2% reduction in retraction rate per unit increase in gdp"]
+  },
+  "negbin_multivariate_corruption_control": {
+    "coefficient": [0.0243],
+    "std_error": [0.1167],
+    "rate_ratio": [1.0246],
+    "cri_lower": [0.8145],
+    "cri_upper": [1.2853],
+    "prob_positive": [0.5829],
+    "prob_negative": [0.4171],
+    "interpretation": ["2.5% increase in retraction rate per unit increase in corruption_control"]
+  },
+  "negbin_multivariate_government_effectiveness": {
+    "coefficient": [0.0698],
+    "std_error": [0.1271],
+    "rate_ratio": [1.0723],
+    "cri_lower": [0.8339],
+    "cri_upper": [1.3723],
+    "prob_positive": [0.7129],
+    "prob_negative": [0.2871],
+    "interpretation": ["7.2% increase in retraction rate per unit increase in government_effectiveness"]
+  },
+  "negbin_multivariate_regulatory_quality": {
+    "coefficient": [0.0231],
+    "std_error": [0.1135],
+    "rate_ratio": [1.0234],
+    "cri_lower": [0.8192],
+    "cri_upper": [1.2745],
+    "prob_positive": [0.5769],
+    "prob_negative": [0.4231],
+    "interpretation": ["2.3% increase in retraction rate per unit increase in regulatory_quality"]
+  },
+  "negbin_multivariate_rule_of_law": {
+    "coefficient": [-0.0973],
+    "std_error": [0.1497],
+    "rate_ratio": [0.9072],
+    "cri_lower": [0.6769],
+    "cri_upper": [1.2177],
+    "prob_positive": [0.2544],
+    "prob_negative": [0.7456],
+    "interpretation": ["9.3% reduction in retraction rate per unit increase in rule_of_law"]
+  },
+  "negbin_multivariate_international_collaboration": {
+    "coefficient": [-0.0133],
+    "std_error": [0.0422],
+    "rate_ratio": [0.9868],
+    "cri_lower": [0.9098],
+    "cri_upper": [1.071],
+    "prob_positive": [0.38],
+    "prob_negative": [0.62],
+    "interpretation": ["1.3% reduction in retraction rate per unit increase in international_collaboration"]
+  },
+  "negbin_multivariate_PDI": {
+    "coefficient": [0.0835],
+    "std_error": [0.0724],
+    "rate_ratio": [1.087],
+    "cri_lower": [0.9451],
+    "cri_upper": [1.2504],
+    "prob_positive": [0.872],
+    "prob_negative": [0.128],
+    "interpretation": ["8.7% increase in retraction rate per unit increase in PDI"]
+  },
+  "negbin_multivariate_rnd": {
+    "coefficient": [0.0754],
+    "std_error": [0.0454],
+    "rate_ratio": [1.0784],
+    "cri_lower": [0.9889],
+    "cri_upper": [1.1801],
+    "prob_positive": [0.952],
+    "prob_negative": [0.048],
+    "interpretation": ["7.8% increase in retraction rate per unit increase in rnd"]
+  },
+  "negbin_multivariate_press_freedom": {
+    "coefficient": [-0.0488],
+    "std_error": [0.02],
+    "rate_ratio": [0.9523],
+    "cri_lower": [0.9151],
+    "cri_upper": [0.9902],
+    "prob_positive": [0.0069],
+    "prob_negative": [0.9931],
+    "interpretation": ["4.8% reduction in retraction rate per unit increase in press_freedom"]
+  },
+  "log_gaussian_results": {
+    "log_gaussian_multivariate_democracy": {
+      "coefficient": [-0.243],
+      "std_error": [0.0586],
+      "percent_change": [-21.5725],
+      "cri_lower": [-0.3583],
+      "cri_upper": [-0.1293],
+      "pct_change_lower": [-30.112],
+      "pct_change_upper": [-12.133],
+      "prob_positive": [0],
+      "prob_negative": [1],
+      "interpretation": ["21.6% decrease in retraction rate per unit increase in democracy (log-scale)"]
+    },
+    "log_gaussian_multivariate_english_proficiency": {
+      "coefficient": [-0.0397],
+      "std_error": [0.0218],
+      "percent_change": [-3.8946],
+      "cri_lower": [-0.0818],
+      "cri_upper": [0.0033],
+      "pct_change_lower": [-7.8537],
+      "pct_change_upper": [0.3345],
+      "prob_positive": [0.0376],
+      "prob_negative": [0.9624],
+      "interpretation": ["3.9% decrease in retraction rate per unit increase in english_proficiency (log-scale)"]
+    },
+    "log_gaussian_multivariate_gdp": {
+      "coefficient": [-0.1046],
+      "std_error": [0.0555],
+      "percent_change": [-9.9333],
+      "cri_lower": [-0.2119],
+      "cri_upper": [0.0033],
+      "pct_change_lower": [-19.0928],
+      "pct_change_upper": [0.3319],
+      "prob_positive": [0.0281],
+      "prob_negative": [0.9719],
+      "interpretation": ["9.9% decrease in retraction rate per unit increase in gdp (log-scale)"]
+    },
+    "log_gaussian_multivariate_corruption_control": {
+      "coefficient": [0.0848],
+      "std_error": [0.0787],
+      "percent_change": [8.8544],
+      "cri_lower": [-0.0693],
+      "cri_upper": [0.2437],
+      "pct_change_lower": [-6.6979],
+      "pct_change_upper": [27.5927],
+      "prob_positive": [0.8608],
+      "prob_negative": [0.1393],
+      "interpretation": ["8.9% increase in retraction rate per unit increase in corruption_control (log-scale)"]
+    },
+    "log_gaussian_multivariate_government_effectiveness": {
+      "coefficient": [-0.0386],
+      "std_error": [0.0817],
+      "percent_change": [-3.7903],
+      "cri_lower": [-0.197],
+      "cri_upper": [0.12],
+      "pct_change_lower": [-17.8834],
+      "pct_change_upper": [12.7516],
+      "prob_positive": [0.3166],
+      "prob_negative": [0.6834],
+      "interpretation": ["3.8% decrease in retraction rate per unit increase in government_effectiveness (log-scale)"]
+    },
+    "log_gaussian_multivariate_regulatory_quality": {
+      "coefficient": [-0.3371],
+      "std_error": [0.0688],
+      "percent_change": [-28.6191],
+      "cri_lower": [-0.4733],
+      "cri_upper": [-0.2042],
+      "pct_change_lower": [-37.7037],
+      "pct_change_upper": [-18.4694],
+      "prob_positive": [0],
+      "prob_negative": [1],
+      "interpretation": ["28.6% decrease in retraction rate per unit increase in regulatory_quality (log-scale)"]
+    },
+    "log_gaussian_multivariate_rule_of_law": {
+      "coefficient": [0.055],
+      "std_error": [0.0964],
+      "percent_change": [5.6526],
+      "cri_lower": [-0.1334],
+      "cri_upper": [0.2453],
+      "pct_change_lower": [-12.4887],
+      "pct_change_upper": [27.8019],
+      "prob_positive": [0.718],
+      "prob_negative": [0.282],
+      "interpretation": ["5.7% increase in retraction rate per unit increase in rule_of_law (log-scale)"]
+    },
+    "log_gaussian_multivariate_international_collaboration": {
+      "coefficient": [0.1042],
+      "std_error": [0.0296],
+      "percent_change": [10.9826],
+      "cri_lower": [0.0448],
+      "cri_upper": [0.1611],
+      "pct_change_lower": [4.5837],
+      "pct_change_upper": [17.486],
+      "prob_positive": [0.9995],
+      "prob_negative": [0.0005],
+      "interpretation": ["11% increase in retraction rate per unit increase in international_collaboration (log-scale)"]
+    },
+    "log_gaussian_multivariate_PDI": {
+      "coefficient": [0.0398],
+      "std_error": [0.0368],
+      "percent_change": [4.0622],
+      "cri_lower": [-0.0321],
+      "cri_upper": [0.1114],
+      "pct_change_lower": [-3.1637],
+      "pct_change_upper": [11.7849],
+      "prob_positive": [0.8592],
+      "prob_negative": [0.1407],
+      "interpretation": ["4.1% increase in retraction rate per unit increase in PDI (log-scale)"]
+    },
+    "log_gaussian_multivariate_rnd": {
+      "coefficient": [0.0709],
+      "std_error": [0.037],
+      "percent_change": [7.3463],
+      "cri_lower": [-0.0024],
+      "cri_upper": [0.1427],
+      "pct_change_lower": [-0.241],
+      "pct_change_upper": [15.3363],
+      "prob_positive": [0.9702],
+      "prob_negative": [0.0298],
+      "interpretation": ["7.3% increase in retraction rate per unit increase in rnd (log-scale)"]
+    },
+    "log_gaussian_multivariate_press_freedom": {
+      "coefficient": [-0.0045],
+      "std_error": [0.0134],
+      "percent_change": [-0.4536],
+      "cri_lower": [-0.0303],
+      "cri_upper": [0.0218],
+      "pct_change_lower": [-2.9852],
+      "pct_change_upper": [2.2049],
+      "prob_positive": [0.3611],
+      "prob_negative": [0.6389],
+      "interpretation": ["0.5% decrease in retraction rate per unit increase in press_freedom (log-scale)"]
+    }
+  },
+  "sensitivity_analysis": {
+    "constant_sensitivity": {
+      "constant_0.1": {
+        "constant": [0.1],
+        "democracy_coefficient": [-0.397],
+        "democracy_percent_change": [-32.7693]
+      },
+      "constant_0.5": {
+        "constant": [0.5],
+        "democracy_coefficient": [-0.3674],
+        "democracy_percent_change": [-30.7486]
+      },
+      "constant_1": {
+        "constant": [1],
+        "democracy_coefficient": [-0.3113],
+        "democracy_percent_change": [-26.7478]
+      }
+    },
+    "normality_tests": {
+      "shapiro_wilk_statistic": [0.9843],
+      "shapiro_wilk_p_value": [6.1863e-18],
+      "log_rate_mean": [-6.6101],
+      "log_rate_sd": [1.4505],
+      "skewness": [0.4696],
+      "kurtosis": [3.1312]
+    }
+  },
+  "subgroup_analysis": {
+    "research_fields": {
+      "Non-health-related": {
+        "n_observations": [2934],
+        "n_countries": [160],
+        "democracy_coefficient": [-0.411],
+        "democracy_se": [0.0684],
+        "democracy_irr": [0.663],
+        "irr_lower": [0.5769],
+        "irr_upper": [0.756],
+        "max_rhat": [1.0078],
+        "min_ess": [0.1732],
+        "interpretation": ["33.7% reduction in retraction rate per democracy unit"]
+      },
+      "Health-related": {
+        "n_observations": [126],
+        "n_countries": [7],
+        "democracy_coefficient": [-0.7319],
+        "democracy_se": [0.3541],
+        "democracy_irr": [0.481],
+        "irr_lower": [0.2382],
+        "irr_upper": [0.9843],
+        "max_rhat": [1.004],
+        "min_ess": [0.2469],
+        "interpretation": ["51.9% reduction in retraction rate per democracy unit"]
+      }
+    },
+    "retraction_categories": {
+      "Non-content-related": {
+        "n_observations": [2044],
+        "n_countries": [146],
+        "democracy_coefficient": [-0.4649],
+        "democracy_se": [0.0713],
+        "democracy_irr": [0.6282],
+        "irr_lower": [0.5474],
+        "irr_upper": [0.7217],
+        "max_rhat": [1.0077],
+        "min_ess": [0.2881],
+        "interpretation": ["37.2% reduction in retraction rate per democracy unit"]
+      },
+      "Content-related": {
+        "n_observations": [1016],
+        "n_countries": [103],
+        "democracy_coefficient": [-0.5572],
+        "democracy_se": [0.0863],
+        "democracy_irr": [0.5728],
+        "irr_lower": [0.4803],
+        "irr_upper": [0.6734],
+        "max_rhat": [1.0072],
+        "min_ess": [0.0862],
+        "interpretation": ["42.7% reduction in retraction rate per democracy unit"]
+      }
+    },
+    "geographic_scope": {
+      "International collaboration": {
+        "n_observations": [1529],
+        "n_countries": [113],
+        "democracy_coefficient": [-0.5977],
+        "democracy_se": [0.1147],
+        "democracy_irr": [0.5501],
+        "irr_lower": [0.4393],
+        "irr_upper": [0.6888],
+        "max_rhat": [1.0069],
+        "min_ess": [0.2182],
+        "interpretation": ["45% reduction in retraction rate per democracy unit"]
+      },
+      "Domestic focus": {
+        "n_observations": [1531],
+        "n_countries": [123],
+        "democracy_coefficient": [-0.3414],
+        "democracy_se": [0.076],
+        "democracy_irr": [0.7108],
+        "irr_lower": [0.6125],
+        "irr_upper": [0.8189],
+        "max_rhat": [1.0099],
+        "min_ess": [0.1666],
+        "interpretation": ["28.9% reduction in retraction rate per democracy unit"]
+      }
+    },
+    "interaction_effects": {
+      "democracy_scaled:research_field_factorNonMhealthMrelated": {
+        "coefficient": [0.2117],
+        "ci_lower": [-0.3404],
+        "ci_upper": [0.7883],
+        "significant": [false]
+      }
+    },
+    "summary": {
+      "total_subgroups_tested": [6],
+      "research_field_distribution": {
+        "Health-related": [126],
+        "Non-health-related": [2934]
+      },
+      "retraction_category_distribution": {
+        "Content-related": [1016],
+        "Non-content-related": [2044]
+      },
+      "geographic_scope_distribution": {
+        "Domestic focus": [1531],
+        "International collaboration": [1529]
+      }
+    }
+  },
+  "model_diagnostics": {
+    "sample_size": [3060],
+    "countries": [167],
+    "years": ["2006-2023"],
+    "max_rhat": [1.0032],
+    "min_ess_ratio": [0.1094],
+    "chains": [4],
+    "iterations": [4000],
+    "warmup": [2000],
+    "loo_estimate": [10869.6921],
+    "imputation_datasets": [20],
+    "missing_data_method": ["MICE with PMM (20 datasets)"],
+    "model_family": ["Negative Binomial"],
+    "priors": ["Weakly informative"]
+  }
+}
