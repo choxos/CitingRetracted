@@ -3505,80 +3505,7 @@ class DemocracyAnalysisView(View):
             'heterogeneity_level': heterogeneity_level,
             'interpretation': f'{heterogeneity_level.lower()} heterogeneity observed across subgroups (range: {effect_range:.3f})'
         }
-    
-    def _get_visualization_data(self):
-        """Return data for visualizations from actual analysis"""
-        from .models import DemocracyVisualizationData
-        
-        # Try to get pre-computed visualization data
-        viz_data = {}
-        
-        for chart_type, title, description in [
-            ('scatter', 'Democracy vs. Retraction Rates by Country', 'Relationship between average democracy scores and retraction rates'),
-            ('temporal_trends', 'Temporal Trends in Democracy and Retractions', 'Evolution of democracy and retraction patterns over time'),
-            ('regional_summary', 'Regional Patterns in Democracy and Research Integrity', 'Comparative analysis across world regions'),
-            ('world_map', 'Global Distribution of Democracy and Retractions', 'Geographic visualization of key variables'),
-        ]:
-            # TEMPORARY: Force live data generation for scatter plots to ensure regions are included
-            if chart_type == 'scatter':
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.info(f"FORCED: Generating live data for {chart_type} to include regions")
-                
-                viz_data['democracy_retraction_scatter'] = {
-                    'title': title,
-                    'data': self._get_democracy_scatter_data(),
-                    'description': description
-                }
-                continue
-                
-            try:
-                viz_obj = DemocracyVisualizationData.objects.get(
-                    chart_type=chart_type,
-                    is_current=True
-                )
-                # Debug: Log data source
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.info(f"Using cached visualization data for {chart_type}")
-                
-                viz_data[chart_type.replace('_summary', '_analysis')] = {
-                    'title': title,
-                    'data': viz_obj.chart_data,
-                    'description': description
-                }
-            except DemocracyVisualizationData.DoesNotExist:
-                # Fallback to generating data on-the-fly
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.info(f"No cached data found for {chart_type}, generating live data")
-                
-                if chart_type == 'scatter':
-                    viz_data['democracy_retraction_scatter'] = {
-                        'title': title,
-                        'data': self._get_democracy_scatter_data(),
-                        'description': description
-                    }
-                elif chart_type == 'temporal_trends':
-                    viz_data['temporal_trends'] = {
-                        'title': title,
-                        'data': self._get_temporal_trends_data(),
-                        'description': description
-                    }
-                elif chart_type == 'regional_summary':
-                    viz_data['regional_analysis'] = {
-                        'title': title,
-                        'data': self._get_regional_data(),
-                        'description': description
-                    }
-                elif chart_type == 'world_map':
-                    viz_data['world_map'] = {
-                        'title': title,
-                        'data': self._get_world_map_data(),
-                        'description': description
-                    }
-        
-        return viz_data
+
     
     def _get_raw_data_explorer(self):
         """Return raw data explorer for all model variables"""
@@ -3719,66 +3646,7 @@ class DemocracyAnalysisView(View):
                 'missing_data_method': 'MICE with PMM (20 datasets)',
                 'model_family': 'Negative Binomial'
             }
-    
-    def _get_visualization_data(self):
-        """Return data for visualizations from actual analysis"""
-        from .models import DemocracyVisualizationData
-        
-        # Try to get pre-computed visualization data
-        viz_data = {}
-        
-        for chart_type, title, description in [
-            ('scatter', 'Democracy vs. Retraction Rates by Country', 'Relationship between average democracy scores and retraction rates'),
-            ('temporal_trends', 'Temporal Trends in Retractions', 'Evolution of retraction rates over time'),
-            ('regional_summary', 'Regional Summary Statistics', 'Comparative analysis across world regions'),
-            ('world_map', 'World Map Visualization', 'Global distribution of democracy and retraction patterns')
-        ]:
-            try:
-                viz_obj = DemocracyVisualizationData.objects.filter(
-                    chart_type=chart_type, 
-                    is_current=True
-                ).first()
-                
-                if viz_obj:
-                    logger.info(f"Using cached visualization data for {chart_type}")
-                    viz_data[chart_type] = {
-                        'title': title,
-                        'data': viz_obj.chart_data,
-                        'description': description
-                    }
-                elif chart_type == 'scatter':
-                    logger.info("FORCED: Generating live data for scatter to include regions")
-                    viz_data['scatter'] = {
-                        'title': title,
-                        'data': self._get_democracy_scatter_data(),
-                        'description': description
-                    }
-                elif chart_type == 'temporal_trends':
-                    viz_data['temporal_trends'] = {
-                        'title': title,
-                        'data': self._get_temporal_trends_data(),
-                        'description': description
-                    }
-                elif chart_type == 'regional_summary':
-                    viz_data['regional_summary'] = {
-                        'title': title,
-                        'data': self._get_regional_summary_data(),
-                        'description': description
-                    }
-                elif chart_type == 'world_map':
-                    viz_data['world_map'] = {
-                        'title': title,
-                        'data': self._get_world_map_data(),
-                        'description': description
-                    }
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"Error loading visualization data for {chart_type}: {e}")
-                # Continue with empty data for this chart type
-                pass
-        
-        return viz_data
+
     
     def _get_democracy_scatter_data(self):
         """Generate scatter plot data for democracy vs retractions from actual data"""
