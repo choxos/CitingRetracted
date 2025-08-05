@@ -1291,7 +1291,7 @@ class AnalyticsView(View):
         ).order_by('-post_retraction_citations')[:10]
         
         # Top subjects with efficient query (parsed from semicolon-separated values)
-        data['top_subjects'] = self._get_parsed_subjects_with_citations(limit=10)
+        data['top_subjects'] = HomeView._get_parsed_subjects_with_citations(limit=10)
         
         # Papers with most post-retraction citations (optimized) - only retracted papers
         data['most_cited_post_retraction'] = RetractedPaper.objects.filter(
@@ -2761,7 +2761,7 @@ class AnalyticsDataAPIView(View):
     def _get_subject_distribution_data(self, time_filter):
         """Get subject distribution data using parsed subjects"""
         # Use the parsed subjects method from the home view
-        parsed_subjects = self._get_parsed_subjects_with_citations(limit=15)
+        parsed_subjects = HomeView._get_parsed_subjects_with_citations(limit=15)
         
         return {
             'chart_type': 'subject_distribution',
