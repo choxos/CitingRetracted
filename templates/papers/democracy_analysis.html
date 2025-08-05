@@ -1457,17 +1457,16 @@ function createWorldMap(divId, data) {
     }
 }
 
-    // Show loading spinner during chart creation
-    function showLoading() {
-        document.getElementById('loadingSpinner').style.display = 'block';
-    }
-    
-    function hideLoading() {
-        document.getElementById('loadingSpinner').style.display = 'none';
-    }
-    
-    // Hide loading spinner after initial load
-    setTimeout(hideLoading, 1000);
-});
+// Show loading spinner during chart creation
+function showLoading() {
+    document.getElementById('loadingSpinner').style.display = 'block';
+}
+
+function hideLoading() {
+    document.getElementById('loadingSpinner').style.display = 'none';
+}
+
+// Hide loading spinner after initial load
+setTimeout(hideLoading, 1000);
 </script>
 {% endblock %}
