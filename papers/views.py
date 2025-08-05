@@ -2688,6 +2688,8 @@ class DemocracyAnalysisView(View):
             'causal_model': self._get_causal_model_data(),
             'raw_data_explorer': self._get_raw_data_explorer(),
             'model_diagnostics': self._get_model_diagnostics(),
+            'sensitivity_analysis': self._get_sensitivity_analysis(),
+            'subgroup_analysis': self._get_subgroup_analysis(),
         }
     
     def _get_methodology_data(self):
