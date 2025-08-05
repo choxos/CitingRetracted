@@ -475,8 +475,8 @@
                 <div class="row mt-3">
                     <div class="col-md-6">
                         <div class="alert alert-info">
-                            <strong>Correlation:</strong> {{ visualizations.democracy_retraction_scatter.data.correlation }}
-                            <br><strong>P-value:</strong> {{ visualizations.democracy_retraction_scatter.data.p_value }}
+                            <strong>Correlation:</strong> {{ visualizations.scatter.data.correlation }}
+                            <br><strong>P-value:</strong> {{ visualizations.scatter.data.p_value }}
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -498,33 +498,10 @@
             
             <!-- Regional Analysis -->
             <div class="tab-pane fade" id="regional-chart" role="tabpanel">
-                <h3 class="h5 mb-3">{{ visualizations.regional_analysis.title }}</h3>
-                <p class="text-muted mb-4">{{ visualizations.regional_analysis.description }}</p>
-                <div class="regional-grid">
-                    {% for region in visualizations.regional_analysis.data.regions %}
-                    <div class="regional-card">
-                        <h4 class="h6 text-primary fw-bold">{{ region.name }}</h4>
-                        <div class="row">
-                            <div class="col-6">
-                                <div class="text-center">
-                                    <div class="h4 text-success">{{ region.avg_democracy|floatformat:1 }}</div>
-                                    <div class="small text-muted">Avg Democracy</div>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="text-center">
-                                    <div class="h4 text-danger">{{ region.avg_retraction_rate|floatformat:1 }}</div>
-                                    <div class="small text-muted">Retraction Rate (per 100K)</div>
-                                </div>
-                            </div>
-                        </div>
-                        <hr>
-                        <div class="row small text-muted">
-                            <div class="col-6">{{ region.countries }} countries</div>
-                            <div class="col-6">{{ region.total_publications|floatformat:0 }} papers</div>
-                        </div>
-                    </div>
-                    {% endfor %}
+                <h3 class="h5 mb-3">{{ visualizations.regional_summary.title }}</h3>
+                <p class="text-muted mb-4">{{ visualizations.regional_summary.description }}</p>
+                <div class="chart-container">
+                    <canvas id="regionalSummaryChart"></canvas>
                 </div>
             </div>
             
@@ -1148,10 +1125,13 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Temporal trends data:', temporalData);
         console.log('Temporal data keys:', Object.keys(temporalData || {}));
         if (temporalData && temporalData.years) {
+            console.log('✅ Temporal data valid, creating chart...');
             createTemporalTrendsChart('temporalTrendsChart', temporalData);
         } else {
-            console.log('Missing temporal data - years:', temporalData?.years);
+            console.log('❌ Missing temporal data - years:', temporalData?.years);
         }
+    } else {
+        console.log('❌ Temporal chart canvas not found');
     }
     
     // Create World Map
@@ -1161,11 +1141,14 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('World map data:', worldMapData);
         console.log('World map data keys:', Object.keys(worldMapData || {}));
         if (worldMapData && worldMapData.countries) {
+            console.log('✅ World map data valid, creating chart...');
             console.log('World map countries count:', worldMapData.countries.length);
             createWorldMap('worldMapChart', worldMapData);
         } else {
-            console.log('Missing world map countries:', worldMapData?.countries);
+            console.log('❌ Missing world map countries:', worldMapData?.countries);
         }
+    } else {
+        console.log('❌ World map div not found');
     }
     
     // Create Regional Summary chart
@@ -1175,11 +1158,14 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Regional data:', regionalData);
         console.log('Regional data keys:', Object.keys(regionalData || {}));
         if (regionalData && regionalData.regions) {
+            console.log('✅ Regional data valid, creating chart...');
             console.log('Regions count:', regionalData.regions.length);
             createRegionalSummaryChart('regionalSummaryChart', regionalData);
         } else {
-            console.log('Missing regional data - regions:', regionalData?.regions);
+            console.log('❌ Missing regional data - regions:', regionalData?.regions);
         }
+    } else {
+        console.log('❌ Regional chart canvas not found');
     }
 });
 
@@ -1260,17 +1246,6 @@ function createScatterPlot(canvasId, data) {
                     }
                 },
                 plugins: {
-                    title: {
-                        display: true,
-                        text: [
-                            'Democracy vs Retraction Rates by Country',
-                            `Correlation: ${data.correlation}, p-value: ${data.p_value}`
-                        ],
-                        font: {
-                            size: 16
-                        },
-                        padding: 20
-                    },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
@@ -1301,6 +1276,7 @@ function createScatterPlot(canvasId, data) {
 // Temporal Trends Chart Function  
 function createTemporalTrendsChart(canvasId, data) {
     try {
+        console.log('🎯 Creating temporal trends chart with data:', data);
         const ctx = document.getElementById(canvasId).getContext('2d');
         
         new Chart(ctx, {
@@ -1309,14 +1285,14 @@ function createTemporalTrendsChart(canvasId, data) {
                 labels: data.years,
                 datasets: [{
                     label: 'Global Retraction Rate (per 100K)',
-                    data: data.retraction_rates,
+                    data: data.retraction_rate,
                     borderColor: '#FF6384',
                     backgroundColor: 'rgba(255, 99, 132, 0.1)',
                     tension: 0.4,
                     fill: true
                 }, {
                     label: 'Average Democracy Score',
-                    data: data.democracy_scores,
+                    data: data.global_democracy,
                     borderColor: '#36A2EB',
                     backgroundColor: 'rgba(54, 162, 235, 0.1)',
                     tension: 0.4,
@@ -1365,13 +1341,15 @@ function createTemporalTrendsChart(canvasId, data) {
             }
         });
     } catch (error) {
-        console.error('Error creating temporal trends chart:', error);
+        console.error('❌ Error creating temporal trends chart:', error);
+        console.error('Stack trace:', error.stack);
     }
 }
 
 // Regional Summary Chart Function
 function createRegionalSummaryChart(canvasId, data) {
     try {
+        console.log('🎯 Creating regional summary chart with data:', data);
         const ctx = document.getElementById(canvasId).getContext('2d');
         
         new Chart(ctx, {
@@ -1442,17 +1420,18 @@ function createRegionalSummaryChart(canvasId, data) {
 // World Map Function
 function createWorldMap(divId, data) {
     try {
+        console.log('🎯 Creating world map with data:', data);
         const countries = data.countries;
-        const locationNames = countries.map(c => c.name);
+        const isoCodes = countries.map(c => c.iso);
         const democracyValues = countries.map(c => c.democracy);
         const retractionValues = countries.map(c => c.retraction_rate);
         
         const trace = {
             type: 'choropleth',
-            locationmode: 'country names',
-            locations: locationNames,
+            locationmode: 'ISO-3',
+            locations: isoCodes,
             z: democracyValues,
-            text: countries.map(c => `${c.name}<br>Democracy: ${c.democracy}<br>Retraction Rate: ${c.retraction_rate.toFixed(1)} per 100K`),
+            text: countries.map(c => `${c.iso}<br>Democracy: ${c.democracy}<br>Retraction Rate: ${c.retraction_rate.toFixed(1)} per 100K`),
             hovertemplate: '%{text}<extra></extra>',
             colorscale: [
                 [0, '#d73027'],
