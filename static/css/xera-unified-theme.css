@@ -116,7 +116,7 @@ body {
 .xera-header {
   background: linear-gradient(135deg, var(--xera-primary) 0%, var(--xera-primary-dark) 100%);
   color: white;
-  padding: var(--xera-space-4) 0;
+  padding: var(--xera-space-2) 0;
   box-shadow: var(--xera-shadow-md);
   position: sticky;
   top: 0;
@@ -149,9 +149,9 @@ body {
 }
 
 .xera-logo-icon {
-  width: 40px;
-  height: 40px;
-  margin-right: var(--xera-space-3);
+  width: 32px;
+  height: 32px;
+  margin-right: var(--xera-space-2);
   background: white;
   border-radius: var(--xera-radius-lg);
   display: flex;
@@ -159,7 +159,7 @@ body {
   justify-content: center;
   color: var(--xera-primary);
   font-weight: 900;
-  font-size: 1.2rem;
+  font-size: 1rem;
 }
 
 .xera-app-name {
@@ -168,31 +168,34 @@ body {
 }
 
 .xera-app-title {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 700;
   margin: 0;
+  line-height: 1.2;
 }
 
 .xera-app-subtitle {
-  font-size: 0.875rem;
-  opacity: 0.9;
+  font-size: 0.75rem;
+  opacity: 0.85;
   margin: 0;
   font-weight: 400;
+  line-height: 1.1;
 }
 
 .xera-nav {
   display: flex;
   align-items: center;
-  gap: var(--xera-space-6);
+  gap: var(--xera-space-3);
 }
 
 .xera-nav-link {
   color: white;
   text-decoration: none;
   font-weight: 500;
-  padding: var(--xera-space-2) var(--xera-space-4);
+  padding: var(--xera-space-1) var(--xera-space-3);
   border-radius: var(--xera-radius);
   transition: var(--xera-transition);
+  font-size: 0.9rem;
 }
 
 .xera-nav-link:hover {
@@ -686,15 +689,60 @@ body {
    ============================================================================= */
 
 @media (max-width: 768px) {
+  .xera-header {
+    padding: var(--xera-space-1) 0;
+  }
+  
   .xera-header-container {
-    flex-direction: column;
-    gap: var(--xera-space-4);
-    text-align: center;
+    padding: 0 var(--xera-space-3);
+    gap: var(--xera-space-2);
+  }
+
+  .xera-logo {
+    font-size: 1.2rem;
+  }
+  
+  .xera-logo-icon {
+    width: 28px;
+    height: 28px;
+    margin-right: var(--xera-space-1);
+    font-size: 0.9rem;
+  }
+  
+  .xera-app-title {
+    font-size: 1rem;
+  }
+  
+  .xera-app-subtitle {
+    display: none; /* Hide subtitle on mobile to save space */
   }
 
   .xera-nav {
+    gap: var(--xera-space-2);
     flex-wrap: wrap;
-    justify-content: center;
+  }
+  
+  .xera-nav-link {
+    padding: var(--xera-space-1) var(--xera-space-2);
+    font-size: 0.85rem;
+  }
+  
+  .xera-nav-link i {
+    display: none; /* Hide icons on mobile to save space */
+  }
+  
+  .xera-header-search {
+    margin-left: var(--xera-space-2);
+  }
+  
+  .xera-search-input {
+    width: 180px;
+    padding: var(--xera-space-1) var(--xera-space-2);
+    font-size: 0.8rem;
+  }
+  
+  .xera-search-btn {
+    padding: var(--xera-space-1) var(--xera-space-2);
   }
 
   .xera-stats-grid {
@@ -707,6 +755,37 @@ body {
 
   .xera-main-content {
     padding: var(--xera-space-4) 0;
+  }
+}
+
+/* Extra compact for very small mobile devices */
+@media (max-width: 480px) {
+  .xera-header-container {
+    padding: 0 var(--xera-space-2);
+  }
+  
+  .xera-nav {
+    gap: var(--xera-space-1);
+  }
+  
+  .xera-nav-link {
+    padding: var(--xera-space-1);
+    font-size: 0.8rem;
+  }
+  
+  .xera-logo-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 0.8rem;
+  }
+  
+  .xera-app-title {
+    font-size: 0.9rem;
+  }
+  
+  .xera-search-input {
+    width: 140px;
+    font-size: 0.75rem;
   }
 }
 
