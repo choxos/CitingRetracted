@@ -1132,6 +1132,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (scatterData && typeof scatterData === 'object' && scatterData.countries) {
             console.log('Countries count:', scatterData.countries.length);
+            console.log('Sample country:', scatterData.countries[0]);
+            console.log('Correlation:', scatterData.correlation);
+            console.log('P-value:', scatterData.p_value);
             createScatterPlot('democracyScatterChart', scatterData);
         } else {
             console.log('Invalid scatter plot data structure:', scatterData);
@@ -1143,8 +1146,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (temporalCtx) {
         const temporalData = {{ visualizations.temporal_trends.data|safe }};
         console.log('Temporal trends data:', temporalData);
+        console.log('Temporal data keys:', Object.keys(temporalData || {}));
         if (temporalData && temporalData.years) {
             createTemporalTrendsChart('temporalTrendsChart', temporalData);
+        } else {
+            console.log('Missing temporal data - years:', temporalData?.years);
         }
     }
     
@@ -1153,8 +1159,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (worldMapDiv) {
         const worldMapData = {{ visualizations.world_map.data|safe }};
         console.log('World map data:', worldMapData);
+        console.log('World map data keys:', Object.keys(worldMapData || {}));
         if (worldMapData && worldMapData.countries) {
+            console.log('World map countries count:', worldMapData.countries.length);
             createWorldMap('worldMapChart', worldMapData);
+        } else {
+            console.log('Missing world map countries:', worldMapData?.countries);
         }
     }
     
@@ -1162,8 +1172,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const regionalCtx = document.getElementById('regionalSummaryChart');
     if (regionalCtx) {
         const regionalData = {{ visualizations.regional_summary.data|safe }};
+        console.log('Regional data:', regionalData);
+        console.log('Regional data keys:', Object.keys(regionalData || {}));
         if (regionalData && regionalData.regions) {
+            console.log('Regions count:', regionalData.regions.length);
             createRegionalSummaryChart('regionalSummaryChart', regionalData);
+        } else {
+            console.log('Missing regional data - regions:', regionalData?.regions);
         }
     }
 });
@@ -1245,6 +1260,17 @@ function createScatterPlot(canvasId, data) {
                     }
                 },
                 plugins: {
+                    title: {
+                        display: true,
+                        text: [
+                            'Democracy vs Retraction Rates by Country',
+                            `Correlation: ${data.correlation}, p-value: ${data.p_value}`
+                        ],
+                        font: {
+                            size: 16
+                        },
+                        padding: 20
+                    },
                     tooltip: {
                         callbacks: {
                             label: function(context) {

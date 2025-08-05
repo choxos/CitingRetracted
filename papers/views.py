@@ -3353,40 +3353,35 @@ class DemocracyAnalysisView(View):
                     is_current=True
                 ).first()
                 
-                if viz_obj:
-                    logger.info(f"Using cached visualization data for {chart_type}")
-                    viz_data[chart_type] = {
+                # Always generate live data to ensure proper structure
+                if chart_type == 'scatter':
+                    logger.info("Generating live scatter plot data (to include regions)")
+                    viz_data['scatter'] = {
                         'title': title,
-                        'data': viz_obj.chart_data,
+                        'data': self._get_democracy_scatter_data(),
                         'description': description
                     }
-                else:
-                    # Generate live data if no cached data available
-                    if chart_type == 'scatter':
-                        logger.info("Generating live scatter plot data")
-                        viz_data['scatter'] = {
-                            'title': title,
-                            'data': self._get_democracy_scatter_data(),
-                            'description': description
-                        }
-                    elif chart_type == 'temporal_trends':
-                        viz_data['temporal_trends'] = {
-                            'title': title,
-                            'data': self._get_temporal_trends_data(),
-                            'description': description
-                        }
-                    elif chart_type == 'regional_summary':
-                        viz_data['regional_summary'] = {
-                            'title': title,
-                            'data': self._get_regional_summary_data(),
-                            'description': description
-                        }
-                    elif chart_type == 'world_map':
-                        viz_data['world_map'] = {
-                            'title': title,
-                            'data': self._get_world_map_data(),
-                            'description': description
-                        }
+                elif chart_type == 'temporal_trends':
+                    logger.info("Generating live temporal trends data")
+                    viz_data['temporal_trends'] = {
+                        'title': title,
+                        'data': self._get_temporal_trends_data(),
+                        'description': description
+                    }
+                elif chart_type == 'regional_summary':
+                    logger.info("Generating live regional summary data")
+                    viz_data['regional_summary'] = {
+                        'title': title,
+                        'data': self._get_regional_data(),
+                        'description': description
+                    }
+                elif chart_type == 'world_map':
+                    logger.info("Generating live world map data")
+                    viz_data['world_map'] = {
+                        'title': title,
+                        'data': self._get_world_map_data(),
+                        'description': description
+                    }
             except Exception as e:
                 logger.error(f"Error loading visualization data for {chart_type}: {e}")
                 # Continue with empty data for this chart type
