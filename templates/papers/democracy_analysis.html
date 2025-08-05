@@ -509,8 +509,8 @@
             <div class="tab-pane fade" id="worldmap-chart" role="tabpanel">
                 <h3 class="h5 mb-3">{{ visualizations.world_map.title }}</h3>
                 <p class="text-muted mb-4">{{ visualizations.world_map.description }}</p>
-                <div class="chart-container world-map">
-                    <div id="worldMapChart"></div>
+                <div class="chart-container">
+                    <canvas id="worldMapChart"></canvas>
                 </div>
             </div>
         </div>
@@ -1095,9 +1095,12 @@
 {% block extra_js %}
 <!-- Chart.js for scatter and line charts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<!-- Plotly.js for world map -->
-<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist@2.24.1/plotly.min.js"></script>
+<!-- Chart.js Geo for world map -->
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-geo@4.3.4/dist/chartjs-chart-geo.min.js"></script>
 <script>
+// Register Chart.js Geo components
+Chart.register(ChartGeo.ChoroplethController, ChartGeo.GeoFeature, ChartGeo.ColorScale, ChartGeo.ProjectionScale);
+
 document.addEventListener('DOMContentLoaded', function() {
     
     // Create Democracy vs Retractions scatter plot
@@ -1135,8 +1138,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Create World Map
-    const worldMapDiv = document.getElementById('worldMapChart');
-    if (worldMapDiv) {
+    const worldMapCanvas = document.getElementById('worldMapChart');
+    if (worldMapCanvas) {
         const worldMapData = {{ visualizations.world_map.data|safe }};
         console.log('World map data:', worldMapData);
         console.log('World map data keys:', Object.keys(worldMapData || {}));
@@ -1148,7 +1151,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('❌ Missing world map countries:', worldMapData?.countries);
         }
     } else {
-        console.log('❌ World map div not found');
+        console.log('❌ World map canvas not found');
     }
     
     // Create Regional Summary chart
@@ -1389,6 +1392,8 @@ function createRegionalSummaryChart(canvasId, data) {
                         type: 'linear',
                         display: true,
                         position: 'right',
+                        min: 0,
+                        max: 10,
                         title: {
                             display: true,
                             text: 'Democracy Score'
@@ -1418,47 +1423,77 @@ function createRegionalSummaryChart(canvasId, data) {
 }
 
 // World Map Function
-function createWorldMap(divId, data) {
+function createWorldMap(canvasId, data) {
     try {
-        console.log('🎯 Creating world map with data:', data);
+        console.log('🎯 Creating world map with Chart.js Geo:', data);
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        
+        // Prepare data for Chart.js Geo
         const countries = data.countries;
-        const isoCodes = countries.map(c => c.iso);
-        const democracyValues = countries.map(c => c.democracy);
-        const retractionValues = countries.map(c => c.retraction_rate);
         
-        const trace = {
+        new Chart(ctx, {
             type: 'choropleth',
-            locationmode: 'ISO-3',
-            locations: isoCodes,
-            z: democracyValues,
-            text: countries.map(c => `${c.iso}<br>Democracy: ${c.democracy}<br>Retraction Rate: ${c.retraction_rate.toFixed(1)} per 100K`),
-            hovertemplate: '%{text}<extra></extra>',
-            colorscale: [
-                [0, '#d73027'],
-                [0.5, '#fee08b'], 
-                [1, '#1a9850']
-            ],
-            colorbar: {
-                title: 'Democracy Index',
-                thickness: 20,
-                len: 0.7
-            }
-        };
-        
-        const layout = {
-            title: 'Democracy Index by Country',
-            geo: {
-                showframe: false,
-                showcoastlines: true,
-                projection: { type: 'natural earth' }
+            data: {
+                labels: countries.map(c => c.iso),
+                datasets: [{
+                    label: 'Democracy Index',
+                    data: countries.map(country => ({
+                        feature: country.iso,
+                        value: country.democracy
+                    })),
+                    backgroundColor: (context) => {
+                        const value = context.parsed?.value;
+                        if (value === undefined) return '#f0f0f0';
+                        
+                        // Color scale from red (low democracy) to green (high democracy)
+                        const normalized = Math.max(0, Math.min(1, (value - 0) / (10 - 0))); // Normalize 0-10 to 0-1
+                        const red = Math.round(215 - (normalized * 150)); // 215 to 65
+                        const green = Math.round(48 + (normalized * 167)); // 48 to 215
+                        const blue = Math.round(39 + (normalized * 48)); // 39 to 87
+                        
+                        return `rgb(${red}, ${green}, ${blue})`;
+                    },
+                    borderColor: '#ffffff',
+                    borderWidth: 0.5
+                }]
             },
-            height: 500,
-            margin: { t: 40, b: 20, l: 20, r: 20 }
-        };
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                const countryData = countries.find(c => c.iso === context[0].label);
+                                return countryData ? `Country: ${countryData.iso}` : context[0].label;
+                            },
+                            label: function(context) {
+                                const countryData = countries.find(c => c.iso === context.label);
+                                if (countryData) {
+                                    return [
+                                        `Democracy Score: ${countryData.democracy.toFixed(2)}`,
+                                        `Retraction Rate: ${countryData.retraction_rate.toFixed(1)} per 100K`
+                                    ];
+                                }
+                                return `Democracy Score: ${context.parsed.value}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    projection: {
+                        projection: 'naturalEarth1'
+                    }
+                }
+            }
+        });
         
-        Plotly.newPlot(divId, [trace], layout, { responsive: true });
     } catch (error) {
-        console.error('Error creating world map:', error);
+        console.error('❌ Error creating world map:', error);
+        console.error('Stack trace:', error.stack);
     }
 }
 
