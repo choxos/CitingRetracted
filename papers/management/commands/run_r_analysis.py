@@ -1241,9 +1241,9 @@ cat("Summary stats exported to:", summary_file, "\\n")
             
             self.stdout.write(f"Updated {updated_count} statistical results")
             
-            # Update visualization data cache
-            DemocracyVisualizationData.objects.filter(is_current=True).update(is_current=False)
-            self.stdout.write("Invalidated visualization cache - will be regenerated on next page load")
+            # Clear visualization data cache to avoid constraint conflicts
+            deleted_count = DemocracyVisualizationData.objects.all().delete()[0]
+            self.stdout.write(f"Cleared {deleted_count} visualization cache records - will be regenerated on next page load")
 
     def _cleanup(self):
         """Clean up temporary files"""
