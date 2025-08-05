@@ -1202,16 +1202,16 @@ function createScatterPlot(canvasId, data) {
     try {
         const ctx = document.getElementById(canvasId).getContext('2d');
         
-        // Define colors for different regions
+        // Define highly distinguishable colors for different regions
         const regionColors = {
-            'Western Europe': '#FF6384',
-            'North America': '#36A2EB', 
-            'Asia and Australasia': '#FFCE56',
-            'Central and Eastern Europe': '#4BC0C0',
-            'Latin America and the Caribbean': '#9966FF',
-            'Middle East and North Africa': '#FF9F40',
-            'Sub-Saharan Africa': '#FF6384',
-            'Unknown': '#C9CBCF'
+            'Western Europe': '#E74C3C',           // Vibrant Red
+            'North America': '#3498DB',            // Bright Blue  
+            'Asia and Australasia': '#F39C12',     // Orange
+            'Central and Eastern Europe': '#27AE60', // Green
+            'Latin America and the Caribbean': '#9B59B6', // Purple
+            'Middle East and North Africa': '#E67E22',     // Dark Orange
+            'Sub-Saharan Africa': '#2ECC71',       // Emerald Green
+            'Unknown': '#95A5A6'                   // Gray
         };
         
         // Group countries by region
