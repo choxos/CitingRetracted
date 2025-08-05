@@ -510,7 +510,7 @@
                 <h3 class="h5 mb-3">{{ visualizations.world_map.title }}</h3>
                 <p class="text-muted mb-4">{{ visualizations.world_map.description }}</p>
                 <div class="chart-container">
-                    <canvas id="worldMapChart"></canvas>
+                    <div id="worldMapChart" style="width: 100%; height: 500px;"></div>
                 </div>
             </div>
         </div>
@@ -1097,9 +1097,10 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <!-- Chart.js Geo for world map -->
 <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-geo@4.3.4/dist/chartjs-chart-geo.min.js"></script>
+<!-- Plotly.js as fallback for world map -->
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist@2.24.1/plotly.min.js"></script>
 <script>
-// Register Chart.js Geo components
-Chart.register(ChartGeo.ChoroplethController, ChartGeo.GeoFeature, ChartGeo.ColorScale, ChartGeo.ProjectionScale);
+// Register Chart.js Geo components (components should be auto-registered with CDN version)
 
 document.addEventListener('DOMContentLoaded', function() {
     
@@ -1138,8 +1139,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Create World Map
-    const worldMapCanvas = document.getElementById('worldMapChart');
-    if (worldMapCanvas) {
+    const worldMapDiv = document.getElementById('worldMapChart');
+    if (worldMapDiv) {
         const worldMapData = {{ visualizations.world_map.data|safe }};
         console.log('World map data:', worldMapData);
         console.log('World map data keys:', Object.keys(worldMapData || {}));
@@ -1151,7 +1152,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('❌ Missing world map countries:', worldMapData?.countries);
         }
     } else {
-        console.log('❌ World map canvas not found');
+        console.log('❌ World map div not found');
     }
     
     // Create Regional Summary chart
@@ -1423,76 +1424,66 @@ function createRegionalSummaryChart(canvasId, data) {
 }
 
 // World Map Function
-function createWorldMap(canvasId, data) {
+function createWorldMap(divId, data) {
     try {
-        console.log('🎯 Creating world map with Chart.js Geo:', data);
-        const ctx = document.getElementById(canvasId).getContext('2d');
+        console.log('🎯 Testing Chart.js Geo availability...');
+        console.log('Chart.js version:', Chart.version);
+        console.log('Available chart types:', Chart.registry ? Object.keys(Chart.registry.controllers?.items || {}) : 'Registry not available');
         
-        // Prepare data for Chart.js Geo
-        const countries = data.countries;
-        
-        new Chart(ctx, {
-            type: 'choropleth',
-            data: {
-                labels: countries.map(c => c.iso),
-                datasets: [{
-                    label: 'Democracy Index',
-                    data: countries.map(country => ({
-                        feature: country.iso,
-                        value: country.democracy
-                    })),
-                    backgroundColor: (context) => {
-                        const value = context.parsed?.value;
-                        if (value === undefined) return '#f0f0f0';
-                        
-                        // Color scale from red (low democracy) to green (high democracy)
-                        const normalized = Math.max(0, Math.min(1, (value - 0) / (10 - 0))); // Normalize 0-10 to 0-1
-                        const red = Math.round(215 - (normalized * 150)); // 215 to 65
-                        const green = Math.round(48 + (normalized * 167)); // 48 to 215
-                        const blue = Math.round(39 + (normalized * 48)); // 39 to 87
-                        
-                        return `rgb(${red}, ${green}, ${blue})`;
-                    },
-                    borderColor: '#ffffff',
-                    borderWidth: 0.5
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            title: function(context) {
-                                const countryData = countries.find(c => c.iso === context[0].label);
-                                return countryData ? `Country: ${countryData.iso}` : context[0].label;
-                            },
-                            label: function(context) {
-                                const countryData = countries.find(c => c.iso === context.label);
-                                if (countryData) {
-                                    return [
-                                        `Democracy Score: ${countryData.democracy.toFixed(2)}`,
-                                        `Retraction Rate: ${countryData.retraction_rate.toFixed(1)} per 100K`
-                                    ];
-                                }
-                                return `Democracy Score: ${context.parsed.value}`;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    projection: {
-                        projection: 'naturalEarth1'
-                    }
-                }
-            }
-        });
+        // For now, let's use Plotly since Chart.js Geo is not loading properly
+        console.log('Using Plotly for world map (Chart.js Geo will be implemented later)...');
+        createWorldMapPlotly(divId, data);
         
     } catch (error) {
-        console.error('❌ Error creating world map:', error);
+        console.error('❌ Error in createWorldMap:', error);
+        console.error('Stack trace:', error.stack);
+        createWorldMapPlotly(divId, data);
+    }
+}
+
+// Plotly implementation
+function createWorldMapPlotly(divId, data) {
+    try {
+        console.log('🎯 Creating Plotly world map:', data);
+        
+        const countries = data.countries;
+        const isoCodes = countries.map(c => c.iso);
+        const democracyValues = countries.map(c => c.democracy);
+        
+        const trace = {
+            type: 'choropleth',
+            locationmode: 'ISO-3',
+            locations: isoCodes,
+            z: democracyValues,
+            text: countries.map(c => `${c.iso}<br>Democracy: ${c.democracy}<br>Retraction Rate: ${c.retraction_rate.toFixed(1)} per 100K`),
+            hovertemplate: '%{text}<extra></extra>',
+            colorscale: [
+                [0, '#d73027'],
+                [0.5, '#fee08b'], 
+                [1, '#1a9850']
+            ],
+            colorbar: {
+                title: 'Democracy Index',
+                thickness: 20,
+                len: 0.7
+            }
+        };
+        
+        const layout = {
+            geo: {
+                showframe: false,
+                showcoastlines: true,
+                projection: { type: 'natural earth' }
+            },
+            height: 500,
+            margin: { t: 20, b: 20, l: 20, r: 20 }
+        };
+        
+        Plotly.newPlot(divId, [trace], layout, { responsive: true });
+        console.log('✅ Plotly world map created successfully');
+        
+    } catch (error) {
+        console.error('❌ Error creating Plotly world map:', error);
         console.error('Stack trace:', error.stack);
     }
 }
