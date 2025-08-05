@@ -751,8 +751,40 @@
         <div class="tab-content" id="resultsTabContent">
             <!-- Main Results Tab -->
             <div class="tab-pane fade show active" id="main-results" role="tabpanel">
+                <!-- Model Summary at Top -->
                 <div class="row mt-4">
-                    <div class="col-lg-8">
+                    <div class="col-12">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h4 class="h6 text-purple fw-bold mb-0">Model Summary</h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <strong>Model:</strong><br>
+                                        <span class="text-muted">{{ statistical_results.model_info.model_type|default:"Bayesian Hierarchical Negative Binomial" }}</span>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <strong>Sample Size:</strong><br>
+                                        <span class="text-muted">{{ statistical_results.model_info.sample_size|default:"N/A" }}</span>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <strong>Countries:</strong><br>
+                                        <span class="text-muted">{{ statistical_results.model_info.countries|default:"N/A" }}</span>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <strong>Time Period:</strong><br>
+                                        <span class="text-muted">{{ statistical_results.model_info.time_period|default:"N/A" }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Full Width Results Section -->
+                <div class="row">
+                    <div class="col-12">
                         <div class="statistical-results">
                             <h3 class="h5 text-purple fw-bold mb-4">
                                 <i class="fas fa-chart-bar me-2"></i>Model Performance
@@ -822,17 +854,6 @@
                                         {% endfor %}
                                     </tbody>
                                 </table>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-lg-4">
-                        <div class="sidebar-content">
-                            <h4 class="h6 text-purple fw-bold mb-3">Model Summary</h4>
-                            <div class="small text-muted mb-3">
-                                <strong>Model:</strong> {{ statistical_results.model_info.model_type|default:"Bayesian Hierarchical Negative Binomial" }}<br>
-                                <strong>Sample Size:</strong> {{ statistical_results.model_info.sample_size|default:"N/A" }}<br>
-                                <strong>Countries:</strong> {{ statistical_results.model_info.countries|default:"N/A" }}<br>
-                                <strong>Time Period:</strong> {{ statistical_results.model_info.time_period|default:"N/A" }}
                             </div>
                         </div>
                     </div>
