@@ -1096,24 +1096,37 @@
         <div class="row">
             {% for source in data_sources %}
             <div class="col-lg-6 mb-4">
-                <div class="data-source-card">
-                    <h3 class="h6 text-primary fw-bold">
-                        <i class="fas fa-external-link-alt me-2"></i>
-                        <a href="{{ source.url }}" target="_blank" class="text-decoration-none">{{ source.name }}</a>
-                    </h3>
-                    <p class="mb-2">{{ source.description }}</p>
-                    <div class="row">
-                        <div class="col-md-8">
-                            <strong class="small">Variables:</strong>
-                            <ul class="small list-unstyled">
-                                {% for variable in source.variables %}
-                                <li><i class="fas fa-check-circle text-success me-1"></i>{{ variable }}</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                        <div class="col-md-4">
-                            <strong class="small">Coverage:</strong><br>
-                            <span class="small text-muted">{{ source.coverage }}</span>
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-external-link-alt me-2"></i>
+                            <a href="{{ source.url }}" target="_blank" class="text-white text-decoration-none">{{ source.name }}</a>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text mb-3">{{ source.description }}</p>
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h6 class="fw-bold text-dark mb-2">
+                                    <i class="fas fa-list me-1"></i>Variables:
+                                </h6>
+                                <ul class="list-unstyled mb-3">
+                                    {% for variable in source.variables %}
+                                    <li class="mb-1">
+                                        <i class="fas fa-check-circle text-success me-2"></i>
+                                        <small>{{ variable }}</small>
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            <div class="col-md-4">
+                                <h6 class="fw-bold text-dark mb-2">
+                                    <i class="fas fa-globe me-1"></i>Coverage:
+                                </h6>
+                                <span class="badge bg-light text-dark p-2 w-100 text-start">
+                                    <small>{{ source.coverage }}</small>
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
