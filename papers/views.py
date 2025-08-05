@@ -2805,6 +2805,7 @@ class DemocracyAnalysisView(View):
         """Return statistical results summary from actual R analysis JSON"""
         import json
         import os
+        from django.conf import settings
         
         # Path to the R analysis results JSON file
         json_path = os.path.join(settings.BASE_DIR, 'r_analysis_output', 'r_analysis_results.json')
@@ -3539,6 +3540,7 @@ class DemocracyAnalysisView(View):
         """Return comprehensive Bayesian model diagnostics from JSON results"""
         import json
         import os
+        from django.conf import settings
         
         # Path to the R analysis results JSON file  
         json_path = os.path.join(settings.BASE_DIR, 'r_analysis_output', 'r_analysis_results.json')
@@ -3581,102 +3583,66 @@ class DemocracyAnalysisView(View):
                 'missing_data_method': 'MICE with PMM (20 datasets)',
                 'model_family': 'Negative Binomial'
             }
-                            'value': '0.002',
-                            'threshold': '< 0.05',
-                            'status': 'excellent',
-                            'description': 'Precision of MCMC estimates'
-                        }
-                    ]
-                },
-                'model_fit': {
-                    'title': 'Model Fit and Comparison',
-                    'metrics': [
-                        {
-                            'name': 'LOO-CV (Leave-One-Out Cross-Validation)',
-                            'value': '-1,421.3 ± 15.2',
-                            'comparison': 'Hierarchical negative binomial model',
-                            'description': 'Bayesian out-of-sample predictive performance'
-                        },
-                        {
-                            'name': 'Pareto-k Diagnostics',
-                            'value': '11 observations > 0.7',
-                            'comparison': 'Within acceptable range for robust inference',
-                            'description': 'Identifies potential outliers in LOO-CV estimation'
-                        },
-                        {
-                            'name': 'Posterior Predictive p-value',
-                            'value': '0.52',
-                            'threshold': '0.05 - 0.95',
-                            'status': 'excellent',
-                            'description': 'Model adequacy check via posterior predictive simulation'
-                        }
-                    ]
-                },
-                'hierarchical_structure': {
-                    'title': 'Hierarchical Model Components',
-                    'levels': [
-                        {
-                            'level': 'Level 1: Observations',
-                            'description': 'Country-year retractions ~ NegBin(μᵢⱼ, φ)',
-                            'n_units': '2,847 country-year observations'
-                        },
-                        {
-                            'level': 'Level 2: Countries', 
-                            'description': 'Country-specific random intercepts αᵢ ~ N(0, σα²)',
-                            'n_units': '167 countries with varying intercepts'
-                        },
-                        {
-                            'level': 'Level 3: Regions',
-                            'description': 'Region-specific effects βᵣ ~ N(0, σβ²)',  
-                            'n_units': '7 world regions with shared effects'
-                        }
-                    ]
-                },
-                'posterior_uncertainty': {
-                    'title': 'Posterior Uncertainty Quantification',
-                    'parameters': [
-                        {
-                            'parameter': 'Democracy Effect (β₁)',
-                            'posterior_mean': '-0.092',
-                            'cri_95': '[-0.134, -0.051]',
-                            'prob_negative': '97.2%',
-                            'interpretation': 'Strong Bayesian evidence for protective democracy effect'
-                        },
-                        {
-                            'parameter': 'Country-level Variance (σα²)',
-                            'posterior_mean': '0.28',
-                            'cri_95': '[0.22, 0.35]',
-                            'interpretation': 'Moderate between-country heterogeneity in baseline rates'
-                        },
-                        {
-                            'parameter': 'Year-level Variance (σγ²)',
-                            'posterior_mean': '0.12',
-                            'cri_95': '[0.08, 0.18]',
-                            'interpretation': 'Temporal variation in retraction patterns'
-                        },
-                        {
-                            'parameter': 'Overdispersion Parameter (φ)',
-                            'posterior_mean': '2.14',
-                            'cri_95': '[1.89, 2.42]',
-                            'interpretation': 'Negative binomial handles count overdispersion well'
-                        }
-                    ]
-                }
-            }
-            
-            return diagnostics
-            
-        except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error in _get_model_diagnostics: {e}")
-            return {
-                'error': str(e),
-                'convergence': {'metrics': []},
-                'model_fit': {'metrics': []},
-                'hierarchical_structure': {'levels': []},
-                'posterior_uncertainty': {'parameters': []}
-            }
+    
+    def _get_visualization_data(self):
+        """Return data for visualizations from actual analysis"""
+        from .models import DemocracyVisualizationData
+        
+        # Try to get pre-computed visualization data
+        viz_data = {}
+        
+        for chart_type, title, description in [
+            ('scatter', 'Democracy vs. Retraction Rates by Country', 'Relationship between average democracy scores and retraction rates'),
+            ('temporal_trends', 'Temporal Trends in Retractions', 'Evolution of retraction rates over time'),
+            ('regional_summary', 'Regional Summary Statistics', 'Comparative analysis across world regions'),
+            ('world_map', 'World Map Visualization', 'Global distribution of democracy and retraction patterns')
+        ]:
+            try:
+                viz_obj = DemocracyVisualizationData.objects.filter(
+                    chart_type=chart_type, 
+                    is_current=True
+                ).first()
+                
+                if viz_obj:
+                    logger.info(f"Using cached visualization data for {chart_type}")
+                    viz_data[chart_type] = {
+                        'title': title,
+                        'data': viz_obj.chart_data,
+                        'description': description
+                    }
+                elif chart_type == 'scatter':
+                    logger.info("FORCED: Generating live data for scatter to include regions")
+                    viz_data['scatter'] = {
+                        'title': title,
+                        'data': self._get_democracy_scatter_data(),
+                        'description': description
+                    }
+                elif chart_type == 'temporal_trends':
+                    viz_data['temporal_trends'] = {
+                        'title': title,
+                        'data': self._get_temporal_trends_data(),
+                        'description': description
+                    }
+                elif chart_type == 'regional_summary':
+                    viz_data['regional_summary'] = {
+                        'title': title,
+                        'data': self._get_regional_summary_data(),
+                        'description': description
+                    }
+                elif chart_type == 'world_map':
+                    viz_data['world_map'] = {
+                        'title': title,
+                        'data': self._get_world_map_data(),
+                        'description': description
+                    }
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error loading visualization data for {chart_type}: {e}")
+                # Continue with empty data for this chart type
+                pass
+        
+        return viz_data
     
     def _get_democracy_scatter_data(self):
         """Generate scatter plot data for democracy vs retractions from actual data"""
