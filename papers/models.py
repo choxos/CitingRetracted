@@ -77,20 +77,22 @@ class RetractedPaper(models.Model):
     
     @classmethod
     def get_unique_papers_count(cls):
-        """Get count of unique papers (by DOI only)"""
-        from django.db.models import Q, Count
+        """Get count of unique papers (by DOI only) - Optimized"""
+        from django.db.models import Q, Count, Case, When
         
-        # Create a query that groups by DOI only
-        unique_papers = cls.objects.exclude(
-            Q(original_paper_doi__isnull=True) | Q(original_paper_doi__exact='')
-        ).values('original_paper_doi').distinct().count()
-        
-        # Add papers without DOI (counted individually)
-        papers_without_doi = cls.objects.filter(
-            Q(original_paper_doi__isnull=True) | Q(original_paper_doi__exact='')
-        ).count()
-        
-        return unique_papers + papers_without_doi
+        # Single query to count unique papers
+        return cls.objects.aggregate(
+            unique_count=Count(
+                Case(
+                    When(
+                        Q(original_paper_doi__isnull=False) & ~Q(original_paper_doi=''),
+                        then='original_paper_doi'
+                    ),
+                    default='record_id'  # Use record_id for papers without DOI
+                ),
+                distinct=True
+            )
+        )['unique_count']
     
     @classmethod
     def get_unique_papers_by_nature(cls):

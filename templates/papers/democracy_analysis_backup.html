@@ -1,0 +1,1867 @@
+{% extends 'prct_base.html' %}
+{% load static %}
+{% load json_filters %}
+
+{% block title %}Democracy and Scientific Retractions Analysis - Post-Retraction Citation Tracker{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ===============================================
+   DEMOCRACY ANALYSIS PAGE STYLES
+   =============================================== */
+
+.hero-democracy {
+    background: linear-gradient(135deg, #3b82f6 0%, #1e40af 50%, #1e3a8a 100%);
+    color: white;
+    padding: 4rem 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-democracy::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="democracy-pattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23democracy-pattern)"/></svg>');
+    opacity: 0.3;
+}
+
+.hero-democracy .container {
+    position: relative;
+    z-index: 1;
+}
+
+.methodology-card {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+    border-left: 5px solid #3b82f6;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.methodology-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+}
+
+.key-finding-card {
+    background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+    border-radius: 15px;
+    padding: 1.5rem;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.key-finding-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.primary-finding {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    border-left: 5px solid #3b82f6;
+}
+
+.secondary-finding {
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    border-left: 5px solid #10b981;
+}
+
+.chart-container {
+    position: relative;
+    height: 450px;
+    margin: 20px 0;
+    background: white;
+    border-radius: 15px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.chart-container.tall {
+    height: 500px;
+}
+
+.chart-container.world-map {
+    height: 600px;
+}
+
+.stat-badge {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+    color: white;
+    border-radius: 25px;
+    font-weight: bold;
+    margin: 0.25rem;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.data-source-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.data-source-card:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+.statistical-results {
+    background: linear-gradient(135deg, #fef7ff 0%, #faf5ff 100%);
+    border-radius: 15px;
+    padding: 2rem;
+    border: 1px solid #e9d5ff;
+}
+
+.model-diagnostic {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 0.5rem 0;
+    border-left: 4px solid #8b5cf6;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.causal-dag {
+    background: linear-gradient(135deg, #fefce8 0%, #fef3c7 100%);
+    border-radius: 15px;
+    padding: 2rem;
+    border: 1px solid #fbbf24;
+}
+
+.dag-node {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    margin: 0.25rem;
+    border-radius: 20px;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.dag-node.exposure {
+    background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+    color: white;
+}
+
+.dag-node.outcome {
+    background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+    color: white;
+}
+
+.dag-node.confounder {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+}
+
+.dag-node.mediator {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+.correlation-badge {
+    font-size: 1.2rem;
+    font-weight: bold;
+    padding: 0.5rem 1rem;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+.section-header {
+    border-bottom: 3px solid #3b82f6;
+    padding-bottom: 0.5rem;
+    margin-bottom: 2rem;
+    position: relative;
+}
+
+.section-header::after {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    left: 0;
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+    border-radius: 2px;
+}
+
+.interactive-table {
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.interactive-table th {
+    background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+    color: white;
+    font-weight: 600;
+    padding: 1rem;
+    border: none;
+}
+
+.interactive-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.interactive-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.timeline-container {
+    background: white;
+    border-radius: 15px;
+    padding: 2rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    margin: 2rem 0;
+}
+
+.regional-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin: 2rem 0;
+}
+
+.regional-card {
+    background: white;
+    border-radius: 15px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    border-top: 4px solid #3b82f6;
+}
+
+.regional-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.loading-spinner {
+    display: none;
+    text-align: center;
+    padding: 2rem;
+}
+
+.spinner-border {
+    color: #3b82f6;
+}
+
+.nav-tabs .nav-link {
+    border-radius: 10px 10px 0 0;
+    border: none;
+    background: #f8fafc;
+    color: #64748b;
+    font-weight: 500;
+    margin-right: 0.5rem;
+}
+
+.nav-tabs .nav-link.active {
+    background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+    color: white;
+    border: none;
+}
+
+.tab-content {
+    background: white;
+    border-radius: 0 15px 15px 15px;
+    padding: 2rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 768px) {
+    .hero-democracy {
+        padding: 2rem 0;
+    }
+    
+    .chart-container {
+        height: 300px;
+        padding: 1rem;
+    }
+    
+    .methodology-card {
+        padding: 1rem;
+    }
+    
+    .regional-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-democracy">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h1 class="display-4 fw-bold mb-4">
+                    <i class="fas fa-balance-scale me-3"></i>
+                    Democracy and Scientific Retractions
+                </h1>
+                <p class="lead mb-4">
+                    A comprehensive Bayesian hierarchical analysis examining the relationship between 
+                    democratic governance and research integrity across 168 countries (2006-2023)
+                </p>
+                <div class="d-flex justify-content-center flex-wrap gap-3">
+                    <span class="stat-badge">
+                        <i class="fas fa-globe me-2"></i>168 Countries
+                    </span>
+                    <span class="stat-badge">
+                        <i class="fas fa-calendar me-2"></i>2006-2023
+                    </span>
+                    <span class="stat-badge">
+                        <i class="fas fa-chart-line me-2"></i>Bayesian Analysis
+                    </span>
+                    <span class="stat-badge">
+                        <i class="fas fa-database me-2"></i>2,847 Observations
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Key Findings Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <h2 class="section-header">
+            <i class="fas fa-lightbulb text-primary me-2"></i>Key Findings
+        </h2>
+        
+        <div class="row">
+            <div class="col-lg-8">
+                <!-- Primary Finding -->
+                <div class="key-finding-card primary-finding">
+                    <h3 class="h4 text-primary fw-bold mb-3">
+                        <i class="fas fa-trophy me-2"></i>{{ key_findings.primary_finding.title }}
+                    </h3>
+                    <p class="mb-3">{{ key_findings.primary_finding.description }}</p>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="correlation-badge">
+                                {{ key_findings.primary_finding.effect_size|linebreaksbr }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="small text-muted mt-2 mb-0">
+                                <strong>Interpretation:</strong> {{ key_findings.primary_finding.interpretation }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="methodology-card">
+                    <h4 class="h5 text-primary fw-bold mb-3">
+                        <i class="fas fa-microscope me-2"></i>Analysis Approach
+                    </h4>
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-check text-success me-2"></i>Poisson Inverse Gaussian Model</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Multiple Imputation (MICE)</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Causal DAG Framework</li>
+                        <li><i class="fas fa-check text-success me-2"></i>Temporal Controls</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Secondary Findings -->
+        <div class="row mt-4">
+            {% for finding in key_findings.secondary_findings %}
+            <div class="col-md-6 mb-3">
+                <div class="key-finding-card secondary-finding">
+                    <h4 class="h6 text-success fw-bold">
+                        <i class="fas fa-arrow-right me-2"></i>{{ finding.factor }}
+                    </h4>
+                    <p class="mb-2 small">{{ finding.finding }}</p>
+                    <p class="small text-muted mb-0">
+                        <strong>Implication:</strong> {{ finding.implication }}
+                    </p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Visualizations Section -->
+<section class="py-5">
+    <div class="container">
+        <h2 class="section-header">
+            <i class="fas fa-chart-bar text-primary me-2"></i>Data Visualizations
+        </h2>
+        
+        <!-- Navigation Tabs for Charts -->
+        <ul class="nav nav-tabs" id="chartTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="scatter-tab" data-bs-toggle="tab" data-bs-target="#scatter-chart" type="button" role="tab">
+                    <i class="fas fa-scatter-chart me-2"></i>Democracy vs Retractions
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="temporal-tab" data-bs-toggle="tab" data-bs-target="#temporal-chart" type="button" role="tab">
+                    <i class="fas fa-chart-line me-2"></i>Temporal Trends
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="regional-tab" data-bs-toggle="tab" data-bs-target="#regional-chart" type="button" role="tab">
+                    <i class="fas fa-globe-americas me-2"></i>Regional Analysis
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="worldmap-tab" data-bs-toggle="tab" data-bs-target="#worldmap-chart" type="button" role="tab">
+                    <i class="fas fa-map me-2"></i>World Map
+                </button>
+            </li>
+        </ul>
+        
+        <div class="tab-content" id="chartTabContent">
+            <!-- Democracy vs Retractions Scatter Plot -->
+            <div class="tab-pane fade show active" id="scatter-chart" role="tabpanel">
+                <h3 class="h5 mb-3">{{ visualizations.democracy_retraction_scatter.title }}</h3>
+                <p class="text-muted mb-4">{{ visualizations.democracy_retraction_scatter.description }}</p>
+                <div class="chart-container">
+                    <canvas id="democracyScatterChart"></canvas>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <div class="alert alert-info">
+                            <strong>Correlation:</strong> {{ visualizations.democracy_retraction_scatter.data.correlation }}
+                            <br><strong>P-value:</strong> {{ visualizations.democracy_retraction_scatter.data.p_value }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="alert alert-success">
+                            <strong>Pattern:</strong> Clear negative relationship between democracy and retraction rates
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Temporal Trends -->
+            <div class="tab-pane fade" id="temporal-chart" role="tabpanel">
+                <h3 class="h5 mb-3">{{ visualizations.temporal_trends.title }}</h3>
+                <p class="text-muted mb-4">{{ visualizations.temporal_trends.description }}</p>
+                <div class="chart-container">
+                    <canvas id="temporalTrendsChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Regional Analysis -->
+            <div class="tab-pane fade" id="regional-chart" role="tabpanel">
+                <h3 class="h5 mb-3">{{ visualizations.regional_analysis.title }}</h3>
+                <p class="text-muted mb-4">{{ visualizations.regional_analysis.description }}</p>
+                <div class="regional-grid">
+                    {% for region in visualizations.regional_analysis.data.regions %}
+                    <div class="regional-card">
+                        <h4 class="h6 text-primary fw-bold">{{ region.name }}</h4>
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="text-center">
+                                    <div class="h4 text-success">{{ region.avg_democracy|floatformat:1 }}</div>
+                                    <div class="small text-muted">Avg Democracy</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-center">
+                                    <div class="h4 text-danger">{{ region.avg_retraction_rate|floatformat:1 }}</div>
+                                    <div class="small text-muted">Retraction Rate (per 100K)</div>
+                                </div>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="row small text-muted">
+                            <div class="col-6">{{ region.countries }} countries</div>
+                            <div class="col-6">{{ region.total_publications|floatformat:0 }} papers</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- World Map -->
+            <div class="tab-pane fade" id="worldmap-chart" role="tabpanel">
+                <h3 class="h5 mb-3">{{ visualizations.world_map.title }}</h3>
+                <p class="text-muted mb-4">{{ visualizations.world_map.description }}</p>
+                <div class="chart-container world-map">
+                    <div id="worldMapChart"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Methodology Section -->
+<section class="py-3 bg-light">
+    <div class="container">
+        <h2 class="section-header">
+            <i class="fas fa-cogs text-primary me-2"></i>{{ methodology.title }}
+        </h2>
+        
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="methodology-card">
+                    <p class="lead">{{ methodology.overview }}</p>
+                    
+                    <div class="row mt-4">
+                        {% for method in methodology.methods %}
+                        <div class="col-md-6 mb-4">
+                            <div class="model-diagnostic">
+                                <h4 class="h6 text-primary fw-bold">
+                                    <i class="fas fa-cog me-2"></i>{{ method.name }}
+                                </h4>
+                                <p class="mb-2">{{ method.description }}</p>
+                                <p class="small text-muted mb-0">
+                                    <strong>Rationale:</strong> {{ method.rationale }}
+                                </p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <!-- Causal Model -->
+                <div class="causal-dag">
+                    <h3 class="h5 text-warning fw-bold mb-3">
+                        <i class="fas fa-project-diagram me-2"></i>{{ causal_model.title }}
+                    </h3>
+                    <p class="small mb-3">{{ causal_model.description }}</p>
+                    
+                    <h4 class="h6 fw-bold">Key Variables:</h4>
+                    <div class="mb-3">
+                        {% for node in causal_model.nodes %}
+                        <span class="dag-node {{ node.type }}">{{ node.label }}</span>
+                        {% endfor %}
+                    </div>
+                    
+                    <h4 class="h6 fw-bold">Causal Pathways:</h4>
+                    <ul class="small list-unstyled">
+                        {% for relationship in causal_model.relationships %}
+                        <li><i class="fas fa-arrow-right text-warning me-2"></i>{{ relationship }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Statistical Results Section -->
+<section class="py-3">
+    <div class="container">
+        <h2 class="section-header">
+            <i class="fas fa-calculator text-primary me-2"></i>Statistical Results
+        </h2>
+        
+        <!-- Navigation Tabs for Statistical Results -->
+        <ul class="nav nav-tabs" id="resultsTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="main-results-tab" data-bs-toggle="tab" data-bs-target="#main-results" type="button" role="tab">
+                    <i class="fas fa-chart-bar me-2"></i>Main Results
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="data-explorer-tab" data-bs-toggle="tab" data-bs-target="#data-explorer" type="button" role="tab">
+                    <i class="fas fa-table me-2"></i>Raw Data Explorer
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="model-diagnostics-tab" data-bs-toggle="tab" data-bs-target="#model-diagnostics" type="button" role="tab">
+                    <i class="fas fa-cogs me-2"></i>Model Diagnostics
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="sensitivity-analysis-tab" data-bs-toggle="tab" data-bs-target="#sensitivity-analysis" type="button" role="tab">
+                    <i class="fas fa-balance-scale me-2"></i>Sensitivity Analysis
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="subgroup-analysis-tab" data-bs-toggle="tab" data-bs-target="#subgroup-analysis" type="button" role="tab">
+                    <i class="fas fa-layer-group me-2"></i>Subgroup Analysis
+                </button>
+            </li>
+        </ul>
+        
+        <div class="tab-content" id="resultsTabContent">
+            <!-- Main Results Tab -->
+            <div class="tab-pane fade show active" id="main-results" role="tabpanel">
+                <div class="row mt-4">
+                    <div class="col-lg-8">
+                        <div class="statistical-results">
+                            <h3 class="h5 text-purple fw-bold mb-4">
+                                <i class="fas fa-chart-bar me-2"></i>Model Performance
+                            </h3>
+                            
+                            <div class="row mb-4">
+                                <div class="col-md-3">
+                                    <div class="model-diagnostic text-center">
+                                        <h4 class="h5 text-primary">{{ statistical_results.model_fit.aic }}</h4>
+                                        <div class="small text-muted">AIC Score</div>
+                                            <small class="text-muted">Observations</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="text-center">
+                                            <h4 class="text-primary">{{ raw_data_explorer.coverage.year_range_min|default:"N/A" }}-{{ raw_data_explorer.coverage.year_range_max|default:"N/A" }}</h4>
+                                            <small class="text-muted">Time Span</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Variables Summary Table -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0"><i class="fas fa-list me-2"></i>Variable Definitions & Statistics</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>Variable</th>
+                                                <th>Description</th>
+                                                <th>Range</th>
+                                                <th>Mean</th>
+                                                <th>Min</th>
+                                                <th>Max</th>
+                                                <th>Observations</th>
+                                                <th>Missing (%)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for var_name, var_data in raw_data_explorer.variables.items %}
+                                            <tr>
+                                                <td><strong>{{ var_data.name }}</strong></td>
+                                                <td><small>{{ var_data.description }}</small></td>
+                                                <td><code>{{ var_data.range }}</code></td>
+                                                <td>{{ var_data.mean|default:"N/A" }}</td>
+                                                <td>{{ var_data.min|default:"N/A" }}</td>
+                                                <td>{{ var_data.max|default:"N/A" }}</td>
+                                                <td>{{ var_data.observations|default:"N/A" }}</td>
+                                                <td>
+                                                    <span class="badge {% if var_data.missing_pct < 10 %}bg-success{% elif var_data.missing_pct < 30 %}bg-warning{% else %}bg-danger{% endif %}">
+                                                        {{ var_data.missing_pct|default:"N/A" }}%
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="8" class="text-center text-muted">
+                                                    <em>No variable data available. Check backend data generation.</em>
+                                                    {% if raw_data_explorer.error %}
+                                                    <br><small class="text-danger">Error: {{ raw_data_explorer.error }}</small>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Sample Data Preview -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0"><i class="fas fa-eye me-2"></i>Sample Data Preview (Top 10 by Publications)</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-striped">
+                                        <thead class="table-secondary">
+                                            <tr>
+                                                <th>Country</th>
+                                                <th>Year</th>
+                                                <th>Region</th>
+                                                <th>Democracy</th>
+                                                <th>Retractions</th>
+                                                <th>Publications</th>
+                                                <th>Retraction Rate (per 100K)</th>
+                                                <th>GDP</th>
+                                                <th>Corruption Control</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for row in raw_data_explorer.sample_data %}
+                                            <tr>
+                                                <td>{{ row.country }}</td>
+                                                <td>{{ row.year }}</td>
+                                                <td>{{ row.region }}</td>
+                                                <td>{{ row.democracy|floatformat:2 }}</td>
+                                                <td>{{ row.retractions }}</td>
+                                                <td>{{ row.publications|floatformat:0 }}</td>
+                                                <td>{{ row.retraction_rate|floatformat:1 }}</td>
+                                                <td>{{ row.gdp|floatformat:0 }}</td>
+                                                <td>{{ row.corruption_control|floatformat:2 }}</td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="9" class="text-center text-muted">
+                                                    <em>No sample data available. Check backend data generation.</em>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Model Diagnostics -->
+            <div class="tab-pane fade" id="model-diagnostics" role="tabpanel">
+                <h3 class="h5 mb-3"><i class="fas fa-cogs me-2"></i>Bayesian Model Diagnostics</h3>
+                <p class="text-muted mb-4">Comprehensive diagnostics for the hierarchical Bayesian model</p>
+                
+                <!-- Debug Info -->
+                {% if debug %}
+                <div class="alert alert-info">
+                    <strong>Debug Info:</strong> 
+                    Model Diagnostics Type: {{ model_diagnostics|default:"Not Available" }}
+                    {% if model_diagnostics %}
+                    | Convergence Metrics: {{ model_diagnostics.convergence.metrics|length|default:"0" }}
+                    | Model Fit Metrics: {{ model_diagnostics.model_fit.metrics|length|default:"0" }}
+                    {% endif %}
+                </div>
+                {% endif %}
+                
+                <!-- Show simple data display first -->
+                {% if model_diagnostics.convergence %}
+                <div class="alert alert-success">
+                    <strong>Diagnostics Available:</strong> {{ model_diagnostics.convergence.metrics|length }} convergence metrics loaded
+                </div>
+                {% else %}
+                <div class="alert alert-warning">
+                    <strong>No Diagnostics:</strong> Model diagnostics not found
+                </div>
+                {% endif %}
+                
+                <!-- MCMC Convergence -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card border-success">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="card-title mb-0">{{ model_diagnostics.convergence.title }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    {% for metric in model_diagnostics.convergence.metrics %}
+                                    <div class="col-md-4 mb-3">
+                                        <div class="border rounded p-3">
+                                            <h6 class="fw-bold">{{ metric.name }}</h6>
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="h5 text-success mb-0">{{ metric.value }}</span>
+                                                <span class="badge bg-success">{{ metric.status|title }}</span>
+                                            </div>
+                                            <small class="text-muted">{{ metric.description }}</small>
+                                            <br><small><strong>Threshold:</strong> {{ metric.threshold }}</small>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Model Fit -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="card-title mb-0">{{ model_diagnostics.model_fit.title }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    {% for metric in model_diagnostics.model_fit.metrics %}
+                                    <div class="col-md-4 mb-3">
+                                        <div class="border rounded p-3">
+                                            <h6 class="fw-bold">{{ metric.name }}</h6>
+                                            <div class="h5 text-primary mb-1">{{ metric.value }}</div>
+                                            <small class="text-info fw-bold">{{ metric.comparison }}</small>
+                                            <br><small class="text-muted">{{ metric.description }}</small>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Hierarchical Structure -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card border-warning">
+                            <div class="card-header bg-warning text-dark">
+                                <h5 class="card-title mb-0">{{ model_diagnostics.hierarchical_structure.title }}</h5>
+                            </div>
+                            <div class="card-body">
+                                {% for level in model_diagnostics.hierarchical_structure.levels %}
+                                <div class="row mb-3">
+                                    <div class="col-md-3">
+                                        <h6 class="fw-bold text-warning">{{ level.level }}</h6>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <code>{{ level.description }}</code>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <span class="badge bg-secondary">{{ level.n_units }}</span>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Posterior Uncertainty -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card border-info">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="card-title mb-0">{{ model_diagnostics.posterior_uncertainty.title }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>Parameter</th>
+                                                <th>Posterior Mean</th>
+                                                <th>95% CrI</th>
+                                                <th>Additional Info</th>
+                                                <th>Interpretation</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for param in model_diagnostics.posterior_uncertainty.parameters %}
+                                            <tr>
+                                                <td><code>{{ param.parameter }}</code></td>
+                                                <td><strong>{{ param.posterior_mean }}</strong></td>
+                                                <td><span class="badge bg-info">{{ param.cri_95 }}</span></td>
+                                                <td>
+                                                    {% if param.prob_negative %}
+                                                    <small class="text-success">P(β < 0) = {{ param.prob_negative }}</small>
+                                                    {% endif %}
+                                                </td>
+                                                <td><small>{{ param.interpretation }}</small></td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</section>
+
+<!-- Statistical Results Section -->
+<section class="py-3">
+    <div class="container">
+        <h2 class="section-header">
+            <i class="fas fa-calculator text-primary me-2"></i>Statistical Results
+        </h2>
+        
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="statistical-results">
+                    <h3 class="h5 text-purple fw-bold mb-4">
+                        <i class="fas fa-chart-bar me-2"></i>Model Performance
+                    </h3>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="model-diagnostic text-center">
+                                <h4 class="h5 text-primary">{{ statistical_results.model_fit.aic }}</h4>
+                                <div class="small text-muted">AIC Score</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="model-diagnostic text-center">
+                                <h4 class="h5 text-success">{{ statistical_results.model_fit.dispersion }}</h4>
+                                <div class="small text-muted">Dispersion</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="model-diagnostic text-center">
+                                <h4 class="h5 text-info">{{ statistical_results.model_diagnostics.r_squared }}</h4>
+                                <div class="small text-muted">R-squared</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="model-diagnostic text-center">
+                                <h4 class="h5 text-warning">{{ statistical_results.model_diagnostics.countries }}</h4>
+                                <div class="small text-muted">Countries</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h3 class="h5 text-purple fw-bold mb-3">Complete Regression Results</h3>
+                    <div class="interactive-table">
+                        <table class="table table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Variable</th>
+                                    <th>Analysis Type</th>
+                                    <th>Rate Ratio & 95% CrI</th>
+                                    <th>P-value</th>
+                                    <th>Interpretation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for effect in statistical_results.all_effects %}
+                                <tr>
+                                    <td class="fw-bold">{{ effect.variable }}</td>
+                                    <td>
+                                        <span class="badge {% if 'univariate' in effect.analysis_type|lower %}bg-primary{% else %}bg-secondary{% endif %}">
+                                            {{ effect.analysis_type|default:"PIG Model" }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {{ effect.rate_ratio|floatformat:3 }}<br>
+                                        ({{ effect.cri_lower|floatformat:3 }}–{{ effect.cri_upper|floatformat:3 }})
+                                    </td>
+                                    <td class="fw-bold {% if effect.p_value == '< 0.001' or effect.p_value == '< 0.01' %}text-success{% elif effect.p_value == '< 0.05' %}text-warning{% else %}text-muted{% endif %}">
+                                        {{ effect.p_value }}
+                                    </td>
+                                    <td class="small">{{ effect.interpretation }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">
+                                        <em>Regression results are being prepared. Please check back shortly.</em>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    {% if statistical_results.all_effects %}
+                    <div class="mt-3">
+                        <p class="small text-muted">
+                            <strong>Analysis Types:</strong>
+                            <span class="badge bg-primary ms-1">Univariate</span> Single-variable models
+                            <span class="badge bg-secondary ms-1">Multivariate</span> Adjusted models with control variables
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="methodology-card">
+                    <h3 class="h5 text-primary fw-bold mb-3">
+                        <i class="fas fa-info-circle me-2"></i>Model Details
+                    </h3>
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <strong>Model Type:</strong><br>
+                            <span class="text-muted">{{ statistical_results.model_fit.model_type }}</span>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Sample Size:</strong><br>
+                            <span class="text-muted">{{ statistical_results.model_diagnostics.effective_sample_size }}</span>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Time Period:</strong><br>
+                            <span class="text-muted">{{ statistical_results.model_diagnostics.time_period }}</span>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Imputation:</strong><br>
+                            <span class="text-muted">{{ statistical_results.model_diagnostics.imputation_datasets }} datasets</span>
+                        </li>
+                    </ul>
+                    
+                    <div class="alert alert-success mt-3">
+                        <small>
+                            <strong>Model Selection:</strong> {{ statistical_results.model_fit.comparison }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Data Sources Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <h2 class="section-header">
+            <i class="fas fa-database text-primary me-2"></i>Data Sources
+        </h2>
+        
+        <div class="row">
+            {% for source in data_sources %}
+            <div class="col-lg-6 mb-4">
+                <div class="data-source-card">
+                    <h3 class="h6 text-primary fw-bold">
+                        <i class="fas fa-external-link-alt me-2"></i>
+                        <a href="{{ source.url }}" target="_blank" class="text-decoration-none">{{ source.name }}</a>
+                    </h3>
+                    <p class="mb-2">{{ source.description }}</p>
+                    <div class="row">
+                        <div class="col-md-8">
+                            <strong class="small">Variables:</strong>
+                            <ul class="small list-unstyled">
+                                {% for variable in source.variables %}
+                                <li><i class="fas fa-check-circle text-success me-1"></i>{{ variable }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <strong class="small">Coverage:</strong><br>
+                            <span class="small text-muted">{{ source.coverage }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Loading Spinner -->
+<div class="loading-spinner" id="loadingSpinner">
+    <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-2 text-muted">Loading visualizations...</p>
+</div>
+
+            <!-- Sensitivity Analysis -->
+            <div class="tab-pane fade" id="sensitivity-analysis" role="tabpanel">
+                <h3 class="h5 mb-3"><i class="fas fa-balance-scale me-2"></i>Sensitivity Analysis</h3>
+                <p class="text-muted mb-4">Robustness checks using alternative model specifications</p>
+                
+                <!-- Alternative Model Specification -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card border-info">
+                            <div class="card-header bg-info text-white">
+                                <h4 class="h6 mb-0"><i class="fas fa-chart-line me-2"></i>{{ statistical_results.sensitivity_analysis.alternative_specification.title }}</h4>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted">{{ statistical_results.sensitivity_analysis.alternative_specification.description }}</p>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h5 class="h6 text-primary">Democracy Effect</h5>
+                                        <table class="table table-sm">
+                                            <tbody>
+                                                <tr>
+                                                    <th class="text-muted">Coefficient (log-scale):</th>
+                                                    <td>{{ statistical_results.sensitivity_analysis.alternative_specification.democracy_effect.coefficient|floatformat:3 }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <th class="text-muted">Percent Change:</th>
+                                                    <td class="fw-bold">{{ statistical_results.sensitivity_analysis.alternative_specification.democracy_effect.percent_change|floatformat:1 }}%</td>
+                                                </tr>
+                                                <tr>
+                                                    <th class="text-muted">95% CrI:</th>
+                                                    <td>({{ statistical_results.sensitivity_analysis.alternative_specification.democracy_effect.cri_lower|floatformat:1 }}%, {{ statistical_results.sensitivity_analysis.alternative_specification.democracy_effect.cri_upper|floatformat:1 }}%)</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="alert alert-info">
+                                            <strong>Interpretation:</strong> {{ statistical_results.sensitivity_analysis.alternative_specification.democracy_effect.interpretation }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Normality Tests -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card border-warning">
+                            <div class="card-header bg-warning text-dark">
+                                <h4 class="h6 mb-0"><i class="fas fa-chart-bar me-2"></i>Normality Diagnostics</h4>
+                            </div>
+                            <div class="card-body">
+                                <h6 class="text-primary">Shapiro-Wilk Test</h6>
+                                <p><strong>W:</strong> {{ statistical_results.sensitivity_analysis.normality_tests.shapiro_wilk.statistic|floatformat:3 }}</p>
+                                <p><strong>p-value:</strong> {{ statistical_results.sensitivity_analysis.normality_tests.shapiro_wilk.p_value|floatformat:3 }}</p>
+                                <p class="small text-muted">{{ statistical_results.sensitivity_analysis.normality_tests.shapiro_wilk.interpretation }}</p>
+                                
+                                <hr>
+                                
+                                <h6 class="text-primary">Distribution Statistics</h6>
+                                <p><strong>Skewness:</strong> {{ statistical_results.sensitivity_analysis.normality_tests.distribution_stats.skewness|floatformat:3 }}</p>
+                                <p><strong>Kurtosis:</strong> {{ statistical_results.sensitivity_analysis.normality_tests.distribution_stats.kurtosis|floatformat:3 }}</p>
+                                <p class="small text-muted">{{ statistical_results.sensitivity_analysis.normality_tests.distribution_stats.interpretation }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card border-success">
+                            <div class="card-header bg-success text-white">
+                                <h4 class="h6 mb-0"><i class="fas fa-cog me-2"></i>Constant Sensitivity</h4>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted">Testing sensitivity to different small constants added to zero retraction counts:</p>
+                                
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Constant</th>
+                                            <th>Democracy Effect</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for test in statistical_results.sensitivity_analysis.constant_sensitivity.democracy_effects %}
+                                        <tr>
+                                            <td>{{ test.constant }}</td>
+                                            <td class="fw-bold">{{ test.percent_change|floatformat:1 }}%</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                
+                                <div class="alert alert-success mt-3">
+                                    <small><strong>Conclusion:</strong> {{ statistical_results.sensitivity_analysis.constant_sensitivity.interpretation }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Model Comparison -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <h4 class="h6 mb-0"><i class="fas fa-balance-scale me-2"></i>Model Comparison</h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Predictive Performance (LOO-CV)</h6>
+                                        <table class="table table-sm">
+                                            <tbody>
+                                                <tr>
+                                                    <th>Negative Binomial:</th>
+                                                    <td class="fw-bold text-success">{{ statistical_results.sensitivity_analysis.model_comparison.negative_binomial_loo|floatformat:1 }} ± {{ statistical_results.sensitivity_analysis.model_comparison.negative_binomial_se|floatformat:1 }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Log-Gaussian:</th>
+                                                    <td>{{ statistical_results.sensitivity_analysis.model_comparison.log_gaussian_loo|floatformat:1 }} ± {{ statistical_results.sensitivity_analysis.model_comparison.log_gaussian_se|floatformat:1 }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Difference (ΔLOO):</th>
+                                                    <td class="fw-bold">{{ statistical_results.sensitivity_analysis.model_comparison.loo_difference|floatformat:1 }} ± {{ statistical_results.sensitivity_analysis.model_comparison.loo_se_diff|floatformat:1 }}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="alert alert-info">
+                                            <h6 class="text-primary">Preferred Model</h6>
+                                            <p class="fw-bold">{{ statistical_results.sensitivity_analysis.model_comparison.preferred_model }}</p>
+                                            <p class="small">{{ statistical_results.sensitivity_analysis.model_comparison.interpretation }}</p>
+                                            <p class="small text-muted">{{ statistical_results.sensitivity_analysis.model_comparison.technical_note }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Overall Conclusions -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card border-dark">
+                            <div class="card-header bg-dark text-white">
+                                <h4 class="h6 mb-0"><i class="fas fa-check-circle me-2"></i>Sensitivity Analysis Conclusions</h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Robustness</h6>
+                                        <p class="small">{{ statistical_results.sensitivity_analysis.conclusions.robustness }}</p>
+                                        
+                                        <h6 class="text-primary">Effect Direction</h6>
+                                        <p class="small">{{ statistical_results.sensitivity_analysis.conclusions.direction }}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Effect Magnitude</h6>
+                                        <p class="small">{{ statistical_results.sensitivity_analysis.conclusions.magnitude }}</p>
+                                        
+                                        <h6 class="text-primary">Model Preference</h6>
+                                        <p class="small">{{ statistical_results.sensitivity_analysis.conclusions.model_preference }}</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-success mt-3">
+                                    <strong>Summary:</strong> The democracy-retraction association is robust across different model specifications, 
+                                    providing strong evidence for the protective effect of democratic governance on research integrity.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Subgroup Analysis -->
+            <div class="tab-pane fade" id="subgroup-analysis" role="tabpanel">
+                <h3 class="h5 mb-3"><i class="fas fa-layer-group me-2"></i>Subgroup Analysis</h3>
+                <p class="text-muted mb-4">Exploring effect heterogeneity across research fields, retraction reasons, and author position</p>
+                
+                <!-- Research Fields Subgroup -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <h4 class="h6 mb-0"><i class="fas fa-flask me-2"></i>Research Fields Analysis</h4>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted">Democracy effects by research discipline (Health-related vs Non-health-related)</p>
+                                
+                                <div class="row">
+                                    {% for field, data in statistical_results.subgroup_analysis.research_fields.items %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card border-light">
+                                            <div class="card-header bg-light">
+                                                <h6 class="mb-0 text-primary">{{ field }}</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <table class="table table-sm mb-0">
+                                                    <tbody>
+                                                        <tr>
+                                                            <th class="text-muted">Sample Size:</th>
+                                                            <td>{{ data.n_observations|floatformat:0 }} observations, {{ data.n_countries }} countries</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Democracy IRR:</th>
+                                                            <td class="fw-bold">{{ data.democracy_irr|floatformat:3 }} ({{ data.irr_lower|floatformat:3 }}–{{ data.irr_upper|floatformat:3 }})</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Interpretation:</th>
+                                                            <td class="small">{{ data.interpretation }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Convergence:</th>
+                                                            <td class="small">R̂ = {{ data.max_rhat|floatformat:3 }}, ESS = {{ data.min_ess|floatformat:3 }}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% empty %}
+                                    <div class="col-12">
+                                        <div class="alert alert-info">
+                                            <strong>No subgroup data available</strong> for research fields analysis.
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Retraction Categories Subgroup -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card border-warning">
+                            <div class="card-header bg-warning text-dark">
+                                <h4 class="h6 mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Retraction Categories Analysis</h4>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted">Democracy effects by retraction type (Content-related vs Non-content-related)</p>
+                                
+                                <div class="row">
+                                    {% for category, data in statistical_results.subgroup_analysis.retraction_categories.items %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card border-light">
+                                            <div class="card-header bg-light">
+                                                <h6 class="mb-0 text-warning">{{ category }}</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <table class="table table-sm mb-0">
+                                                    <tbody>
+                                                        <tr>
+                                                            <th class="text-muted">Sample Size:</th>
+                                                            <td>{{ data.n_observations|floatformat:0 }} observations, {{ data.n_countries }} countries</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Democracy IRR:</th>
+                                                            <td class="fw-bold">{{ data.democracy_irr|floatformat:3 }} ({{ data.irr_lower|floatformat:3 }}–{{ data.irr_upper|floatformat:3 }})</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Interpretation:</th>
+                                                            <td class="small">{{ data.interpretation }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Convergence:</th>
+                                                            <td class="small">R̂ = {{ data.max_rhat|floatformat:3 }}, ESS = {{ data.min_ess|floatformat:3 }}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% empty %}
+                                    <div class="col-12">
+                                        <div class="alert alert-info">
+                                            <strong>No subgroup data available</strong> for retraction categories analysis.
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Geographic Scope Subgroup -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card border-success">
+                            <div class="card-header bg-success text-white">
+                                <h4 class="h6 mb-0"><i class="fas fa-globe me-2"></i>Geographic Scope Analysis</h4>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted">Democracy effects by collaboration pattern (International vs Domestic focus)</p>
+                                
+                                <div class="row">
+                                    {% for scope, data in statistical_results.subgroup_analysis.geographic_scope.items %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card border-light">
+                                            <div class="card-header bg-light">
+                                                <h6 class="mb-0 text-success">{{ scope }}</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <table class="table table-sm mb-0">
+                                                    <tbody>
+                                                        <tr>
+                                                            <th class="text-muted">Sample Size:</th>
+                                                            <td>{{ data.n_observations|floatformat:0 }} observations, {{ data.n_countries }} countries</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Democracy IRR:</th>
+                                                            <td class="fw-bold">{{ data.democracy_irr|floatformat:3 }} ({{ data.irr_lower|floatformat:3 }}–{{ data.irr_upper|floatformat:3 }})</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Interpretation:</th>
+                                                            <td class="small">{{ data.interpretation }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Convergence:</th>
+                                                            <td class="small">R̂ = {{ data.max_rhat|floatformat:3 }}, ESS = {{ data.min_ess|floatformat:3 }}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% empty %}
+                                    <div class="col-12">
+                                        <div class="alert alert-info">
+                                            <strong>No subgroup data available</strong> for geographic scope analysis.
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Interaction Effects -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card border-info">
+                            <div class="card-header bg-info text-white">
+                                <h4 class="h6 mb-0"><i class="fas fa-arrows-alt me-2"></i>Interaction Effects</h4>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted">Testing for statistical interactions between democracy and subgroup characteristics</p>
+                                
+                                {% if statistical_results.subgroup_analysis.interaction_effects %}
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Interaction Term</th>
+                                            <th>Coefficient</th>
+                                            <th>95% CrI</th>
+                                            <th>Significant</th>
+                                            <th>Interpretation</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for term, data in statistical_results.subgroup_analysis.interaction_effects.items %}
+                                        <tr>
+                                            <td class="small fw-bold">{{ term }}</td>
+                                            <td>{{ data.coefficient|floatformat:3 }}</td>
+                                            <td>({{ data.ci_lower|floatformat:3 }}, {{ data.ci_upper|floatformat:3 }})</td>
+                                            <td>
+                                                {% if data.significant %}
+                                                <span class="badge bg-success">Yes</span>
+                                                {% else %}
+                                                <span class="badge bg-secondary">No</span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="small">{{ data.interpretation|default:"No significant interaction" }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                {% else %}
+                                <div class="alert alert-info">
+                                    <strong>No significant interaction effects detected.</strong> Democracy effects appear consistent across subgroups.
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Heterogeneity Assessment -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card border-dark">
+                            <div class="card-header bg-dark text-white">
+                                <h4 class="h6 mb-0"><i class="fas fa-chart-line me-2"></i>Heterogeneity Assessment</h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Overall Pattern</h6>
+                                        <p class="small">{{ statistical_results.subgroup_analysis.heterogeneity_assessment.overall_pattern }}</p>
+                                        
+                                        <h6 class="text-primary">Effect Variation</h6>
+                                        <p class="small">{{ statistical_results.subgroup_analysis.heterogeneity_assessment.effect_magnitude_variation }}</p>
+                                        
+                                        <h6 class="text-primary">Statistical Significance</h6>
+                                        <p class="small">{{ statistical_results.subgroup_analysis.heterogeneity_assessment.statistical_significance }}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-primary">Clinical Relevance</h6>
+                                        <p class="small">{{ statistical_results.subgroup_analysis.heterogeneity_assessment.clinical_relevance }}</p>
+                                        
+                                        <h6 class="text-primary">Interaction Significance</h6>
+                                        <p class="small">{{ statistical_results.subgroup_analysis.heterogeneity_assessment.interaction_significance }}</p>
+                                        
+                                        {% if statistical_results.subgroup_analysis.summary %}
+                                        <h6 class="text-primary">Summary Statistics</h6>
+                                        <ul class="small">
+                                            <li><strong>Subgroups tested:</strong> {{ statistical_results.subgroup_analysis.summary.total_subgroups_tested }}</li>
+                                            <li><strong>Strongest effect:</strong> {{ statistical_results.subgroup_analysis.summary.strongest_effect_subgroup }}</li>
+                                            <li><strong>Weakest effect:</strong> {{ statistical_results.subgroup_analysis.summary.weakest_effect_subgroup }}</li>
+                                        </ul>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-primary mt-3">
+                                    <strong>Conclusion:</strong> {{ statistical_results.subgroup_analysis.heterogeneity_assessment.interpretation }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div> <!-- End tab-content -->
+    </div>
+</div>
+
+<!-- Loading Spinner -->
+<div id="loadingSpinner" class="text-center mt-5" style="display: none;">
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js for scatter and line charts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Plotly.js for world map -->
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist@2.24.1/plotly.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // Democracy vs Retractions Scatter Plot
+    function createScatterPlot() {
+        const ctx = document.getElementById('democracyScatterChart').getContext('2d');
+                        const data = {{ visualizations.democracy_retraction_scatter.data|jsonify }};
+        
+        // Debug: Check what data we received
+        console.log('Scatter plot data:', data);
+        console.log('Scatter plot data type:', typeof data);
+        console.log('Countries count:', data.countries ? data.countries.length : 0);
+        
+        // Debug: Check first few countries and data ranges
+        if (data.countries && data.countries.length > 0) {
+            console.log('First country:', data.countries[0]);
+            console.log('Sample mapping:', {
+                x: data.countries[0].democracy,
+                y_original: data.countries[0].retraction_rate,
+                y_log10: Math.log10(Math.max(0.1, data.countries[0].retraction_rate)),
+                label: data.countries[0].name
+            });
+            
+            // Check data ranges
+            const democracyRange = {
+                min: Math.min(...data.countries.map(c => c.democracy)),
+                max: Math.max(...data.countries.map(c => c.democracy))
+            };
+            const retractionRange = {
+                min: Math.min(...data.countries.map(c => c.retraction_rate)),
+                max: Math.max(...data.countries.map(c => c.retraction_rate))
+            };
+            const retractionRangeLog = {
+                min: Math.min(...data.countries.map(c => Math.log10(Math.max(0.1, c.retraction_rate)))),
+                max: Math.max(...data.countries.map(c => Math.log10(Math.max(0.1, c.retraction_rate))))
+            };
+            console.log('Democracy range:', democracyRange);
+            console.log('Retraction rate range (per 100K):', retractionRange);
+            console.log('Retraction rate range (log₁₀):', retractionRangeLog);
+        }
+        
+        // Safety check
+        if (!data || !data.countries || !Array.isArray(data.countries)) {
+            console.error('Invalid scatter plot data structure:', data);
+            document.getElementById('democracyScatterChart').parentElement.innerHTML = 
+                '<div class="alert alert-warning">No data available for scatter plot</div>';
+            return;
+        }
+        
+        // Destroy existing chart if it exists
+        const existingChart = Chart.getChart(ctx);
+        if (existingChart) {
+            existingChart.destroy();
+        }
+        
+                            // Define region colors (matching database region names exactly)
+                    const regionColors = {
+                        'North America': '#FF6B6B',
+                        'Latin America and the Caribbean': '#4ECDC4', 
+                        'Western Europe': '#45B7D1',
+                        'Central and Eastern Europe': '#74B9FF',
+                        'Sub-Saharan Africa': '#96CEB4',
+                        'Asia and Australasia': '#FFEAA7',
+                        'Middle East and North Africa': '#FFB347',
+                        'Unknown': '#95A5A6'
+                    };
+        
+        // Debug: Check what regions we have
+        const allRegions = data.countries.map(c => c.region || 'Unknown');
+        const uniqueRegions = [...new Set(allRegions)];
+        console.log('All regions found:', uniqueRegions);
+        console.log('Sample countries with regions:', data.countries.slice(0, 5).map(c => ({name: c.name, region: c.region})));
+        
+        // Group countries by region for multiple datasets
+        const regionDatasets = {};
+        data.countries.forEach(country => {
+            const region = country.region || 'Unknown';
+            if (!regionDatasets[region]) {
+                regionDatasets[region] = [];
+            }
+            
+            // Calculate point size based on publications (log scale for better visualization)
+            const publications = country.publications || 1;
+            const pointSize = Math.max(4, Math.min(20, Math.log(publications) * 2));
+            
+            regionDatasets[region].push({
+                x: country.democracy,
+                y: Math.log10(Math.max(0.1, country.retraction_rate)), // Log10 transformation, min 0.1 to avoid log(0)
+                pointRadius: pointSize,
+                countryData: country
+            });
+        });
+        
+        // Create datasets for each region
+        const datasets = Object.keys(regionDatasets).map(region => ({
+            label: region,
+            data: regionDatasets[region],
+            backgroundColor: regionColors[region] || '#95A5A6',
+            borderColor: regionColors[region] || '#95A5A6',
+            borderWidth: 2,
+            pointHoverRadius: function(context) {
+                // Get the base radius from the data point, add hover effect
+                const baseRadius = context.raw.pointRadius || 6;
+                return baseRadius + 3;
+            }
+        }));
+
+        new Chart(ctx, {
+            type: 'scatter',
+            data: { datasets: datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'nearest',
+                    intersect: false,
+                    includeInvisible: false
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Democracy Score vs Retraction Rate (bubble size = publications)',
+                        font: { size: 16, weight: 'bold' }
+                    },
+                    tooltip: {
+                        enabled: true,
+                        mode: 'nearest',
+                        intersect: false,
+                        animation: {
+                            duration: 200
+                        },
+                        displayColors: true,
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: 'white',
+                        bodyColor: 'white',
+                        borderColor: 'rgba(255, 255, 255, 0.1)',
+                        borderWidth: 1,
+                        cornerRadius: 6,
+                        caretPadding: 10,
+                        callbacks: {
+                            title: function(context) {
+                                const country = context[0].raw.countryData;
+                                return country.name;
+                            },
+                            label: function(context) {
+                                const country = context.raw.countryData;
+                                return [
+                                    `Region: ${country.region}`,
+                                    `Democracy Score: ${country.democracy.toFixed(1)}`,
+                                    `Retraction Rate: ${country.retraction_rate.toFixed(1)} per 100K`,
+                                    `Publications: ${country.publications.toLocaleString()}`
+                                ];
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Democracy Index Score',
+                            font: { weight: 'bold' }
+                        },
+                        min: 0,
+                        max: 10
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Retraction Rate (log₁₀ scale)',
+                            font: { weight: 'bold' }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Temporal Trends Chart
+    function createTemporalChart() {
+        const ctx = document.getElementById('temporalTrendsChart').getContext('2d');
+        const data = {{ visualizations.temporal_trends.data|jsonify }};
+        
+        // Debug: Check what data we received
+        console.log('Temporal trends data:', data);
+        
+        // Safety check
+        if (!data || !data.years || !Array.isArray(data.years)) {
+            console.error('Invalid temporal trends data structure:', data);
+            document.getElementById('temporalTrendsChart').parentElement.innerHTML = 
+                '<div class="alert alert-warning">No data available for temporal trends</div>';
+            return;
+        }
+        
+        // Destroy existing chart if it exists
+        const existingChart = Chart.getChart(ctx);
+        if (existingChart) {
+            existingChart.destroy();
+        }
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.years,
+                datasets: [
+                    {
+                        label: 'Global Democracy Score',
+                        data: data.global_democracy,
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        yAxisID: 'y',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Retraction Rate (per 100K)',
+                        data: data.retraction_rate,
+                        borderColor: 'rgba(220, 38, 38, 1)',
+                        backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                        yAxisID: 'y1',
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Global Trends: Democracy Decline & Retraction Rise',
+                        font: { size: 16, weight: 'bold' }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Year',
+                            font: { weight: 'bold' }
+                        }
+                    },
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'Democracy Score',
+                            font: { weight: 'bold' }
+                        },
+                        min: 4,
+                        max: 7
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Retraction Rate (per 100K)',
+                            font: { weight: 'bold' }
+                        },
+                        grid: {
+                            drawOnChartArea: false,
+                        },
+                    }
+                }
+            }
+        });
+    }
+    
+    // World Map Visualization
+    function createWorldMap() {
+        const data = {{ visualizations.world_map.data|jsonify }};
+        
+        // Debug: Check what data we received
+        console.log('World map data:', data);
+        
+        // Safety check
+        if (!data || !data.countries || !Array.isArray(data.countries)) {
+            console.error('Invalid world map data structure:', data);
+            document.getElementById('worldMapChart').innerHTML = 
+                '<div class="alert alert-warning">No data available for world map</div>';
+            return;
+        }
+        
+        const plotData = [{
+            type: 'choropleth',
+            locations: data.countries.map(c => c.iso),
+            z: data.countries.map(c => c.democracy),
+            text: data.countries.map(c => 
+                `Country: ${c.iso}<br>Democracy: ${c.democracy}<br>Retraction Rate: ${c.retraction_rate.toFixed(1)} per 100K`
+            ),
+            colorscale: [
+                [0, 'rgb(220, 38, 38)'],
+                [0.5, 'rgb(251, 191, 36)'],
+                [1, 'rgb(34, 197, 94)']
+            ],
+            colorbar: {
+                title: 'Democracy Score',
+                titlefont: { size: 14 }
+            }
+        }];
+        
+        const layout = {
+            title: {
+                text: 'Global Democracy Scores',
+                font: { size: 18, weight: 'bold' }
+            },
+            geo: {
+                showframe: false,
+                showcoastlines: true,
+                projection: { type: 'natural earth' }
+            },
+            margin: { t: 50, b: 0, l: 0, r: 0 }
+        };
+        
+        Plotly.newPlot('worldMapChart', plotData, layout, {responsive: true});
+    }
+    
+    // Initialize charts when tabs are shown
+    createScatterPlot();
+    
+    // Create other charts when their tabs are clicked
+    document.getElementById('temporal-tab').addEventListener('shown.bs.tab', function() {
+        setTimeout(createTemporalChart, 100);
+    });
+    
+    document.getElementById('worldmap-tab').addEventListener('shown.bs.tab', function() {
+        setTimeout(createWorldMap, 100);
+    });
+    
+    // Show loading spinner during chart creation
+    function showLoading() {
+        document.getElementById('loadingSpinner').style.display = 'block';
+    }
+    
+    function hideLoading() {
+        document.getElementById('loadingSpinner').style.display = 'none';
+    }
+    
+    // Hide loading spinner after initial load
+    setTimeout(hideLoading, 1000);
+});
+</script>
+{% endblock %}
