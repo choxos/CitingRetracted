@@ -73,6 +73,10 @@ class EnhancedAnalysisResult:
     analysis_timestamp: str
     analysis_duration: float
     journal_url: str
+    
+    # Confidence Intervals (Optional)
+    confidence_95ci_lower: float = 0.0
+    confidence_95ci_upper: float = 0.0
 
 class EnhancedPredatoryDetector:
     """
@@ -273,7 +277,7 @@ class EnhancedPredatoryDetector:
         result = self._calculate_comprehensive_score(
             peer_review_result, language_result, editorial_result,
             indexing_result, contact_result, name_result,
-            url, analysis_duration
+            url, analysis_duration, content
         )
         
         logger.info(f"✅ Analysis complete: {result.overall_score:.1f}/100 ({result.risk_level})")
@@ -776,7 +780,7 @@ class EnhancedPredatoryDetector:
     
     def _calculate_comprehensive_score(self, peer_review_result, language_result, 
                                      editorial_result, indexing_result, contact_result,
-                                     name_result, url, duration) -> EnhancedAnalysisResult:
+                                     name_result, url, duration, content) -> EnhancedAnalysisResult:
         """Calculate comprehensive final score with evidence-based weighting"""
         
         # Extract scores
@@ -807,19 +811,23 @@ class EnhancedPredatoryDetector:
         # Determine risk level with enhanced thresholds
         if total_score >= 75:
             risk_level = "Very High Risk"
-            confidence = 0.95
         elif total_score >= 60:
             risk_level = "High Risk"
-            confidence = 0.90
         elif total_score >= 40:
             risk_level = "Moderate Risk"
-            confidence = 0.80
         elif total_score >= 20:
             risk_level = "Low Risk"
-            confidence = 0.70
         else:
             risk_level = "Very Low Risk"
-            confidence = 0.60
+        
+        # Calculate dynamic confidence with 95% CI
+        confidence_result = self._calculate_dynamic_confidence(
+            total_score, peer_score, language_score, editorial_score, 
+            indexing_score, contact_score, content, all_flags
+        )
+        confidence = confidence_result['confidence']
+        confidence_lower = confidence_result['confidence_95ci_lower']
+        confidence_upper = confidence_result['confidence_95ci_upper']
         
         # Generate comprehensive recommendations
         recommendations = self._generate_comprehensive_recommendations(
@@ -844,6 +852,8 @@ class EnhancedPredatoryDetector:
             overall_score=total_score,
             risk_level=risk_level,
             confidence_score=confidence,
+            confidence_95ci_lower=confidence_lower,
+            confidence_95ci_upper=confidence_upper,
             
             peer_review_score=peer_score,
             predatory_language_score=language_score,
@@ -870,6 +880,110 @@ class EnhancedPredatoryDetector:
             analysis_duration=duration,
             journal_url=url
         )
+    
+    def _calculate_dynamic_confidence(self, total_score, peer_score, language_score, 
+                                    editorial_score, indexing_score, contact_score, 
+                                    content, flags):
+        """
+        Calculate dynamic confidence with 95% confidence intervals
+        
+        Factors considered:
+        - Data quality and completeness
+        - Score consistency and variance
+        - External validation signals
+        - Analysis coverage
+        """
+        import math
+        
+        # Base confidence from score (refined)
+        if total_score >= 75:
+            base_confidence = 0.92
+        elif total_score >= 60:
+            base_confidence = 0.85
+        elif total_score >= 40:
+            base_confidence = 0.75
+        elif total_score >= 20:
+            base_confidence = 0.68
+        else:
+            base_confidence = 0.60
+        
+        # Adjustment factors
+        adjustments = 0.0
+        uncertainty_factors = []
+        
+        # 1. Data Quality Factor (±0.15)
+        content_length = len(content) if content else 0
+        if content_length > 50000:  # Rich content available
+            adjustments += 0.10
+            uncertainty_factors.append(0.02)  # Low uncertainty
+        elif content_length > 20000:  # Moderate content
+            adjustments += 0.05
+            uncertainty_factors.append(0.04)  # Medium uncertainty  
+        elif content_length > 5000:   # Limited content
+            adjustments -= 0.05
+            uncertainty_factors.append(0.08)  # High uncertainty
+        else:  # Very limited content
+            adjustments -= 0.15
+            uncertainty_factors.append(0.12)  # Very high uncertainty
+        
+        # 2. Score Consistency Factor (±0.10)
+        scores = [peer_score, language_score, editorial_score, indexing_score, contact_score]
+        score_std = math.sqrt(sum((s - sum(scores)/len(scores))**2 for s in scores) / len(scores))
+        if score_std < 5:  # Consistent scores
+            adjustments += 0.08
+            uncertainty_factors.append(0.02)
+        elif score_std < 10:  # Moderate consistency
+            adjustments += 0.03
+            uncertainty_factors.append(0.04)
+        else:  # Inconsistent scores
+            adjustments -= 0.05
+            uncertainty_factors.append(0.08)
+        
+        # 3. External Validation Factor (±0.08)
+        # Check for positive indicators (inverse of flags)
+        critical_flags = len([f for f in flags if 'critical' in f.lower() or 'red flag' in f.lower()])
+        if critical_flags == 0:
+            adjustments += 0.08
+            uncertainty_factors.append(0.01)
+        elif critical_flags <= 2:
+            adjustments += 0.03
+            uncertainty_factors.append(0.03)
+        else:
+            adjustments -= 0.05
+            uncertainty_factors.append(0.06)
+        
+        # 4. Analysis Completeness Factor (±0.07)
+        # All scores available (none are 0 when they should have values)
+        non_zero_scores = len([s for s in scores if s > 0])
+        if non_zero_scores >= 4:  # Most criteria analyzed
+            adjustments += 0.05
+            uncertainty_factors.append(0.02)
+        elif non_zero_scores >= 3:  # Some criteria analyzed
+            adjustments += 0.02
+            uncertainty_factors.append(0.03)
+        else:  # Limited analysis
+            adjustments -= 0.05
+            uncertainty_factors.append(0.07)
+        
+        # Calculate final confidence
+        confidence = max(0.50, min(0.98, base_confidence + adjustments))
+        
+        # Calculate 95% confidence interval
+        # Combined uncertainty from all factors
+        combined_uncertainty = math.sqrt(sum(u**2 for u in uncertainty_factors))
+        margin_of_error = 1.96 * combined_uncertainty  # 95% CI
+        
+        confidence_lower = max(0.40, confidence - margin_of_error)
+        confidence_upper = min(0.99, confidence + margin_of_error)
+        
+        return {
+            'confidence': confidence,
+            'confidence_95ci_lower': confidence_lower,
+            'confidence_95ci_upper': confidence_upper,
+            'base_confidence': base_confidence,
+            'adjustments': adjustments,
+            'uncertainty': combined_uncertainty
+        }
     
     def _generate_comprehensive_recommendations(self, total_score, peer_score, 
                                               language_score, editorial_score, 

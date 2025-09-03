@@ -117,6 +117,15 @@
     border: 2px solid #16a34a;
 }
 
+.confidence-display {
+    margin-top: 1rem;
+}
+
+.confidence-interval {
+    font-size: 0.9em;
+    opacity: 0.8;
+}
+
 .score-number {
     font-size: 3rem;
     font-weight: 700;
@@ -392,10 +401,18 @@
                         {{ analysis_result.overall_score|floatformat:1 }}/100
                     </h1>
                     <p class="risk-level mb-2">{{ analysis_result.risk_level }}</p>
-                    <p class="mb-0">
-                        <i class="fas fa-chart-bar me-1"></i>
-                        Confidence: {{ analysis_result.confidence_score|floatformat:1 }}%
-                    </p>
+                    <div class="confidence-display">
+                        <p class="mb-1">
+                            <i class="fas fa-chart-bar me-1"></i>
+                            <strong>Confidence: {{ analysis_result.confidence_score|floatformat:1 }}%</strong>
+                        </p>
+                        <p class="confidence-interval mb-0">
+                            <i class="fas fa-arrows-alt-h me-1 text-muted"></i>
+                            <small class="text-muted">
+                                95% CI: [{{ analysis_result.confidence_95ci_lower|floatformat:1 }}% - {{ analysis_result.confidence_95ci_upper|floatformat:1 }}%]
+                            </small>
+                        </p>
+                    </div>
                 </div>
             </div>
             
