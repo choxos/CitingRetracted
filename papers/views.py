@@ -22,6 +22,17 @@ from django.utils.decorators import method_decorator
 import logging
 from django.db.models.functions import TruncMonth, TruncYear
 
+# Import predatory journal detector
+import sys
+import os
+from pathlib import Path
+
+# Add Predatory Journal Detector to Python path
+PROJECT_ROOT = Path(__file__).parent.parent
+PREDATORY_DETECTOR_PATH = PROJECT_ROOT / 'Predatory_Journal_Detector'
+if str(PREDATORY_DETECTOR_PATH) not in sys.path:
+    sys.path.append(str(PREDATORY_DETECTOR_PATH))
+
 logger = logging.getLogger(__name__)
 
 
@@ -2770,6 +2781,122 @@ class AnalyticsDataAPIView(View):
             'post_retraction_data': [item['post_retraction_citations'] for item in parsed_subjects],
             'total_subjects': len(parsed_subjects)
         }
+
+
+class PredatoryJournalAnalysisView(View):
+    """
+    Predatory Journal Detection and Analysis Page
+    
+    Allows users to analyze journals for predatory behavior using the
+    enhanced predatory journal detector system.
+    """
+    
+    def get(self, request):
+        """Display the predatory journal analysis form"""
+        context = {
+            'page_title': 'Predatory Journal Detector',
+            'page_description': 'Analyze journals for predatory behavior using evidence-based criteria',
+        }
+        return render(request, 'papers/predatory_analysis.html', context)
+    
+    def post(self, request):
+        """Handle journal analysis request"""
+        try:
+            # Import the detector here to avoid startup issues
+            from enhanced_predatory_detector import EnhancedPredatoryDetector
+            
+            # Get the journal URL or name from the form
+            journal_url = request.POST.get('journal_url', '').strip()
+            journal_name = request.POST.get('journal_name', '').strip()
+            
+            if not journal_url and not journal_name:
+                context = {
+                    'error': 'Please provide either a journal URL or journal name.',
+                    'page_title': 'Predatory Journal Detector',
+                    'page_description': 'Analyze journals for predatory behavior using evidence-based criteria',
+                }
+                return render(request, 'papers/predatory_analysis.html', context)
+            
+            # If only journal name is provided, we'll create a mock URL for analysis
+            if not journal_url and journal_name:
+                # Create a search URL or handle name-only analysis
+                journal_url = f"https://search.example.com/{journal_name.replace(' ', '-').lower()}"
+            
+            # Initialize the detector
+            detector = EnhancedPredatoryDetector()
+            
+            # Perform the analysis
+            logger.info(f"Starting predatory journal analysis for: {journal_url}")
+            result = detector.analyze_journal_comprehensive(journal_url)
+            
+            # Convert result to dict for template rendering
+            analysis_result = {
+                'journal_url': journal_url,
+                'journal_name': journal_name,
+                'overall_score': result.overall_score,
+                'risk_level': result.risk_level,
+                'confidence_score': result.confidence_score,
+                
+                # Category scores
+                'peer_review_score': result.peer_review_score,
+                'predatory_language_score': result.predatory_language_score,
+                'editorial_board_score': result.editorial_board_score,
+                'indexing_verification_score': result.indexing_verification_score,
+                'contact_transparency_score': result.contact_transparency_score,
+                
+                # Findings
+                'critical_red_flags': result.critical_red_flags,
+                'high_risk_warnings': result.high_risk_warnings,
+                'moderate_concerns': result.moderate_concerns,
+                'positive_indicators': result.positive_indicators,
+                
+                # Recommendations
+                'recommendations': result.recommendations,
+                'next_steps': result.next_steps,
+                
+                # Metadata
+                'analysis_timestamp': result.analysis_timestamp,
+                'analysis_duration': result.analysis_duration,
+                
+                # Detailed analysis
+                'peer_review_analysis': result.peer_review_analysis,
+                'language_analysis': result.language_analysis,
+                'editorial_analysis': result.editorial_analysis,
+                'indexing_analysis': result.indexing_analysis,
+                'external_verification': result.external_verification,
+            }
+            
+            # Determine recommendation style class
+            if result.overall_score >= 75:
+                recommendation_class = 'alert-danger'
+            elif result.overall_score >= 50:
+                recommendation_class = 'alert-warning'
+            elif result.overall_score >= 25:
+                recommendation_class = 'alert-info'
+            else:
+                recommendation_class = 'alert-success'
+            
+            context = {
+                'page_title': 'Predatory Journal Analysis Results',
+                'page_description': f'Analysis results for {journal_name or journal_url}',
+                'analysis_result': analysis_result,
+                'recommendation_class': recommendation_class,
+                'show_results': True,
+            }
+            
+            logger.info(f"Predatory journal analysis completed: {result.overall_score}/100 ({result.risk_level})")
+            
+        except Exception as e:
+            logger.error(f"Error in predatory journal analysis: {e}", exc_info=True)
+            context = {
+                'error': f'Analysis failed: {str(e)}. Please check the URL and try again.',
+                'page_title': 'Predatory Journal Detector',
+                'page_description': 'Analyze journals for predatory behavior using evidence-based criteria',
+                'journal_url': journal_url,
+                'journal_name': journal_name,
+            }
+        
+        return render(request, 'papers/predatory_analysis.html', context)
 
 
 class DemocracyAnalysisView(View):

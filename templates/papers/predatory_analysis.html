@@ -1,0 +1,694 @@
+{% extends 'prct_base.html' %}
+{% load static %}
+
+{% block title %}Predatory Journal Detector - Post-Retraction Citation Tracker{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ===============================================
+   PREDATORY JOURNAL ANALYSIS PAGE STYLES
+   =============================================== */
+
+.hero-predatory {
+    background: linear-gradient(135deg, #dc2626 0%, #991b1b 50%, #7f1d1d 100%);
+    color: white;
+    padding: 4rem 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-predatory::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="predatory-pattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M10,10 L15,5 L10,0 L5,5 Z" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23predatory-pattern)"/></svg>');
+    opacity: 0.3;
+}
+
+.hero-predatory .container {
+    position: relative;
+    z-index: 1;
+}
+
+.analysis-form-card {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    margin: 2rem auto;
+    max-width: 800px;
+    border: 1px solid #e5e7eb;
+}
+
+.form-section {
+    margin-bottom: 2rem;
+}
+
+.form-section h3 {
+    color: #dc2626;
+    margin-bottom: 1rem;
+}
+
+.form-control-lg {
+    padding: 1rem;
+    font-size: 1.1rem;
+    border-radius: 10px;
+    border: 2px solid #e5e7eb;
+}
+
+.form-control-lg:focus {
+    border-color: #dc2626;
+    box-shadow: 0 0 0 0.2rem rgba(220, 38, 38, 0.25);
+}
+
+.btn-analyze {
+    background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+    border: none;
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 10px;
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.btn-analyze:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(220, 38, 38, 0.3);
+    color: white;
+}
+
+.results-card {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+    border-left: 5px solid #dc2626;
+}
+
+.score-display {
+    text-align: center;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    border-radius: 15px;
+}
+
+.score-display.very-high-risk {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    border: 2px solid #dc2626;
+}
+
+.score-display.high-risk {
+    background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);
+    border: 2px solid #ea580c;
+}
+
+.score-display.moderate-risk {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 2px solid #d97706;
+}
+
+.score-display.low-risk {
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    border: 2px solid #16a34a;
+}
+
+.score-number {
+    font-size: 3rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.score-number.very-high-risk {
+    color: #dc2626;
+}
+
+.score-number.high-risk {
+    color: #ea580c;
+}
+
+.score-number.moderate-risk {
+    color: #d97706;
+}
+
+.score-number.low-risk {
+    color: #16a34a;
+}
+
+.risk-level {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+}
+
+.category-scores {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin: 2rem 0;
+}
+
+.category-card {
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 1rem;
+    border-left: 4px solid #dc2626;
+}
+
+.category-score {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #dc2626;
+}
+
+.findings-section {
+    margin: 2rem 0;
+}
+
+.findings-list {
+    list-style: none;
+    padding: 0;
+}
+
+.findings-list li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.findings-list li:last-child {
+    border-bottom: none;
+}
+
+.critical-flag {
+    color: #dc2626;
+    font-weight: 600;
+}
+
+.high-risk-warning {
+    color: #ea580c;
+    font-weight: 500;
+}
+
+.moderate-concern {
+    color: #d97706;
+}
+
+.positive-indicator {
+    color: #16a34a;
+    font-weight: 500;
+}
+
+.recommendations-card {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border-radius: 15px;
+    padding: 2rem;
+    border: 1px solid #0284c7;
+    margin-top: 2rem;
+}
+
+.details-accordion .accordion-item {
+    border: none;
+    margin-bottom: 0.5rem;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.details-accordion .accordion-header button {
+    background: #f8fafc;
+    border: none;
+    font-weight: 600;
+    color: #374151;
+}
+
+.details-accordion .accordion-button:not(.collapsed) {
+    background: #dc2626;
+    color: white;
+}
+
+.analysis-meta {
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 1rem;
+    margin-top: 2rem;
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+
+.loading-spinner {
+    display: none;
+    text-align: center;
+    padding: 2rem;
+}
+
+.spinner-border {
+    color: #dc2626;
+}
+
+@media (max-width: 768px) {
+    .hero-predatory {
+        padding: 2rem 0;
+    }
+    
+    .analysis-form-card {
+        padding: 1rem;
+        margin: 1rem;
+    }
+    
+    .category-scores {
+        grid-template-columns: 1fr;
+    }
+    
+    .score-number {
+        font-size: 2rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-predatory">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h1 class="display-4 fw-bold mb-4">
+                    <i class="fas fa-shield-alt me-3"></i>
+                    Predatory Journal Detector
+                </h1>
+                <p class="lead mb-4">
+                    Analyze journals for predatory behavior using evidence-based criteria developed by 
+                    academic research and anti-predatory publishing guidelines.
+                </p>
+                <div class="d-flex justify-content-center flex-wrap gap-3">
+                    <span class="badge bg-light text-dark p-2">
+                        <i class="fas fa-search me-2"></i>Peer Review Analysis
+                    </span>
+                    <span class="badge bg-light text-dark p-2">
+                        <i class="fas fa-language me-2"></i>Language Detection
+                    </span>
+                    <span class="badge bg-light text-dark p-2">
+                        <i class="fas fa-users me-2"></i>Editorial Board Verification
+                    </span>
+                    <span class="badge bg-light text-dark p-2">
+                        <i class="fas fa-database me-2"></i>Indexing Verification
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Main Content -->
+<section class="py-5">
+    <div class="container">
+        
+        <!-- Analysis Form -->
+        {% if not show_results %}
+        <div class="analysis-form-card">
+            <div class="text-center mb-4">
+                <h2 class="text-dark">
+                    <i class="fas fa-microscope text-danger me-2"></i>
+                    Analyze a Journal
+                </h2>
+                <p class="text-muted">Enter a journal URL or name to analyze its legitimacy using our comprehensive detection system.</p>
+            </div>
+            
+            {% if error %}
+            <div class="alert alert-danger" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                {{ error }}
+            </div>
+            {% endif %}
+            
+            <form method="post" id="analysisForm">
+                {% csrf_token %}
+                
+                <div class="form-section">
+                    <h3><i class="fas fa-link me-2"></i>Journal Website URL</h3>
+                    <input type="url" 
+                           class="form-control form-control-lg" 
+                           id="journal_url" 
+                           name="journal_url" 
+                           placeholder="https://example-journal.com"
+                           value="{{ journal_url|default:'' }}">
+                    <div class="form-text">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Provide the complete URL of the journal's website for the most accurate analysis.
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h3><i class="fas fa-book me-2"></i>Or Journal Name</h3>
+                    <input type="text" 
+                           class="form-control form-control-lg" 
+                           id="journal_name" 
+                           name="journal_name" 
+                           placeholder="Journal of Advanced Research"
+                           value="{{ journal_name|default:'' }}">
+                    <div class="form-text">
+                        <i class="fas fa-info-circle me-1"></i>
+                        If you only have the journal name, we'll attempt to find and analyze it.
+                    </div>
+                </div>
+                
+                <div class="text-center">
+                    <button type="submit" class="btn btn-analyze btn-lg">
+                        <i class="fas fa-search me-2"></i>
+                        Analyze Journal
+                    </button>
+                </div>
+                
+                <div class="loading-spinner" id="loadingSpinner">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Analyzing...</span>
+                    </div>
+                    <p class="mt-2">Analyzing journal... This may take a few moments.</p>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+        
+        <!-- Analysis Results -->
+        {% if show_results and analysis_result %}
+        <div class="results-section">
+            <!-- Main Score Display -->
+            <div class="results-card">
+                <h2 class="text-center mb-4">
+                    <i class="fas fa-chart-line text-danger me-2"></i>
+                    Analysis Results
+                </h2>
+                
+                <div class="text-center mb-3">
+                    <h3 class="text-dark">{{ analysis_result.journal_name|default:analysis_result.journal_url }}</h3>
+                    <p class="text-muted">{{ analysis_result.journal_url }}</p>
+                </div>
+                
+                <div class="score-display {% if analysis_result.overall_score >= 75 %}very-high-risk{% elif analysis_result.overall_score >= 50 %}high-risk{% elif analysis_result.overall_score >= 25 %}moderate-risk{% else %}low-risk{% endif %}">
+                    <h1 class="score-number {% if analysis_result.overall_score >= 75 %}very-high-risk{% elif analysis_result.overall_score >= 50 %}high-risk{% elif analysis_result.overall_score >= 25 %}moderate-risk{% else %}low-risk{% endif %}">
+                        {{ analysis_result.overall_score|floatformat:1 }}/100
+                    </h1>
+                    <p class="risk-level mb-2">{{ analysis_result.risk_level }}</p>
+                    <p class="mb-0">
+                        <i class="fas fa-chart-bar me-1"></i>
+                        Confidence: {{ analysis_result.confidence_score|floatformat:1 }}%
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Category Breakdown -->
+            <div class="results-card">
+                <h3 class="mb-4">
+                    <i class="fas fa-chart-pie text-danger me-2"></i>
+                    Category Breakdown
+                </h3>
+                <div class="category-scores">
+                    <div class="category-card">
+                        <h5>Peer Review Transparency</h5>
+                        <div class="category-score">{{ analysis_result.peer_review_score|floatformat:1 }}/30</div>
+                        <small class="text-muted">Critical Indicator</small>
+                    </div>
+                    <div class="category-card">
+                        <h5>Predatory Language</h5>
+                        <div class="category-score">{{ analysis_result.predatory_language_score|floatformat:1 }}/25</div>
+                        <small class="text-muted">High Priority</small>
+                    </div>
+                    <div class="category-card">
+                        <h5>Editorial Board</h5>
+                        <div class="category-score">{{ analysis_result.editorial_board_score|floatformat:1 }}/20</div>
+                        <small class="text-muted">High Priority</small>
+                    </div>
+                    <div class="category-card">
+                        <h5>Indexing Verification</h5>
+                        <div class="category-score">{{ analysis_result.indexing_verification_score|floatformat:1 }}/15</div>
+                        <small class="text-muted">Moderate Priority</small>
+                    </div>
+                    <div class="category-card">
+                        <h5>Contact Transparency</h5>
+                        <div class="category-score">{{ analysis_result.contact_transparency_score|floatformat:1 }}/10</div>
+                        <small class="text-muted">Low Priority</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Findings -->
+            {% if analysis_result.critical_red_flags or analysis_result.high_risk_warnings or analysis_result.moderate_concerns or analysis_result.positive_indicators %}
+            <div class="results-card">
+                <h3 class="mb-4">
+                    <i class="fas fa-exclamation-triangle text-danger me-2"></i>
+                    Detailed Findings
+                </h3>
+                
+                {% if analysis_result.critical_red_flags %}
+                <div class="findings-section">
+                    <h5 class="text-danger">
+                        <i class="fas fa-ban me-2"></i>
+                        Critical Red Flags ({{ analysis_result.critical_red_flags|length }})
+                    </h5>
+                    <ul class="findings-list">
+                        {% for flag in analysis_result.critical_red_flags %}
+                        <li class="critical-flag">{{ flag }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                
+                {% if analysis_result.high_risk_warnings %}
+                <div class="findings-section">
+                    <h5 class="text-warning">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        High-Risk Warnings ({{ analysis_result.high_risk_warnings|length }})
+                    </h5>
+                    <ul class="findings-list">
+                        {% for warning in analysis_result.high_risk_warnings %}
+                        <li class="high-risk-warning">{{ warning }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                
+                {% if analysis_result.moderate_concerns %}
+                <div class="findings-section">
+                    <h5 class="text-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Moderate Concerns ({{ analysis_result.moderate_concerns|length }})
+                    </h5>
+                    <ul class="findings-list">
+                        {% for concern in analysis_result.moderate_concerns|slice:":10" %}
+                        <li class="moderate-concern">{{ concern }}</li>
+                        {% endfor %}
+                        {% if analysis_result.moderate_concerns|length > 10 %}
+                        <li class="text-muted"><em>... and {{ analysis_result.moderate_concerns|length|add:"-10" }} more concerns</em></li>
+                        {% endif %}
+                    </ul>
+                </div>
+                {% endif %}
+                
+                {% if analysis_result.positive_indicators %}
+                <div class="findings-section">
+                    <h5 class="text-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Positive Indicators ({{ analysis_result.positive_indicators|length }})
+                    </h5>
+                    <ul class="findings-list">
+                        {% for positive in analysis_result.positive_indicators %}
+                        <li class="positive-indicator">{{ positive }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            <!-- Recommendations -->
+            <div class="recommendations-card">
+                <h3 class="mb-4">
+                    <i class="fas fa-lightbulb text-primary me-2"></i>
+                    Recommendations & Next Steps
+                </h3>
+                
+                {% if analysis_result.recommendations %}
+                <div class="mb-4">
+                    <h5>Evidence-Based Recommendations:</h5>
+                    <ul>
+                        {% for rec in analysis_result.recommendations %}
+                        <li class="mb-2">{{ rec }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                
+                {% if analysis_result.next_steps %}
+                <div>
+                    <h5>Recommended Next Steps:</h5>
+                    <ul>
+                        {% for step in analysis_result.next_steps %}
+                        <li class="mb-2">{{ step }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Detailed Analysis (Collapsible) -->
+            <div class="results-card">
+                <h3 class="mb-4">
+                    <i class="fas fa-cogs text-danger me-2"></i>
+                    Detailed Technical Analysis
+                </h3>
+                
+                <div class="accordion details-accordion" id="detailsAccordion">
+                    {% if analysis_result.peer_review_analysis %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="peerReviewHeading">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#peerReviewDetails">
+                                <i class="fas fa-clipboard-list me-2"></i>
+                                Peer Review Analysis Details
+                            </button>
+                        </h2>
+                        <div id="peerReviewDetails" class="accordion-collapse collapse" data-bs-parent="#detailsAccordion">
+                            <div class="accordion-body">
+                                <pre>{{ analysis_result.peer_review_analysis|pprint }}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if analysis_result.language_analysis %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="languageHeading">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#languageDetails">
+                                <i class="fas fa-language me-2"></i>
+                                Language Analysis Details
+                            </button>
+                        </h2>
+                        <div id="languageDetails" class="accordion-collapse collapse" data-bs-parent="#detailsAccordion">
+                            <div class="accordion-body">
+                                <pre>{{ analysis_result.language_analysis|pprint }}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if analysis_result.editorial_analysis %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="editorialHeading">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#editorialDetails">
+                                <i class="fas fa-users me-2"></i>
+                                Editorial Board Analysis Details
+                            </button>
+                        </h2>
+                        <div id="editorialDetails" class="accordion-collapse collapse" data-bs-parent="#detailsAccordion">
+                            <div class="accordion-body">
+                                <pre>{{ analysis_result.editorial_analysis|pprint }}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if analysis_result.indexing_analysis %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="indexingHeading">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#indexingDetails">
+                                <i class="fas fa-database me-2"></i>
+                                Indexing Verification Details
+                            </button>
+                        </h2>
+                        <div id="indexingDetails" class="accordion-collapse collapse" data-bs-parent="#detailsAccordion">
+                            <div class="accordion-body">
+                                <pre>{{ analysis_result.indexing_analysis|pprint }}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Analysis Metadata -->
+            <div class="analysis-meta">
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>Analysis Timestamp:</strong> {{ analysis_result.analysis_timestamp|date:"M d, Y H:i:s" }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Analysis Duration:</strong> {{ analysis_result.analysis_duration|floatformat:2 }} seconds
+                    </div>
+                </div>
+                <div class="text-center mt-3">
+                    <small class="text-muted">
+                        Analysis based on: COPE, Think-Check-Submit, Eriksson & Helgesson, Jeffrey Beall's research, and recent academic literature (2023-2024)
+                    </small>
+                </div>
+            </div>
+            
+            <!-- Try Another Analysis -->
+            <div class="text-center mt-4">
+                <a href="{% url 'papers:predatory_analysis' %}" class="btn btn-outline-danger">
+                    <i class="fas fa-redo me-2"></i>
+                    Analyze Another Journal
+                </a>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Information Section -->
+        {% if not show_results %}
+        <div class="row mt-5">
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <div class="text-danger mb-3">
+                            <i class="fas fa-shield-alt fa-3x"></i>
+                        </div>
+                        <h5>Evidence-Based Detection</h5>
+                        <p class="card-text">Our system uses criteria validated by academic research and anti-predatory publishing guidelines.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <div class="text-danger mb-3">
+                            <i class="fas fa-search fa-3x"></i>
+                        </div>
+                        <h5>Comprehensive Analysis</h5>
+                        <p class="card-text">We analyze peer review processes, editorial boards, language patterns, and indexing claims.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <div class="text-danger mb-3">
+                            <i class="fas fa-chart-bar fa-3x"></i>
+                        </div>
+                        <h5>Detailed Reporting</h5>
+                        <p class="card-text">Get detailed scores, specific findings, and actionable recommendations for each journal.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Show loading spinner when form is submitted
+    document.getElementById('analysisForm')?.addEventListener('submit', function(e) {
+        document.getElementById('loadingSpinner').style.display = 'block';
+    });
+    
+    // Auto-focus on first input
+    const firstInput = document.querySelector('input[name="journal_url"]');
+    if (firstInput && !firstInput.value) {
+        firstInput.focus();
+    }
+});
+</script>
+{% endblock %}
