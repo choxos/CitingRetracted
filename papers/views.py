@@ -3740,15 +3740,24 @@ class DemocracyAnalysisView(View):
 
     
     def _get_raw_data_explorer(self):
-        """Return raw data explorer for all model variables"""
-        from .models import DemocracyData
-        from django.db.models import Min, Max, Avg, Count, Q
+        """Return raw data explorer using actual R analysis data"""
+        import pandas as pd
+        import os
+        import numpy as np
         
         try:
-            # Get comprehensive variable statistics
-            variables_info = {}
+            # Load the actual R analysis data
+            r_data_path = '/Users/choxos/Documents/GitHub/retractions_democracy/data/combined_data.csv'
             
-            # Define all variables with descriptions
+            if not os.path.exists(r_data_path):
+                raise FileNotFoundError(f"R analysis data not found at {r_data_path}")
+            
+            df = pd.read_csv(r_data_path)
+            
+            # Calculate retraction rate per 100K publications
+            df['retraction_rate'] = (df['retractions'] / df['publications'] * 100000).round(2)
+            
+            # Define all variables with descriptions (matching R analysis)
             variable_definitions = {
                 'democracy': {'name': 'Democracy Index', 'range': '0-10', 'description': 'Electoral democracy index from V-Dem'},
                 'retractions': {'name': 'Retractions', 'range': 'Count', 'description': 'Number of retracted publications per country-year'},
@@ -3761,36 +3770,37 @@ class DemocracyAnalysisView(View):
                 'regulatory_quality': {'name': 'Regulatory Quality', 'range': '-2.5 to 2.5', 'description': 'Government ability to formulate sound policies'},
                 'rule_of_law': {'name': 'Rule of Law', 'range': '-2.5 to 2.5', 'description': 'Quality of contract enforcement, courts, police'},
                 'international_collaboration': {'name': 'International Collaboration', 'range': '0-100%', 'description': 'Percentage of publications with international co-authors'},
-                'press_freedom': {'name': 'Press Freedom', 'range': '0-100', 'description': 'Freedom House press freedom score'},
+                'press_freedom': {'name': 'Press Freedom', 'range': '0-100', 'description': 'Freedom House press freedom score (lower is better)'},
                 'english_proficiency': {'name': 'English Proficiency', 'range': '0-100', 'description': 'EF English Proficiency Index score'},
-                'pdi': {'name': 'Power Distance Index', 'range': '0-100', 'description': 'Hofstede cultural dimension - power inequality acceptance'}
+                'PDI': {'name': 'Power Distance Index', 'range': '0-100', 'description': 'Hofstede cultural dimension - power inequality acceptance'}
             }
             
-            # Calculate statistics for each variable
+            # Calculate actual statistics for each variable
+            variables_info = {}
+            
             for var_name, var_info in variable_definitions.items():
                 try:
-                    stats = DemocracyData.objects.aggregate(
-                        min_val=Min(var_name),
-                        max_val=Max(var_name),
-                        avg_val=Avg(var_name),
-                        count_non_null=Count(var_name, filter=Q(**{f"{var_name}__isnull": False})),
-                        total_observations=Count('id')
-                    )
-                    
-                    # Calculate missing percentage
-                    missing_pct = ((stats['total_observations'] - stats['count_non_null']) / 
-                                 stats['total_observations'] * 100) if stats['total_observations'] > 0 else 0
-                    
-                    variables_info[var_name] = {
-                        'name': var_info['name'],
-                        'description': var_info['description'],
-                        'range': var_info['range'],
-                        'min': round(stats['min_val'], 3) if stats['min_val'] is not None else None,
-                        'max': round(stats['max_val'], 3) if stats['max_val'] is not None else None,
-                        'mean': round(stats['avg_val'], 3) if stats['avg_val'] is not None else None,
-                        'observations': stats['count_non_null'],
-                        'missing_pct': round(missing_pct, 1)
-                    }
+                    if var_name in df.columns:
+                        col = df[var_name]
+                        non_null = col.dropna()
+                        
+                        variables_info[var_name] = {
+                            'name': var_info['name'],
+                            'description': var_info['description'],
+                            'range': var_info['range'],
+                            'min': round(non_null.min(), 3) if len(non_null) > 0 else None,
+                            'max': round(non_null.max(), 3) if len(non_null) > 0 else None,
+                            'mean': round(non_null.mean(), 3) if len(non_null) > 0 else None,
+                            'observations': len(non_null),
+                            'missing_pct': round((col.isnull().sum() / len(col)) * 100, 1)
+                        }
+                    else:
+                        variables_info[var_name] = {
+                            'name': var_info['name'],
+                            'description': var_info['description'],
+                            'range': var_info['range'],
+                            'error': f'Column {var_name} not found in data'
+                        }
                 except Exception as e:
                     variables_info[var_name] = {
                         'name': var_info['name'],
@@ -3799,20 +3809,30 @@ class DemocracyAnalysisView(View):
                         'error': str(e)
                     }
             
-            # Get sample data for preview
-            sample_data = list(DemocracyData.objects.select_related().values(
-                'country', 'year', 'region', 'democracy', 'retractions', 'publications', 
-                'retraction_rate', 'gdp', 'corruption_control'
-            ).order_by('-publications')[:10])
+            # Get sample data for preview (top 10 by publications)
+            sample_df = df.nlargest(10, 'publications')[['Country', 'year', 'Region', 'democracy', 'retractions', 'publications', 'retraction_rate']]
+            sample_data = []
             
-            # Get data coverage by country and year
-            coverage_stats = DemocracyData.objects.aggregate(
-                total_countries=Count('country', distinct=True),
-                total_years=Count('year', distinct=True),
-                total_observations=Count('id'),
-                year_range_min=Min('year'),
-                year_range_max=Max('year')
-            )
+            for _, row in sample_df.iterrows():
+                sample_data.append({
+                    'country': row['Country'],
+                    'year': int(row['year']),
+                    'region': row['Region'],
+                    'democracy': round(row['democracy'], 2) if pd.notna(row['democracy']) else None,
+                    'retractions': int(row['retractions']),
+                    'publications': int(row['publications']),
+                    'retraction_rate': row['retraction_rate'] if pd.notna(row['retraction_rate']) else 0.0
+                })
+            
+            # Get actual data coverage statistics
+            coverage_stats = {
+                'total_countries': df['Country'].nunique(),
+                'total_years': df['year'].nunique(),
+                'total_observations': len(df),
+                'year_range_min': int(df['year'].min()),
+                'year_range_max': int(df['year'].max()),
+                'completeness_rate': round((1 - df.isnull().sum().sum() / (len(df) * len(df.columns))) * 100, 1)
+            }
             
             return {
                 'variables': variables_info,
@@ -3881,31 +3901,50 @@ class DemocracyAnalysisView(View):
 
     
     def _get_democracy_scatter_data(self):
-        """Generate scatter plot data for democracy vs retractions from actual data"""
-        from .models import DemocracyData
-        from django.db.models import Avg, Sum
+        """Generate scatter plot data using R analysis data"""
+        import pandas as pd
+        import os
+        import numpy as np
         
         try:
-            # Get country averages from actual data
-            country_data = DemocracyData.objects.values('country', 'iso3', 'region').annotate(
-                avg_democracy=Avg('democracy'),
-                total_retractions=Sum('retractions'),
-                total_publications=Sum('publications')
-            ).filter(
-                avg_democracy__isnull=False,
-                total_publications__gt=0
-            ).order_by('-total_publications')  # Order by publications for better visualization
+            # Load the R analysis data
+            r_data_path = '/Users/choxos/Documents/GitHub/retractions_democracy/data/combined_data.csv'
             
-            # Convert QuerySet to list for proper evaluation
-            country_data = list(country_data)
+            if not os.path.exists(r_data_path):
+                raise FileNotFoundError(f"R analysis data not found at {r_data_path}")
             
-            # Debug: Log first few entries to check region data
+            df = pd.read_csv(r_data_path)
+            
+            # Calculate retraction rate per 100K publications
+            df['retraction_rate'] = (df['retractions'] / df['publications'] * 100000).round(2)
+            
+            # Get country averages (aggregate across years)
+            country_aggregates = df.groupby(['Country', 'iso3', 'Region']).agg({
+                'democracy': 'mean',
+                'retractions': 'sum',
+                'publications': 'sum'
+            }).reset_index()
+            
+            # Recalculate retraction rate for aggregated data
+            country_aggregates['retraction_rate'] = (
+                country_aggregates['retractions'] / country_aggregates['publications'] * 100000
+            ).round(2)
+            
+            # Filter out countries with no publications or missing democracy data
+            valid_data = country_aggregates[
+                (country_aggregates['publications'] > 0) & 
+                (country_aggregates['democracy'].notna())
+            ].copy()
+            
+            # Sort by publications for better visualization
+            valid_data = valid_data.sort_values('publications', ascending=False)
+            
             import logging
             logger = logging.getLogger(__name__)
-            logger.info(f"Retrieved {len(country_data)} countries from database")
-            if country_data:
-                logger.info(f"Sample country data: {country_data[0]}")
-                regions = set(item['region'] for item in country_data[:10] if item['region'])
+            logger.info(f"Retrieved {len(valid_data)} countries from R analysis data")
+            if not valid_data.empty:
+                logger.info(f"Sample country data: {valid_data.iloc[0].to_dict()}")
+                regions = set(valid_data['Region'].dropna().unique())
                 logger.info(f"Sample regions found: {regions}")
             
         except Exception as e:
@@ -3919,23 +3958,20 @@ class DemocracyAnalysisView(View):
                 'p_value': '< 0.001'
             }
         
+        # Convert to expected format
         countries = []
-        for item in country_data:
+        for _, row in valid_data.iterrows():
             try:
-                # Ensure we have valid data
-                if (item['total_publications'] and item['total_publications'] > 0 and 
-                    item['avg_democracy'] is not None):
-                    
-                    retraction_rate = ((item['total_retractions'] or 0) / item['total_publications']) * 100000
-                    countries.append({
-                        'name': item['country'],
-                        'iso': item['iso3'],  # Use 'iso' to match expected format
-                        'region': item['region'] or 'Unknown',
-                        'democracy': round(float(item['avg_democracy']), 2),
-                        'retraction_rate': round(retraction_rate, 1),  # Per 100K articles
-                        'publications': item['total_publications']
-                    })
-            except (TypeError, ValueError, ZeroDivisionError) as e:
+                countries.append({
+                    'name': str(row['Country']),
+                    'country': str(row['Country']),  # Add both for compatibility
+                    'iso': str(row['iso3']) if pd.notna(row['iso3']) else 'XXX',
+                    'region': str(row['Region']) if pd.notna(row['Region']) else 'Unknown',
+                    'democracy': round(float(row['democracy']), 2),
+                    'retraction_rate': round(float(row['retraction_rate']), 1),
+                    'publications': int(row['publications'])
+                })
+            except (TypeError, ValueError) as e:
                 # Skip invalid records
                 continue
                 
@@ -3947,24 +3983,29 @@ class DemocracyAnalysisView(View):
                 'p_value': '< 0.001'
             }
         
-        # Calculate correlation if we have enough data
+        # Calculate actual correlation
         if len(countries) > 1:
-            import math
             democracy_values = [c['democracy'] for c in countries]
             retraction_values = [c['retraction_rate'] for c in countries]
             
-            # Simple correlation calculation
-            n = len(democracy_values)
-            sum_x = sum(democracy_values)
-            sum_y = sum(retraction_values)
-            sum_xy = sum(x * y for x, y in zip(democracy_values, retraction_values))
-            sum_x2 = sum(x * x for x in democracy_values)
-            sum_y2 = sum(y * y for y in retraction_values)
-            
-            numerator = n * sum_xy - sum_x * sum_y
-            denominator = math.sqrt((n * sum_x2 - sum_x * sum_x) * (n * sum_y2 - sum_y * sum_y))
-            
-            correlation = numerator / denominator if denominator != 0 else 0
+            # Use numpy for correlation calculation if available
+            try:
+                correlation_matrix = np.corrcoef(democracy_values, retraction_values)
+                correlation = correlation_matrix[0, 1]
+            except:
+                # Simple correlation calculation fallback
+                import math
+                n = len(democracy_values)
+                sum_x = sum(democracy_values)
+                sum_y = sum(retraction_values)
+                sum_xy = sum(x * y for x, y in zip(democracy_values, retraction_values))
+                sum_x2 = sum(x * x for x in democracy_values)
+                sum_y2 = sum(y * y for y in retraction_values)
+                
+                numerator = n * sum_xy - sum_x * sum_y
+                denominator = math.sqrt((n * sum_x2 - sum_x * sum_x) * (n * sum_y2 - sum_y * sum_y))
+                
+                correlation = numerator / denominator if denominator != 0 else 0
         else:
             correlation = -0.68  # Fallback
         
