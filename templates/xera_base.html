@@ -87,6 +87,9 @@
                 <a href="{% url 'papers:analytics' %}" class="xera-nav-link {% if 'analytics' in request.resolver_match.url_name %}active{% endif %}">
                     <i class="fas fa-chart-bar me-1"></i>Analytics
                 </a>
+                <a href="{% url 'papers:predatory_analysis' %}" class="xera-nav-link {% if 'predatory_analysis' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-shield-alt me-1"></i>Predatory Detector
+                </a>
                 <a href="{% url 'papers:democracy_analysis' %}" class="xera-nav-link {% if 'democracy_analysis' in request.resolver_match.url_name %}active{% endif %}">
                     <i class="fas fa-balance-scale me-1"></i>Democracy
                 </a>
