@@ -2835,7 +2835,7 @@ class PredatoryJournalAnalysisView(View):
                 'journal_name': journal_name,
                 'overall_score': result.overall_score,
                 'risk_level': result.risk_level,
-                'confidence_score': result.confidence_score,
+                'confidence_score': result.confidence_score * 100,  # Convert decimal to percentage
                 
                 # Category scores
                 'peer_review_score': result.peer_review_score,
