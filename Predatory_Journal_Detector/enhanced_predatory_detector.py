@@ -257,13 +257,13 @@ class EnhancedPredatoryDetector:
         
         logger.info("🧠 Performing evidence-based analysis...")
         
-        # 1. CRITICAL: Peer Review Process Analysis (30/100)
-        logger.info("   📋 Analyzing peer review transparency...")
-        peer_review_result = self._analyze_peer_review_transparency(text, soup)
+        # 1. CRITICAL: Enhanced Peer Review Process Analysis (30/100)
+        logger.info("   📋 Analyzing peer review transparency with decentralized model awareness...")
+        peer_review_result = self._analyze_peer_review_enhanced(text, soup, url)
         
-        # 2. HIGH: Sophisticated Language Analysis (25/100) 
+        # 2. HIGH: Context-Aware Language Analysis (25/100) 
         logger.info("   🔍 Performing context-aware language analysis...")
-        language_result = self._analyze_predatory_language_sophisticated(text)
+        language_result = self._analyze_predatory_language_enhanced(text, url)
         
         # 3. HIGH: Enhanced Editorial Board Analysis (20/100)
         logger.info("   👥 Verifying editorial board credentials...")
@@ -408,6 +408,138 @@ class EnhancedPredatoryDetector:
             'category': 'peer_review_transparency'
         }
     
+    def _analyze_peer_review_enhanced(self, text: str, soup: BeautifulSoup, url: str) -> Dict:
+        """
+        Enhanced peer review analysis that properly distinguishes between:
+        - Legitimate decentralized peer review models (PLOS ONE, BMC, etc.)
+        - Predatory fake peer review processes
+        
+        Accounts for modern publishing practices including distributed editorial models.
+        """
+        score = 0
+        flags = []
+        warnings = []
+        details = {}
+        text_lower = text.lower()
+        
+        # Identify if this is a known legitimate publisher using decentralized models
+        legitimate_decentralized_publishers = [
+            'plos.org', 'biomedcentral.com', 'springer.com', 'nature.com',
+            'frontiersin.org', 'hindawi.com', 'mdpi.com', 'elife.org'
+        ]
+        
+        is_known_legitimate = any(pub in url.lower() for pub in legitimate_decentralized_publishers)
+        details['known_legitimate_publisher'] = is_known_legitimate
+        
+        # 1. Basic peer review mentions (with context awareness)
+        peer_review_indicators = [
+            'peer review', 'review process', 'editorial process', 'manuscript review',
+            'reviewer', 'review criteria', 'editorial review', 'academic review',
+            'editorial decision', 'manuscript evaluation', 'quality assessment'
+        ]
+        
+        review_mentions = sum(1 for keyword in peer_review_indicators if keyword in text_lower)
+        details['review_mentions'] = review_mentions
+        
+        if review_mentions == 0:
+            score += 25  # CRITICAL: No peer review mentioned
+            flags.append("🚨 CRITICAL: No peer review process mentioned")
+        elif review_mentions < 3:
+            if is_known_legitimate:
+                score += 8   # Reduced penalty for known publishers
+                warnings.append("⚠️ Limited peer review information (known publisher)")
+            else:
+                score += 15  # Standard penalty for unknown publishers
+                warnings.append("⚠️ Limited peer review information provided")
+        
+        # 2. Detect legitimate decentralized model indicators (POSITIVE)
+        decentralized_legitimate_indicators = [
+            'academic editor', 'editorial board member', 'handling editor', 
+            'section editor', 'associate editor', 'subject editor',
+            'distributed editorial', 'specialized editor', 'expert editor',
+            'editorial board handles', 'editor assigned', 'editor selection'
+        ]
+        
+        decentralized_mentions = sum(1 for indicator in decentralized_legitimate_indicators if indicator in text_lower)
+        details['decentralized_model_indicators'] = decentralized_mentions
+        
+        if decentralized_mentions >= 3:
+            # This looks like legitimate decentralized model - REDUCE penalty
+            score = max(0, score - 5)  # Reduce score by 5 points
+            details['legitimate_decentralized_model'] = True
+        
+        # 3. Check for ACTUAL predatory red flags (not legitimate decentralization)
+        genuine_predatory_flags = [
+            r'no\s+peer\s+review\s+required',
+            r'skip\s+(?:peer\s+)?review',
+            r'minimal\s+review\s+process',
+            r'instant\s+(?:peer\s+)?review',
+            r'review\s+(?:within|in)\s+(?:24\s+)?hours?',
+            r'guaranteed\s+acceptance',
+            r'we\s+accept\s+all\s+(?:papers?|manuscripts?)'
+        ]
+        
+        predatory_found = False
+        for pattern in genuine_predatory_flags:
+            if re.search(pattern, text_lower):
+                score += 20  # High penalty for actual predatory indicators
+                flags.append(f"🚨 CRITICAL: Genuine predatory review pattern detected")
+                predatory_found = True
+                break
+        
+        # 4. Large editorial board analysis (context-aware)
+        editorial_size_indicators = [
+            r'(\d+)\s+(?:editors?|editorial\s+board\s+members?)',
+            r'editorial\s+board\s+of\s+(\d+)',
+            r'over\s+(\d+)\s+editors?'
+        ]
+        
+        board_size = 0
+        for pattern in editorial_size_indicators:
+            matches = re.findall(pattern, text_lower)
+            if matches:
+                board_size = max(board_size, int(matches[0]))
+        
+        details['estimated_board_size'] = board_size
+        
+        if board_size > 100:
+            if is_known_legitimate:
+                # Large board is POSITIVE for legitimate publishers
+                details['large_legitimate_board'] = True
+                warnings.append("✅ Large distributed editorial board (legitimate model)")
+            else:
+                # Large board might be suspicious for unknown publishers
+                score += 3
+                warnings.append("⚠️ Very large editorial board claims")
+        
+        # 5. Publisher-specific adjustments
+        if is_known_legitimate and not predatory_found:
+            # Further reduce penalty for known legitimate publishers with no red flags
+            score = max(0, score - 3)
+            details['publisher_reputation_adjustment'] = -3
+        
+        # 6. Quality indicators for decentralized models
+        quality_indicators = [
+            'qualified reviewer', 'expert reviewer', 'academic reviewer',
+            'institutional affiliation', 'peer review guidelines',
+            'review criteria', 'editorial standards', 'publication ethics'
+        ]
+        
+        quality_mentions = sum(1 for indicator in quality_indicators if indicator in text_lower)
+        details['quality_indicators'] = quality_mentions
+        
+        if quality_mentions >= 5:
+            score = max(0, score - 2)  # Bonus for quality indicators
+            details['strong_quality_indicators'] = True
+        
+        return {
+            'score': min(score, 30),  # Cap at maximum weight
+            'flags': flags,
+            'warnings': warnings,
+            'details': details,
+            'category': 'enhanced_peer_review_analysis'
+        }
+    
     def _analyze_predatory_language_sophisticated(self, text: str) -> Dict:
         """
         Sophisticated predatory language analysis (25/100 points)
@@ -477,6 +609,154 @@ class EnhancedPredatoryDetector:
             'warnings': warnings,
             'details': found_patterns,
             'category': 'sophisticated_language_analysis'
+        }
+    
+    def _analyze_predatory_language_enhanced(self, text: str, url: str) -> Dict:
+        """
+        Enhanced context-aware predatory language analysis (25/100 points)
+        
+        Distinguishes between:
+        - Legitimate medical/academic terminology and submission processes
+        - Actual predatory language and misleading claims
+        - Standard publisher language vs manipulative marketing
+        """
+        score = 0
+        flags = []
+        warnings = []
+        found_patterns = {'critical': [], 'high_risk': [], 'moderate': []}
+        text_lower = text.lower()
+        
+        # Identify if this is a known legitimate publisher
+        legitimate_publishers = [
+            'plos.org', 'biomedcentral.com', 'springer.com', 'nature.com',
+            'frontiersin.org', 'elife.org', 'bmj.com', 'elsevier.com',
+            'wiley.com', 'taylor', 'sage', 'cambridge.org', 'oxford'
+        ]
+        
+        is_known_legitimate = any(pub in url.lower() for pub in legitimate_publishers)
+        
+        # CRITICAL RED FLAGS (only genuine predatory indicators)
+        genuine_critical_patterns = {
+            'guaranteed_acceptance': [
+                r'guaranteed?\s+(?:acceptance|publication|approval)',
+                r'we\s+(?:accept|publish)\s+all\s+(?:papers?|manuscripts?|submissions?)',
+                r'(?:100%|assured|certain)\s+(?:acceptance|approval)',
+                r'acceptance\s+(?:rate|ratio)[:\s]+(?:100|99)%'
+            ],
+            'fake_peer_review': [
+                r'no\s+(?:peer\s+)?review\s+(?:required|needed|necessary)',
+                r'(?:skip|bypass|avoid)\s+(?:peer\s+)?review',
+                r'minimal\s+(?:peer\s+)?review\s+(?:process|required)',
+                r'(?:instant|immediate)\s+(?:peer\s+)?review\s+(?:guaranteed|promised)'
+            ],
+            'fake_metrics': [
+                r'(?:impact\s+factor|if)[:\s]+(?:will\s+be|guaranteed|assured)\s+\d+',
+                r'(?:guaranteed|assured|promised)\s+(?:impact\s+factor|citations?)',
+                r'fake\s+(?:impact\s+factor|indexing|database)'
+            ]
+        }
+        
+        # Check for genuine critical red flags
+        for category, patterns in genuine_critical_patterns.items():
+            for pattern in patterns:
+                matches = re.findall(pattern, text_lower)
+                if matches:
+                    found_patterns['critical'].extend(matches)
+                    score = 25  # Any critical flag = maximum score
+                    flags.append(f"🚨 CRITICAL {category.replace('_', ' ').title()}: '{matches[0]}'")
+                    return {
+                        'score': 25,
+                        'flags': flags,
+                        'warnings': warnings,
+                        'details': found_patterns,
+                        'category': 'enhanced_predatory_language_critical'
+                    }
+        
+        # HIGH-RISK INDICATORS (but context-aware)
+        high_risk_patterns = {
+            'unrealistic_timelines': [
+                r'(?:publish|review|decision)\s+(?:within|in)\s+(?:24\s+hours?|\d+\s+hours?)',
+                r'(?:immediate|instant|same[- ]day)\s+(?:publication|review|decision)',
+                r'(?:express|emergency|urgent)\s+(?:publication|review|processing)'
+            ],
+            'aggressive_marketing': [
+                r'(?:limited\s+time|special|exclusive)\s+(?:offer|deal|opportunity)',
+                r'(?:act\s+(?:now|quickly|fast)|hurry|don\'t\s+miss)',
+                r'(?:discount|promotion|reduced\s+price|sale)\s+(?:available|ending)'
+            ]
+        }
+        
+        # Context-aware legitimate language that should NOT be penalized
+        legitimate_language_patterns = [
+            r'rapid\s+(?:publication|processing|review)\s+(?:service|available|option)',
+            r'fast\s+track\s+(?:submission|review|publication)',
+            r'express\s+(?:service|option|track)\s+available',
+            r'standard\s+(?:processing|publication|review)\s+time'
+        ]
+        
+        # Check if potentially flagged language has legitimate context
+        def has_legitimate_context(matched_text):
+            # Look for legitimate context around the match
+            for legit_pattern in legitimate_language_patterns:
+                if re.search(legit_pattern, matched_text):
+                    return True
+            return False
+        
+        high_risk_count = 0
+        for category, patterns in high_risk_patterns.items():
+            for pattern in patterns:
+                matches = re.findall(pattern, text_lower)
+                for match in matches:
+                    # Create context around the match for analysis
+                    match_start = text_lower.find(match)
+                    context_start = max(0, match_start - 100)
+                    context_end = min(len(text_lower), match_start + len(match) + 100)
+                    context = text_lower[context_start:context_end]
+                    
+                    # Reduce penalty if legitimate context or known publisher
+                    if is_known_legitimate or has_legitimate_context(context):
+                        # Reduced penalty for legitimate publishers
+                        penalty = 3  # Instead of 8
+                        warnings.append(f"⚠️ {category.replace('_', ' ').title()}: '{match}' (reduced - legitimate publisher)")
+                    else:
+                        penalty = 8  # Full penalty
+                        flags.append(f"⚠️ High Risk {category.replace('_', ' ').title()}: '{match}'")
+                    
+                    score += penalty
+                    high_risk_count += 1
+                    found_patterns['high_risk'].append(match)
+                    
+                    if high_risk_count >= 3:  # Limit flags to avoid spam
+                        break
+        
+        # Cap high-risk score
+        score = min(score, 20)
+        
+        # MODERATE-RISK INDICATORS (with context awareness)
+        moderate_patterns = [
+            r'(?:quality|prestigious|high[- ]impact|leading)\s+journal',
+            r'(?:international|worldwide|global)\s+(?:reach|audience|recognition)',
+            r'(?:expert|qualified|experienced)\s+(?:editors?|reviewers?)'
+        ]
+        
+        moderate_count = 0
+        for pattern in moderate_patterns:
+            matches = re.findall(pattern, text_lower)
+            if matches and not is_known_legitimate:
+                # Only penalize unknown publishers for promotional language
+                moderate_count += len(matches)
+                found_patterns['moderate'].extend(matches)
+        
+        if moderate_count > 5 and not is_known_legitimate:
+            score += min(moderate_count * 2, 8)  # 2 points each, max 8
+            warnings.append(f"⚠️ Excessive promotional language detected ({moderate_count} instances)")
+        
+        return {
+            'score': min(score, 25),  # Cap at maximum weight
+            'flags': flags,
+            'warnings': warnings,
+            'details': found_patterns,
+            'category': 'enhanced_context_aware_language_analysis'
         }
     
     def _analyze_editorial_board_enhanced(self, text: str, soup: BeautifulSoup) -> Dict:
