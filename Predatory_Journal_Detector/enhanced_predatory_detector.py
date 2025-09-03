@@ -246,6 +246,15 @@ class EnhancedPredatoryDetector:
         soup = BeautifulSoup(content, 'html.parser')
         text = self._extract_clean_text(soup)
         
+        # Enhanced content gathering: scrape about section and related pages
+        logger.info("📚 Gathering comprehensive content from about section...")
+        enhanced_content = self._scrape_about_section_comprehensive(url, soup, content)
+        
+        # Merge enhanced content with original
+        if enhanced_content:
+            text += "\n\n" + enhanced_content
+            logger.info(f"✅ Enhanced analysis with {len(enhanced_content)} additional characters from about sections")
+        
         logger.info("🧠 Performing evidence-based analysis...")
         
         # 1. CRITICAL: Peer Review Process Analysis (30/100)
@@ -1053,6 +1062,122 @@ class EnhancedPredatoryDetector:
         except Exception as e:
             logger.error(f"Failed to fetch {url}: {e}")
             return None
+    
+    def _scrape_about_section_comprehensive(self, base_url: str, soup: BeautifulSoup, main_content: str) -> str:
+        """
+        Comprehensively scrape about section and related pages for deeper analysis
+        
+        This method:
+        1. Identifies about section links on the main page
+        2. Follows those links to gather additional content  
+        3. Looks for key editorial/policy pages
+        4. Returns consolidated additional content
+        """
+        from urllib.parse import urljoin, urlparse
+        import time
+        
+        additional_content = []
+        processed_urls = set()
+        
+        # About section keywords to look for in links
+        about_keywords = [
+            'about', 'editorial', 'policy', 'policies', 'ethics', 'peer-review', 
+            'review-process', 'board', 'editors', 'submission', 'guidelines',
+            'aims-scope', 'mission', 'vision', 'governance', 'standards',
+            'manuscript', 'publication', 'author', 'reviewer', 'editorial-board'
+        ]
+        
+        logger.info(f"   🔍 Searching for about section links...")
+        
+        # Find all links on the main page
+        links = soup.find_all('a', href=True)
+        about_links = []
+        
+        for link in links:
+            href = link.get('href', '').lower()
+            text = link.get_text().lower().strip()
+            
+            # Check if link or text contains about keywords
+            for keyword in about_keywords:
+                if keyword in href or keyword in text:
+                    full_url = urljoin(base_url, link.get('href'))
+                    if full_url not in processed_urls and self._is_same_domain(base_url, full_url):
+                        about_links.append({
+                            'url': full_url,
+                            'text': text,
+                            'keyword': keyword
+                        })
+                        processed_urls.add(full_url)
+                    break
+        
+        logger.info(f"   📄 Found {len(about_links)} about-related links to analyze")
+        
+        # Limit to most important links to avoid overwhelming the analysis
+        priority_keywords = ['about', 'editorial', 'peer-review', 'policy', 'ethics', 'board']
+        about_links.sort(key=lambda x: (
+            0 if any(pk in x['keyword'] for pk in priority_keywords) else 1,
+            len(x['text'])
+        ))
+        
+        # Process up to 8 most relevant links
+        for i, link_info in enumerate(about_links[:8]):
+            try:
+                logger.info(f"   📖 Scraping: {link_info['text'][:50]}...")
+                
+                # Rate limiting
+                if i > 0:
+                    time.sleep(0.5)
+                
+                # Fetch the about page content
+                about_content = self._fetch_content(link_info['url'])
+                if about_content:
+                    about_soup = BeautifulSoup(about_content, 'html.parser')
+                    about_text = self._extract_clean_text_simple(about_soup)
+                    
+                    # Only include if it's substantial and not duplicate
+                    if len(about_text) > 200 and not self._is_duplicate_content(about_text, main_content):
+                        additional_content.append(f"\n--- {link_info['text'].title()} Section ---\n{about_text}")
+                        logger.info(f"   ✅ Added {len(about_text)} chars from {link_info['keyword']} page")
+                    else:
+                        logger.info(f"   ⏭️  Skipped {link_info['keyword']} page (duplicate/short)")
+                        
+            except Exception as e:
+                logger.warning(f"   ⚠️  Failed to scrape {link_info['url']}: {e}")
+                continue
+        
+        return '\n'.join(additional_content)
+    
+    def _extract_clean_text_simple(self, soup: BeautifulSoup) -> str:
+        """Extract clean text from BeautifulSoup object"""
+        # Remove script and style elements
+        for script in soup(["script", "style", "nav", "header", "footer"]):
+            script.decompose()
+        
+        return soup.get_text(separator=' ', strip=True)
+    
+    def _is_same_domain(self, url1: str, url2: str) -> bool:
+        """Check if two URLs are from the same domain"""
+        from urllib.parse import urlparse
+        try:
+            domain1 = urlparse(url1).netloc.lower()
+            domain2 = urlparse(url2).netloc.lower()
+            return domain1 == domain2 or domain1 in domain2 or domain2 in domain1
+        except:
+            return False
+    
+    def _is_duplicate_content(self, new_content: str, existing_content: str) -> bool:
+        """Check if new content is substantially duplicate of existing content"""
+        # Simple similarity check based on common words
+        new_words = set(new_content.lower().split())
+        existing_words = set(existing_content.lower().split())
+        
+        if len(new_words) == 0:
+            return True
+            
+        # If more than 70% of words are already in existing content, consider duplicate
+        overlap = len(new_words.intersection(existing_words))
+        similarity = overlap / len(new_words)
+        return similarity > 0.7
     
     def _create_error_result(self, url: str, error_msg: str, duration: float) -> EnhancedAnalysisResult:
         """Create error result when analysis fails"""
