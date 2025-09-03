@@ -30,6 +30,8 @@ from urllib.parse import urlparse, urljoin
 import logging
 from datetime import datetime
 import difflib
+import pandas as pd
+import os
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
@@ -96,7 +98,7 @@ class EnhancedPredatoryDetector:
     }
     
     def __init__(self):
-        """Initialize enhanced detection system with external APIs"""
+        """Initialize enhanced detection system with external APIs and NLM catalog"""
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'Enhanced Academic Journal Analyzer/2.0 (Research Integrity Tool)',
@@ -114,6 +116,9 @@ class EnhancedPredatoryDetector:
         
         # Load legitimate journal names for similarity comparison
         self.legitimate_journals = self._load_legitimate_journal_names()
+        
+        # Load NLM catalog data for journal legitimacy verification
+        self.nlm_catalog = self._load_nlm_catalog()
         
         # Initialize external API endpoints
         self.api_endpoints = {
@@ -220,6 +225,329 @@ class EnhancedPredatoryDetector:
             'Journal of Machine Learning Research', 'Artificial Intelligence', 'Neural Networks'
         ]
     
+    def _load_nlm_catalog(self) -> Dict:
+        """
+        Load NLM (National Library of Medicine) catalog data for journal legitimacy verification
+        
+        Returns comprehensive NLM data indexed by ISSN and title for fast lookup.
+        This provides the gold standard for legitimate journals.
+        """
+        nlm_data = {
+            'by_issn': {},
+            'by_title': {},
+            'by_publisher': {},
+            'stats': {'total_journals': 0, 'medline_indexed': 0}
+        }
+        
+        try:
+            # Get the path to the NLM catalog file
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            nlm_file_path = os.path.join(current_dir, 'data', 'nlm_journals_consolidated.csv')
+            
+            if not os.path.exists(nlm_file_path):
+                logger.warning(f"⚠️ NLM catalog file not found at {nlm_file_path}")
+                return nlm_data
+                
+            logger.info("📚 Loading NLM catalog data...")
+            df = pd.read_csv(nlm_file_path)
+            
+            for _, row in df.iterrows():
+                # Create journal entry
+                journal_entry = {
+                    'title_full': row.get('title_full', ''),
+                    'title_abbreviation': row.get('title_abbreviation', ''),
+                    'publisher': row.get('publisher', ''),
+                    'country': row.get('country', ''),
+                    'issn_electronic': row.get('issn_electronic', ''),
+                    'issn_print': row.get('issn_print', ''),
+                    'issn_linking': row.get('issn_linking', ''),
+                    'current_indexing_status': row.get('current_indexing_status', ''),
+                    'in_databases': row.get('in_databases', ''),
+                    'electronic_links': row.get('electronic_links', ''),
+                    'medline_indexed': 'Currently indexed for MEDLINE' in str(row.get('current_indexing_status', ''))
+                }
+                
+                # Index by ISSN (all types)
+                for issn_field in ['issn_electronic', 'issn_print', 'issn_linking']:
+                    issn = str(row.get(issn_field, '')).strip()
+                    if issn and issn != 'nan' and len(issn) >= 8:
+                        nlm_data['by_issn'][issn] = journal_entry
+                
+                # Index by title (both full and abbreviated)
+                title_full = str(row.get('title_full', '')).strip().lower()
+                title_abbrev = str(row.get('title_abbreviation', '')).strip().lower()
+                
+                if title_full and title_full != 'nan':
+                    nlm_data['by_title'][title_full] = journal_entry
+                    
+                if title_abbrev and title_abbrev != 'nan' and title_abbrev != title_full:
+                    nlm_data['by_title'][title_abbrev] = journal_entry
+                
+                # Index by publisher
+                publisher = str(row.get('publisher', '')).strip().lower()
+                if publisher and publisher != 'nan':
+                    if publisher not in nlm_data['by_publisher']:
+                        nlm_data['by_publisher'][publisher] = []
+                    nlm_data['by_publisher'][publisher].append(journal_entry)
+                
+                # Update stats
+                nlm_data['stats']['total_journals'] += 1
+                if journal_entry['medline_indexed']:
+                    nlm_data['stats']['medline_indexed'] += 1
+            
+            logger.info(f"✅ NLM catalog loaded: {nlm_data['stats']['total_journals']:,} journals "
+                       f"({nlm_data['stats']['medline_indexed']:,} MEDLINE-indexed)")
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to load NLM catalog: {e}")
+        
+        return nlm_data
+    
+    def _lookup_journal_in_nlm(self, journal_name: str, issns: List[str] = None, url: str = None) -> Dict:
+        """
+        Comprehensive NLM catalog lookup for journal legitimacy verification
+        
+        Args:
+            journal_name: Journal title to search for
+            issns: List of ISSNs to check
+            url: Journal URL for additional matching
+            
+        Returns:
+            Dict with NLM status, entry details, and reputation boost
+        """
+        nlm_result = {
+            'found_in_nlm': False,
+            'medline_indexed': False,
+            'nlm_entry': None,
+            'match_type': None,
+            'reputation_boost': 0.0,
+            'confidence_boost': 0.0
+        }
+        
+        if not self.nlm_catalog or not self.nlm_catalog['stats']['total_journals']:
+            return nlm_result
+        
+        try:
+            # 1. HIGHEST PRIORITY: ISSN-based matching (most reliable)
+            if issns:
+                for issn in issns:
+                    clean_issn = str(issn).strip().replace('-', '').replace(' ', '')
+                    if clean_issn in self.nlm_catalog['by_issn']:
+                        entry = self.nlm_catalog['by_issn'][clean_issn]
+                        nlm_result.update({
+                            'found_in_nlm': True,
+                            'nlm_entry': entry,
+                            'match_type': 'issn_exact',
+                            'medline_indexed': entry['medline_indexed'],
+                            'reputation_boost': 40.0 if entry['medline_indexed'] else 25.0,
+                            'confidence_boost': 30.0 if entry['medline_indexed'] else 20.0
+                        })
+                        logger.info(f"✅ NLM MATCH: Found by ISSN {issn} - MEDLINE: {entry['medline_indexed']}")
+                        return nlm_result
+            
+            # 2. SECONDARY: Title-based matching (exact)
+            if journal_name:
+                clean_title = journal_name.strip().lower()
+                
+                # Check exact title match
+                if clean_title in self.nlm_catalog['by_title']:
+                    entry = self.nlm_catalog['by_title'][clean_title]
+                    nlm_result.update({
+                        'found_in_nlm': True,
+                        'nlm_entry': entry,
+                        'match_type': 'title_exact',
+                        'medline_indexed': entry['medline_indexed'],
+                        'reputation_boost': 35.0 if entry['medline_indexed'] else 20.0,
+                        'confidence_boost': 25.0 if entry['medline_indexed'] else 15.0
+                    })
+                    logger.info(f"✅ NLM MATCH: Found by title '{journal_name}' - MEDLINE: {entry['medline_indexed']}")
+                    return nlm_result
+                
+                # Check fuzzy title matching for slight variations
+                for nlm_title, entry in self.nlm_catalog['by_title'].items():
+                    if self._fuzzy_title_match(clean_title, nlm_title, threshold=0.85):
+                        nlm_result.update({
+                            'found_in_nlm': True,
+                            'nlm_entry': entry,
+                            'match_type': 'title_fuzzy',
+                            'medline_indexed': entry['medline_indexed'],
+                            'reputation_boost': 30.0 if entry['medline_indexed'] else 15.0,
+                            'confidence_boost': 20.0 if entry['medline_indexed'] else 10.0
+                        })
+                        logger.info(f"✅ NLM MATCH: Fuzzy match '{journal_name}' → '{nlm_title}' - MEDLINE: {entry['medline_indexed']}")
+                        return nlm_result
+            
+            # 3. TERTIARY: Publisher-based reputation (weaker signal)
+            if url:
+                domain = self._extract_domain_from_url(url)
+                for publisher_key, journals in self.nlm_catalog['by_publisher'].items():
+                    if domain and domain.lower() in publisher_key:
+                        # Check if this publisher has multiple NLM journals (reputation signal)
+                        medline_journals = [j for j in journals if j['medline_indexed']]
+                        if len(journals) >= 3:  # Publisher with multiple NLM journals
+                            nlm_result.update({
+                                'found_in_nlm': True,
+                                'nlm_entry': journals[0],  # Representative entry
+                                'match_type': 'publisher_reputation',
+                                'medline_indexed': len(medline_journals) > 0,
+                                'reputation_boost': 15.0 if medline_journals else 8.0,
+                                'confidence_boost': 10.0 if medline_journals else 5.0
+                            })
+                            logger.info(f"✅ NLM MATCH: Publisher reputation '{publisher_key}' ({len(journals)} NLM journals)")
+                            return nlm_result
+            
+        except Exception as e:
+            logger.error(f"❌ NLM lookup error: {e}")
+        
+        return nlm_result
+    
+    def _fuzzy_title_match(self, title1: str, title2: str, threshold: float = 0.8) -> bool:
+        """Check if two journal titles are similar enough to be considered a match"""
+        # Remove common words and punctuation for better matching
+        stop_words = {'journal', 'of', 'the', 'and', 'in', 'for', 'a', 'an', 'international', 'american', 'european'}
+        
+        def clean_title(title):
+            words = re.findall(r'\b\w+\b', title.lower())
+            return ' '.join(word for word in words if word not in stop_words)
+        
+        clean1 = clean_title(title1)
+        clean2 = clean_title(title2)
+        
+        # Use difflib for similarity ratio
+        similarity = difflib.SequenceMatcher(None, clean1, clean2).ratio()
+        return similarity >= threshold
+    
+    def _extract_domain_from_url(self, url: str) -> str:
+        """Extract domain name from URL for publisher matching"""
+        try:
+            parsed = urlparse(url)
+            domain = parsed.netloc.lower()
+            # Remove www prefix
+            if domain.startswith('www.'):
+                domain = domain[4:]
+            return domain
+        except:
+            return ""
+    
+    def _extract_journal_title(self, soup: BeautifulSoup, url: str) -> str:
+        """Extract journal title from webpage content"""
+        try:
+            # Try multiple methods to extract journal title
+            title_candidates = []
+            
+            # 1. Meta tags
+            meta_title = soup.find('meta', attrs={'name': 'citation_journal_title'})
+            if meta_title and meta_title.get('content'):
+                title_candidates.append(meta_title['content'].strip())
+            
+            # 2. Page title
+            page_title = soup.find('title')
+            if page_title and page_title.text:
+                title_candidates.append(page_title.text.strip())
+            
+            # 3. H1 tags
+            h1_tags = soup.find_all('h1')
+            for h1 in h1_tags:
+                if h1.text and len(h1.text.strip()) > 5:
+                    title_candidates.append(h1.text.strip())
+            
+            # 4. Common class names for journal titles
+            title_classes = ['journal-title', 'site-title', 'brand-title', 'journal-name']
+            for class_name in title_classes:
+                title_elem = soup.find(class_=class_name)
+                if title_elem and title_elem.text:
+                    title_candidates.append(title_elem.text.strip())
+            
+            # Return the most likely journal title (usually the first valid one)
+            for title in title_candidates:
+                # Clean up title
+                title = re.sub(r'\s+', ' ', title)  # Multiple spaces to single
+                title = re.sub(r'[\|\-–—].*$', '', title)  # Remove subtitle after delimiter
+                title = title.strip()
+                
+                # Filter out very short or obviously wrong titles
+                if len(title) > 5 and not any(x in title.lower() for x in ['home', 'welcome', 'page', 'error']):
+                    return title
+            
+            # Fallback: extract from URL
+            domain = self._extract_domain_from_url(url)
+            if domain:
+                # Convert domain to potential journal name
+                domain_name = domain.replace('.com', '').replace('.org', '').replace('.net', '')
+                domain_name = domain_name.replace('-', ' ').replace('_', ' ').title()
+                return domain_name
+            
+            return ""
+            
+        except Exception as e:
+            logger.debug(f"Journal title extraction error: {e}")
+            return ""
+    
+    def _extract_issns_from_content(self, text: str, soup: BeautifulSoup) -> List[str]:
+        """Extract ISSNs from webpage content"""
+        issns = []
+        
+        try:
+            # 1. Meta tags for ISSNs
+            issn_meta_tags = soup.find_all('meta', attrs={'name': re.compile(r'.*issn.*', re.I)})
+            for meta in issn_meta_tags:
+                content = meta.get('content', '').strip()
+                if content and self._is_valid_issn(content):
+                    issns.append(content)
+            
+            # 2. ISSN pattern matching in text
+            issn_pattern = r'\b(?:ISSN|issn)[\s:]*([0-9]{4}[-\s]?[0-9]{3}[0-9X])\b'
+            matches = re.findall(issn_pattern, text, re.IGNORECASE)
+            for match in matches:
+                clean_issn = match.replace(' ', '').replace('-', '')
+                if self._is_valid_issn(clean_issn) and clean_issn not in issns:
+                    issns.append(clean_issn)
+            
+            # 3. Standalone ISSN numbers (more flexible pattern)
+            standalone_pattern = r'\b([0-9]{4}[-\s]?[0-9]{3}[0-9X])\b'
+            matches = re.findall(standalone_pattern, text)
+            for match in matches:
+                clean_issn = match.replace(' ', '').replace('-', '')
+                if self._is_valid_issn(clean_issn) and clean_issn not in issns:
+                    # Only add if it appears in a context suggesting it's an ISSN
+                    issn_context = text[text.find(match)-50:text.find(match)+50].lower()
+                    if any(word in issn_context for word in ['issn', 'journal', 'publication', 'print', 'online', 'electronic']):
+                        issns.append(clean_issn)
+            
+        except Exception as e:
+            logger.debug(f"ISSN extraction error: {e}")
+        
+        return list(set(issns))  # Remove duplicates
+    
+    def _is_valid_issn(self, issn: str) -> bool:
+        """Validate ISSN format and check digit"""
+        try:
+            # Clean ISSN
+            clean_issn = issn.replace('-', '').replace(' ', '').upper()
+            
+            # Check format
+            if len(clean_issn) != 8 or not re.match(r'^[0-9]{7}[0-9X]$', clean_issn):
+                return False
+            
+            # Validate checksum
+            digits = clean_issn[:7]
+            check_digit = clean_issn[7]
+            
+            total = sum(int(digit) * (8 - i) for i, digit in enumerate(digits))
+            remainder = total % 11
+            
+            if remainder == 0:
+                expected_check = '0'
+            elif remainder == 1:
+                expected_check = 'X'
+            else:
+                expected_check = str(11 - remainder)
+            
+            return check_digit == expected_check
+            
+        except Exception:
+            return False
+    
     def analyze_journal_comprehensive(self, url: str, content: str = None) -> EnhancedAnalysisResult:
         """
         Comprehensive journal analysis using ALL evidence-based criteria
@@ -255,6 +583,18 @@ class EnhancedPredatoryDetector:
             text += "\n\n" + enhanced_content
             logger.info(f"✅ Enhanced analysis with {len(enhanced_content)} additional characters from about sections")
         
+        # EARLY NLM CATALOG VERIFICATION - Critical legitimacy check
+        logger.info("🏛️ Checking NLM catalog for journal legitimacy...")
+        journal_title = self._extract_journal_title(soup, url)
+        issns = self._extract_issns_from_content(text, soup)
+        nlm_result = self._lookup_journal_in_nlm(journal_title, issns, url)
+        
+        if nlm_result['found_in_nlm']:
+            logger.info(f"🎯 NLM STATUS: Journal found in catalog (Match: {nlm_result['match_type']}, "
+                       f"MEDLINE: {nlm_result['medline_indexed']}, Boost: +{nlm_result['reputation_boost']:.1f})")
+        else:
+            logger.info("📊 NLM STATUS: Journal not found in NLM catalog")
+        
         logger.info("🧠 Performing evidence-based analysis...")
         
         # 1. CRITICAL: Enhanced Peer Review Process Analysis (30/100)
@@ -286,7 +626,7 @@ class EnhancedPredatoryDetector:
         result = self._calculate_comprehensive_score(
             peer_review_result, language_result, editorial_result,
             indexing_result, contact_result, name_result,
-            url, analysis_duration, content
+            url, analysis_duration, content, nlm_result
         )
         
         logger.info(f"✅ Analysis complete: {result.overall_score:.1f}/100 ({result.risk_level})")
@@ -1069,8 +1409,8 @@ class EnhancedPredatoryDetector:
     
     def _calculate_comprehensive_score(self, peer_review_result, language_result, 
                                      editorial_result, indexing_result, contact_result,
-                                     name_result, url, duration, content) -> EnhancedAnalysisResult:
-        """Calculate comprehensive final score with evidence-based weighting"""
+                                     name_result, url, duration, content, nlm_result=None) -> EnhancedAnalysisResult:
+        """Calculate comprehensive final score with evidence-based weighting and NLM reputation boost"""
         
         # Extract scores
         peer_score = peer_review_result['score']
@@ -1078,6 +1418,23 @@ class EnhancedPredatoryDetector:
         editorial_score = editorial_result['score']
         indexing_score = indexing_result['score']
         contact_score = contact_result['score']
+        
+        # Apply NLM catalog reputation boost (reduces predatory risk)
+        nlm_boost = 0.0
+        nlm_confidence_boost = 0.0
+        if nlm_result and nlm_result.get('found_in_nlm', False):
+            nlm_boost = nlm_result.get('reputation_boost', 0.0)
+            nlm_confidence_boost = nlm_result.get('confidence_boost', 0.0)
+            
+            # Apply boost to reduce predatory scores (making them more positive/legitimate)
+            peer_score = max(0, peer_score - (nlm_boost * 0.4))  # 40% of boost to peer review
+            language_score = max(0, language_score - (nlm_boost * 0.3))  # 30% to language
+            editorial_score = max(0, editorial_score - (nlm_boost * 0.2))  # 20% to editorial
+            indexing_score = max(0, indexing_score - (nlm_boost * 0.1))  # 10% to indexing
+            
+            logger.info(f"🎯 NLM BOOST APPLIED: -{nlm_boost:.1f} predatory risk reduction "
+                       f"(Match: {nlm_result.get('match_type', 'unknown')}, "
+                       f"MEDLINE: {nlm_result.get('medline_indexed', False)})")
         
         # Calculate weighted total
         total_score = peer_score + language_score + editorial_score + indexing_score + contact_score
@@ -1109,10 +1466,10 @@ class EnhancedPredatoryDetector:
         else:
             risk_level = "Very Low Risk"
         
-        # Calculate dynamic confidence with 95% CI
+        # Calculate dynamic confidence with 95% CI (including NLM boost)
         confidence_result = self._calculate_dynamic_confidence(
             total_score, peer_score, language_score, editorial_score, 
-            indexing_score, contact_score, content, all_flags
+            indexing_score, contact_score, content, all_flags, nlm_confidence_boost
         )
         confidence = confidence_result['confidence']
         confidence_lower = confidence_result['confidence_95ci_lower']
@@ -1137,6 +1494,25 @@ class EnhancedPredatoryDetector:
         if indexing_score <= 3:
             positive_indicators.append("✅ Reasonable indexing claims")
         
+        # Add NLM-specific positive indicators
+        if nlm_result and nlm_result.get('found_in_nlm', False):
+            if nlm_result.get('medline_indexed', False):
+                positive_indicators.append("🏛️ Journal found in NLM catalog (MEDLINE-indexed)")
+            else:
+                positive_indicators.append("🏛️ Journal found in NLM catalog")
+            positive_indicators.append(f"🎯 NLM match type: {nlm_result.get('match_type', 'unknown')}")
+        
+        # Prepare external verification with NLM data
+        external_verification = indexing_result.get('verification_results', {})
+        if nlm_result:
+            external_verification['nlm_catalog'] = {
+                'found_in_nlm': nlm_result.get('found_in_nlm', False),
+                'medline_indexed': nlm_result.get('medline_indexed', False),
+                'match_type': nlm_result.get('match_type'),
+                'reputation_boost_applied': nlm_result.get('reputation_boost', 0.0),
+                'nlm_entry': nlm_result.get('nlm_entry')
+            }
+        
         return EnhancedAnalysisResult(
             overall_score=total_score,
             risk_level=risk_level,
@@ -1155,7 +1531,7 @@ class EnhancedPredatoryDetector:
             moderate_concerns=all_warnings,
             positive_indicators=positive_indicators,
             
-            external_verification=indexing_result.get('verification_results', {}),
+            external_verification=external_verification,
             
             peer_review_analysis=peer_review_result.get('details', {}),
             language_analysis=language_result.get('details', {}),
@@ -1172,14 +1548,14 @@ class EnhancedPredatoryDetector:
     
     def _calculate_dynamic_confidence(self, total_score, peer_score, language_score, 
                                     editorial_score, indexing_score, contact_score, 
-                                    content, flags):
+                                    content, flags, nlm_confidence_boost=0.0):
         """
         Calculate dynamic confidence with 95% confidence intervals
         
         Factors considered:
         - Data quality and completeness
         - Score consistency and variance
-        - External validation signals
+        - External validation signals (including NLM catalog)
         - Analysis coverage
         """
         import math
@@ -1253,6 +1629,12 @@ class EnhancedPredatoryDetector:
         else:  # Limited analysis
             adjustments -= 0.05
             uncertainty_factors.append(0.07)
+        
+        # Apply NLM catalog confidence boost
+        nlm_adjustment = nlm_confidence_boost / 100.0  # Convert percentage to decimal
+        if nlm_adjustment > 0:
+            adjustments += nlm_adjustment
+            logger.info(f"🎯 NLM Confidence Boost: +{nlm_confidence_boost:.1f}% applied")
         
         # Calculate final confidence
         confidence = max(0.50, min(0.98, base_confidence + adjustments))
