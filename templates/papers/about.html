@@ -1,0 +1,408 @@
+{% extends 'xera_base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block meta_description %}{{ page_description }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ===============================================
+   ABOUT PAGE STYLES
+   =============================================== */
+
+.hero-about {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 50%, #1e40af 100%);
+    color: white;
+    padding: 4rem 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-about::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="about-pattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23about-pattern)"/></svg>');
+    opacity: 0.3;
+}
+
+.hero-about .container {
+    position: relative;
+    z-index: 1;
+}
+
+.profile-section {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.profile-section:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+}
+
+.contact-links {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.contact-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+    color: white;
+    text-decoration: none;
+    border-radius: 25px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.contact-link:hover {
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+}
+
+.contact-link i {
+    margin-right: 0.5rem;
+    font-size: 1.1rem;
+}
+
+.tool-card {
+    background: white;
+    border-radius: 15px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    border-left: 5px solid #3b82f6;
+}
+
+.tool-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.tool-card h3 {
+    color: #1e40af;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.methodology-list {
+    list-style: none;
+    padding-left: 0;
+    margin: 1rem 0;
+}
+
+.methodology-list li {
+    padding: 0.5rem 0;
+    padding-left: 1.5rem;
+    position: relative;
+}
+
+.methodology-list li::before {
+    content: '•';
+    color: #3b82f6;
+    font-weight: bold;
+    position: absolute;
+    left: 0;
+}
+
+.tech-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    color: #475569;
+    padding: 0.25rem 0.75rem;
+    border-radius: 15px;
+    font-size: 0.875rem;
+    margin: 0.25rem;
+    border: 1px solid #cbd5e1;
+}
+
+.philosophy-card {
+    background: linear-gradient(135deg, #fef7ff 0%, #faf5ff 100%);
+    border-radius: 15px;
+    padding: 2rem;
+    border: 1px solid #e9d5ff;
+    margin-bottom: 2rem;
+}
+
+.principle-item {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    border-left: 4px solid #8b5cf6;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.principle-item h4 {
+    color: #6d28d9;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.tech-stack-section {
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    border-radius: 15px;
+    padding: 2rem;
+    border: 1px solid #bbf7d0;
+}
+
+.tech-category {
+    margin-bottom: 1.5rem;
+}
+
+.tech-category h4 {
+    color: #059669;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+}
+
+.tech-category .tech-badge {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: none;
+}
+
+.section-header {
+    border-bottom: 3px solid #3b82f6;
+    padding-bottom: 0.5rem;
+    margin-bottom: 2rem;
+    position: relative;
+}
+
+.section-header::after {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    left: 0;
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+    border-radius: 2px;
+}
+
+@media (max-width: 768px) {
+    .hero-about {
+        padding: 2rem 0;
+    }
+    
+    .profile-section, .tool-card {
+        padding: 1.5rem;
+    }
+    
+    .contact-links {
+        flex-direction: column;
+    }
+    
+    .contact-link {
+        text-align: center;
+        justify-content: center;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-about">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h1 class="display-4 fw-bold mb-4">
+                    <i class="fas fa-user me-3"></i>
+                    About PRCT
+                </h1>
+                <p class="lead mb-4">
+                    Learn about the creator, methodology, and tools behind the Post-Retraction Citation Tracker,
+                    Democracy Analysis, and Predatory Journal Detection systems.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Profile Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                <div class="profile-section">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h2 class="text-primary fw-bold">{{ author_name }}</h2>
+                            <h4 class="text-muted mb-3">{{ author_title }}</h4>
+                            <p class="lead">{{ author_bio }}</p>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="rounded-circle bg-primary d-inline-flex align-items-center justify-content-center" 
+                                 style="width: 120px; height: 120px; font-size: 3rem; color: white;">
+                                <i class="fas fa-user"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="contact-links">
+                        {% for link in contact_links %}
+                        <a href="{{ link.url }}" target="_blank" class="contact-link" title="{{ link.description }}">
+                            <i class="{{ link.icon }}"></i>
+                            {{ link.name }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Tools and Methodology Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <h2 class="section-header">
+            <i class="fas fa-tools text-primary me-2"></i>Tools & Methodology
+        </h2>
+        
+        {% for tool in website_tools %}
+        <div class="tool-card">
+            <h3><i class="fas fa-cog me-2"></i>{{ tool.name }}</h3>
+            <p class="mb-3">{{ tool.description }}</p>
+            
+            <h5 class="text-primary mb-2">Methodology:</h5>
+            <ul class="methodology-list">
+                {% for method in tool.methodology %}
+                <li>{{ method }}</li>
+                {% endfor %}
+            </ul>
+            
+            <h5 class="text-primary mb-2">Technologies:</h5>
+            <div class="mb-0">
+                {% for tech in tool.technologies %}
+                <span class="tech-badge">{{ tech }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- Research Philosophy Section -->
+<section class="py-5">
+    <div class="container">
+        <h2 class="section-header">
+            <i class="fas fa-lightbulb text-primary me-2"></i>{{ research_philosophy.title }}
+        </h2>
+        
+        <div class="philosophy-card">
+            {% for principle in research_philosophy.principles %}
+            <div class="principle-item">
+                <h4>{{ principle.title }}</h4>
+                <p class="mb-0">{{ principle.description }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Technical Stack Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <h2 class="section-header">
+            <i class="fas fa-code text-primary me-2"></i>Technical Stack
+        </h2>
+        
+        <div class="tech-stack-section">
+            <div class="row">
+                {% for category, technologies in technical_stack.items %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="tech-category">
+                        <h4><i class="fas fa-layer-group me-1"></i>{{ category|title }}</h4>
+                        {% for tech in technologies %}
+                        <span class="tech-badge">{{ tech }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Citation and Usage Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <div class="profile-section">
+                    <h3 class="text-primary mb-3">
+                        <i class="fas fa-quote-left me-2"></i>Citation & Usage
+                    </h3>
+                    <p class="mb-3">
+                        If you use any of the tools or data from this website in your research, 
+                        please cite appropriately and consider reaching out for potential collaboration.
+                    </p>
+                    <p class="text-muted small">
+                        <strong>Suggested Citation:</strong><br>
+                        Sofi-Mahmudi, Ahmad. (2024). Post-Retraction Citation Tracker and Research Integrity Tools. 
+                        Available at: https://prct.xeradb.com
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add smooth scrolling for internal links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            document.querySelector(this.getAttribute('href')).scrollIntoView({
+                behavior: 'smooth'
+            });
+        });
+    });
+    
+    // Add animation to cards on scroll
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
+    
+    const observer = new IntersectionObserver(function(entries) {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, observerOptions);
+    
+    // Observe all cards
+    document.querySelectorAll('.tool-card, .principle-item, .profile-section').forEach(card => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(card);
+    });
+});
+</script>
+{% endblock %}

@@ -81,9 +81,6 @@
                 <a href="{% url 'papers:home' %}" class="xera-nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
                     <i class="fas fa-home me-1"></i>Home
                 </a>
-                <a href="{% url 'papers:search' %}" class="xera-nav-link {% if 'search' in request.resolver_match.url_name %}active{% endif %}">
-                    <i class="fas fa-search me-1"></i>Search
-                </a>
                 <a href="{% url 'papers:analytics' %}" class="xera-nav-link {% if 'analytics' in request.resolver_match.url_name %}active{% endif %}">
                     <i class="fas fa-chart-bar me-1"></i>Analytics
                 </a>
@@ -92,6 +89,9 @@
                 </a>
                 <a href="{% url 'papers:democracy_analysis' %}" class="xera-nav-link {% if 'democracy_analysis' in request.resolver_match.url_name %}active{% endif %}">
                     <i class="fas fa-balance-scale me-1"></i>Democracy
+                </a>
+                <a href="{% url 'papers:about' %}" class="xera-nav-link {% if 'about' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-user me-1"></i>About
                 </a>
                 <a href="/api/" class="xera-nav-link" target="_blank">
                     <i class="fas fa-code me-1"></i>API

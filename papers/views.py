@@ -5,7 +5,7 @@ from django.db.models import Q, Count, Avg, Case, When, IntegerField, F, Max, Su
 from django.db.models.functions import TruncYear, TruncMonth
 from django.db import models
 from django.conf import settings
-from django.views.generic import ListView, DetailView
+from django.views.generic import ListView, DetailView, TemplateView
 from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
 from .models import RetractedPaper, CitingPaper, Citation, DataImportLog
 import json
@@ -2899,6 +2899,132 @@ class PredatoryJournalAnalysisView(View):
             }
         
         return render(request, 'papers/predatory_analysis.html', context)
+
+
+class AboutView(TemplateView):
+    """
+    About Page - Contact Information and Methodology
+    
+    Displays information about the creator, contact details,
+    and the methodology and tools used across the website.
+    """
+    template_name = 'papers/about.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Personal and contact information
+        context.update({
+            'page_title': 'About - Ahmad Sofi-Mahmudi',
+            'page_description': 'Learn about the creator and methodology behind PRCT, Democracy Analysis, and Predatory Journal Detection tools',
+            
+            # Contact Information
+            'author_name': 'Ahmad Sofi-Mahmudi',
+            'author_title': 'Researcher & Data Scientist',
+            'author_bio': '''Ahmad Sofi-Mahmudi is a researcher specializing in evidence synthesis, 
+                           research integrity, and scientific transparency. He focuses on developing 
+                           tools and methodologies to enhance the reliability of scientific research 
+                           and combat research misconduct.''',
+            'contact_links': [
+                {
+                    'name': 'LinkedIn',
+                    'url': 'https://www.linkedin.com/in/asofimahmudi/',
+                    'icon': 'fab fa-linkedin',
+                    'description': 'Professional profile and network'
+                },
+                {
+                    'name': 'Twitter/X',
+                    'url': 'https://x.com/ASofiMahmudi',
+                    'icon': 'fab fa-x-twitter',
+                    'description': 'Research updates and discussions'
+                },
+                {
+                    'name': 'Email',
+                    'url': 'mailto:ahmad.pub@gmail.com',
+                    'icon': 'fas fa-envelope',
+                    'description': 'Direct contact for collaborations'
+                }
+            ],
+            
+            # Website Tools and Methodology
+            'website_tools': [
+                {
+                    'name': 'Post-Retraction Citation Tracker (PRCT)',
+                    'description': 'Tracks citations to retracted scientific papers using advanced data mining and visualization techniques.',
+                    'methodology': [
+                        'Retraction Watch Database integration for comprehensive retraction data',
+                        'CrossRef API for citation tracking and metadata retrieval',
+                        'PostgreSQL database with optimized indexing for fast queries',
+                        'Django framework with performance optimizations',
+                        'Interactive visualizations using Chart.js and D3.js',
+                        'Real-time analytics with caching mechanisms'
+                    ],
+                    'technologies': ['Python', 'Django', 'PostgreSQL', 'JavaScript', 'Bootstrap', 'Chart.js']
+                },
+                {
+                    'name': 'Democracy & Scientific Retractions Analysis',
+                    'description': 'Comprehensive Bayesian hierarchical analysis examining the relationship between democratic governance and research integrity.',
+                    'methodology': [
+                        'Bayesian Hierarchical Negative Binomial regression using Stan and brms',
+                        'Multiple Imputation by Chained Equations (MICE) for missing data',
+                        'Directed Acyclic Graph (DAG) for causal inference framework',
+                        'V-Dem Electoral Democracy Index as primary democracy measure',
+                        'SCImago Journal & Country Rank for publication data',
+                        'World Bank Governance Indicators for institutional quality measures',
+                        'Longitudinal analysis covering 167 countries (2006-2023)'
+                    ],
+                    'technologies': ['R', 'Stan', 'brms', 'tidyverse', 'ggplot2', 'pandas', 'numpy']
+                },
+                {
+                    'name': 'Predatory Journal Detection Tool',
+                    'description': 'AI-powered tool for identifying predatory journals using evidence-based criteria and comprehensive web analysis.',
+                    'methodology': [
+                        'Evidence-based scoring system from academic literature review',
+                        'Multi-factor analysis: peer review, language, editorial boards, indexing',
+                        'Web scraping with BeautifulSoup for comprehensive content analysis',
+                        'External database verification (DOAJ, Crossref, OpenAlex)',
+                        'Dynamic confidence scoring with 95% confidence intervals',
+                        'Enhanced contextual analysis for decentralized peer review models',
+                        'Publisher reputation recognition to reduce false positives'
+                    ],
+                    'technologies': ['Python', 'BeautifulSoup', 'requests', 'scikit-learn', 'pandas']
+                }
+            ],
+            
+            # Research Philosophy
+            'research_philosophy': {
+                'title': 'Research Philosophy & Mission',
+                'principles': [
+                    {
+                        'title': 'Scientific Transparency',
+                        'description': 'Promoting open science practices and transparent reporting of research methodologies.'
+                    },
+                    {
+                        'title': 'Research Integrity',
+                        'description': 'Developing tools to identify and combat research misconduct and predatory publishing practices.'
+                    },
+                    {
+                        'title': 'Evidence-Based Decision Making',
+                        'description': 'Using rigorous statistical methods and causal inference to inform policy and practice.'
+                    },
+                    {
+                        'title': 'Global Impact',
+                        'description': 'Creating accessible tools that benefit the global research community and enhance scientific quality worldwide.'
+                    }
+                ]
+            },
+            
+            # Technical Specifications
+            'technical_stack': {
+                'backend': ['Python', 'Django', 'PostgreSQL', 'FastAPI'],
+                'frontend': ['HTML5', 'CSS3', 'JavaScript', 'Bootstrap 5', 'Chart.js'],
+                'analytics': ['R', 'Stan', 'pandas', 'numpy', 'scikit-learn'],
+                'deployment': ['Git', 'GitHub', 'Linux', 'Docker'],
+                'apis': ['CrossRef API', 'DOAJ API', 'OpenAlex API', 'Retraction Watch Database']
+            }
+        })
+        
+        return context
 
 
 class DemocracyAnalysisView(View):
