@@ -120,6 +120,9 @@ class EnhancedPredatoryDetector:
         # Load NLM catalog data for journal legitimacy verification
         self.nlm_catalog = self._load_nlm_catalog()
         
+        # Load JIF (Journal Impact Factor) data for reputation assessment
+        self.jif_catalog = self._load_jif_catalog()
+        
         # Initialize external API endpoints
         self.api_endpoints = {
             'doaj': 'https://doaj.org/api/search/journals/',
@@ -303,6 +306,96 @@ class EnhancedPredatoryDetector:
         
         return nlm_data
     
+    def _load_jif_catalog(self) -> Dict:
+        """
+        Load JIF (Journal Impact Factor) catalog data for reputation assessment
+        
+        Returns comprehensive JIF data indexed by ISSN and title for fast lookup.
+        Higher impact factors indicate more reputable journals.
+        """
+        jif_data = {
+            'by_issn': {},
+            'by_title': {},
+            'by_title_fuzzy': {},
+            'stats': {'total_journals': 0, 'high_impact': 0}
+        }
+        
+        try:
+            # Get the path to the JIF catalog file
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            jif_file_path = os.path.join(current_dir, 'data', 'jif_impact_factors_2025.csv')
+            
+            if not os.path.exists(jif_file_path):
+                logger.warning(f"⚠️ JIF catalog file not found at {jif_file_path}")
+                return jif_data
+                
+            logger.info("📊 Loading JIF catalog data...")
+            df = pd.read_csv(jif_file_path)
+            
+            for _, row in df.iterrows():
+                # Create journal entry
+                impact_factor = float(row.get('impact_factor', 0))
+                
+                journal_entry = {
+                    'journal_name': row.get('journal_name', ''),
+                    'publisher': row.get('publisher', ''),
+                    'issn': row.get('issn', ''),
+                    'impact_factor': impact_factor,
+                    'impact_tier': self._classify_impact_tier(impact_factor)
+                }
+                
+                # Index by ISSN
+                issn = str(row.get('issn', '')).strip()
+                if issn and issn != 'nan' and len(issn) >= 8:
+                    jif_data['by_issn'][issn] = journal_entry
+                
+                # Index by title (exact)
+                title = str(row.get('journal_name', '')).strip().lower()
+                if title and title != 'nan':
+                    jif_data['by_title'][title] = journal_entry
+                    
+                    # Also index by simplified title for fuzzy matching
+                    simplified_title = self._simplify_journal_title(title)
+                    jif_data['by_title_fuzzy'][simplified_title] = journal_entry
+                
+                # Update stats
+                jif_data['stats']['total_journals'] += 1
+                if impact_factor >= 10.0:  # High impact threshold
+                    jif_data['stats']['high_impact'] += 1
+            
+            logger.info(f"✅ JIF catalog loaded: {jif_data['stats']['total_journals']:,} journals "
+                       f"({jif_data['stats']['high_impact']:,} high-impact)")
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to load JIF catalog: {e}")
+        
+        return jif_data
+    
+    def _classify_impact_tier(self, impact_factor: float) -> str:
+        """Classify journal impact factor into tiers"""
+        if impact_factor >= 30.0:
+            return "elite"        # Top-tier (Nature, Science, etc.)
+        elif impact_factor >= 10.0:
+            return "high"         # High-impact journals
+        elif impact_factor >= 5.0:
+            return "medium_high"  # Above-average journals
+        elif impact_factor >= 2.0:
+            return "medium"       # Average journals
+        elif impact_factor >= 1.0:
+            return "medium_low"   # Below-average journals
+        else:
+            return "low"          # Low-impact journals
+    
+    def _simplify_journal_title(self, title: str) -> str:
+        """Simplify journal title for fuzzy matching"""
+        # Remove common words and normalize
+        stop_words = {'journal', 'of', 'the', 'and', 'in', 'for', 'a', 'an', 'international', 
+                     'american', 'european', 'nature', 'reviews', 'letters', 'communications'}
+        
+        words = re.findall(r'\b\w+\b', title.lower())
+        simplified = ' '.join(word for word in words if word not in stop_words)
+        return simplified.strip()
+    
     def _lookup_journal_in_nlm(self, journal_name: str, issns: List[str] = None, url: str = None) -> Dict:
         """
         Comprehensive NLM catalog lookup for journal legitimacy verification
@@ -400,6 +493,130 @@ class EnhancedPredatoryDetector:
             logger.error(f"❌ NLM lookup error: {e}")
         
         return nlm_result
+    
+    def _lookup_journal_in_jif(self, journal_name: str, issns: List[str] = None, url: str = None) -> Dict:
+        """
+        Comprehensive JIF catalog lookup for journal impact factor assessment
+        
+        Args:
+            journal_name: Journal title to search for
+            issns: List of ISSNs to check
+            url: Journal URL for additional context
+            
+        Returns:
+            Dict with JIF status, impact factor, tier, and reputation boost
+        """
+        jif_result = {
+            'found_in_jif': False,
+            'impact_factor': 0.0,
+            'impact_tier': 'unknown',
+            'jif_entry': None,
+            'match_type': None,
+            'reputation_boost': 0.0,
+            'confidence_boost': 0.0
+        }
+        
+        if not self.jif_catalog or not self.jif_catalog['stats']['total_journals']:
+            return jif_result
+        
+        try:
+            # 1. HIGHEST PRIORITY: ISSN-based matching (most reliable)
+            if issns:
+                for issn in issns:
+                    clean_issn = str(issn).strip().replace('-', '').replace(' ', '')
+                    # Try both with and without dash
+                    formatted_issn = f"{clean_issn[:4]}-{clean_issn[4:]}" if len(clean_issn) == 8 else clean_issn
+                    
+                    if clean_issn in self.jif_catalog['by_issn'] or formatted_issn in self.jif_catalog['by_issn']:
+                        entry = self.jif_catalog['by_issn'].get(clean_issn, self.jif_catalog['by_issn'].get(formatted_issn))
+                        if entry:
+                            reputation_boost, confidence_boost = self._calculate_jif_boosts(entry['impact_factor'], entry['impact_tier'])
+                            jif_result.update({
+                                'found_in_jif': True,
+                                'impact_factor': entry['impact_factor'],
+                                'impact_tier': entry['impact_tier'],
+                                'jif_entry': entry,
+                                'match_type': 'issn_exact',
+                                'reputation_boost': reputation_boost,
+                                'confidence_boost': confidence_boost
+                            })
+                            logger.info(f"📊 JIF MATCH: Found by ISSN {issn} - IF: {entry['impact_factor']:.1f} ({entry['impact_tier']})")
+                            return jif_result
+            
+            # 2. SECONDARY: Title-based matching (exact)
+            if journal_name:
+                clean_title = journal_name.strip().lower()
+                
+                # Check exact title match
+                if clean_title in self.jif_catalog['by_title']:
+                    entry = self.jif_catalog['by_title'][clean_title]
+                    reputation_boost, confidence_boost = self._calculate_jif_boosts(entry['impact_factor'], entry['impact_tier'])
+                    jif_result.update({
+                        'found_in_jif': True,
+                        'impact_factor': entry['impact_factor'],
+                        'impact_tier': entry['impact_tier'],
+                        'jif_entry': entry,
+                        'match_type': 'title_exact',
+                        'reputation_boost': reputation_boost,
+                        'confidence_boost': confidence_boost
+                    })
+                    logger.info(f"📊 JIF MATCH: Found by title '{journal_name}' - IF: {entry['impact_factor']:.1f} ({entry['impact_tier']})")
+                    return jif_result
+                
+                # 3. TERTIARY: Fuzzy title matching (simplified)
+                simplified_title = self._simplify_journal_title(clean_title)
+                if simplified_title in self.jif_catalog['by_title_fuzzy']:
+                    entry = self.jif_catalog['by_title_fuzzy'][simplified_title]
+                    reputation_boost, confidence_boost = self._calculate_jif_boosts(entry['impact_factor'], entry['impact_tier'])
+                    jif_result.update({
+                        'found_in_jif': True,
+                        'impact_factor': entry['impact_factor'],
+                        'impact_tier': entry['impact_tier'],
+                        'jif_entry': entry,
+                        'match_type': 'title_fuzzy',
+                        'reputation_boost': reputation_boost,
+                        'confidence_boost': confidence_boost
+                    })
+                    logger.info(f"📊 JIF MATCH: Fuzzy match '{journal_name}' → '{entry['journal_name']}' - IF: {entry['impact_factor']:.1f}")
+                    return jif_result
+            
+        except Exception as e:
+            logger.error(f"❌ JIF lookup error: {e}")
+        
+        return jif_result
+    
+    def _calculate_jif_boosts(self, impact_factor: float, impact_tier: str) -> Tuple[float, float]:
+        """Calculate reputation and confidence boosts based on impact factor"""
+        
+        # Reputation boost (reduces predatory risk)
+        if impact_tier == "elite":  # IF >= 30
+            reputation_boost = 50.0
+        elif impact_tier == "high":  # IF >= 10
+            reputation_boost = 35.0
+        elif impact_tier == "medium_high":  # IF >= 5
+            reputation_boost = 25.0
+        elif impact_tier == "medium":  # IF >= 2
+            reputation_boost = 15.0
+        elif impact_tier == "medium_low":  # IF >= 1
+            reputation_boost = 8.0
+        else:  # Low IF
+            reputation_boost = 3.0
+        
+        # Confidence boost (increases analysis confidence)
+        if impact_tier == "elite":
+            confidence_boost = 35.0
+        elif impact_tier == "high":
+            confidence_boost = 25.0
+        elif impact_tier == "medium_high":
+            confidence_boost = 18.0
+        elif impact_tier == "medium":
+            confidence_boost = 12.0
+        elif impact_tier == "medium_low":
+            confidence_boost = 6.0
+        else:
+            confidence_boost = 2.0
+        
+        return reputation_boost, confidence_boost
     
     def _fuzzy_title_match(self, title1: str, title2: str, threshold: float = 0.8) -> bool:
         """Check if two journal titles are similar enough to be considered a match"""
@@ -583,7 +800,7 @@ class EnhancedPredatoryDetector:
             text += "\n\n" + enhanced_content
             logger.info(f"✅ Enhanced analysis with {len(enhanced_content)} additional characters from about sections")
         
-        # EARLY NLM CATALOG VERIFICATION - Critical legitimacy check
+        # EARLY REPUTATION VERIFICATION - Critical legitimacy check
         logger.info("🏛️ Checking NLM catalog for journal legitimacy...")
         journal_title = self._extract_journal_title(soup, url)
         issns = self._extract_issns_from_content(text, soup)
@@ -594,6 +811,17 @@ class EnhancedPredatoryDetector:
                        f"MEDLINE: {nlm_result['medline_indexed']}, Boost: +{nlm_result['reputation_boost']:.1f})")
         else:
             logger.info("📊 NLM STATUS: Journal not found in NLM catalog")
+        
+        # JIF CATALOG VERIFICATION - Impact factor assessment
+        logger.info("📊 Checking JIF catalog for impact factor data...")
+        jif_result = self._lookup_journal_in_jif(journal_title, issns, url)
+        
+        if jif_result['found_in_jif']:
+            logger.info(f"📈 JIF STATUS: Journal found (IF: {jif_result['impact_factor']:.1f}, "
+                       f"Tier: {jif_result['impact_tier']}, Match: {jif_result['match_type']}, "
+                       f"Boost: +{jif_result['reputation_boost']:.1f})")
+        else:
+            logger.info("📊 JIF STATUS: Journal not found in JIF catalog")
         
         logger.info("🧠 Performing evidence-based analysis...")
         
@@ -626,7 +854,7 @@ class EnhancedPredatoryDetector:
         result = self._calculate_comprehensive_score(
             peer_review_result, language_result, editorial_result,
             indexing_result, contact_result, name_result,
-            url, analysis_duration, content, nlm_result
+            url, analysis_duration, content, nlm_result, jif_result
         )
         
         logger.info(f"✅ Analysis complete: {result.overall_score:.1f}/100 ({result.risk_level})")
@@ -1409,8 +1637,8 @@ class EnhancedPredatoryDetector:
     
     def _calculate_comprehensive_score(self, peer_review_result, language_result, 
                                      editorial_result, indexing_result, contact_result,
-                                     name_result, url, duration, content, nlm_result=None) -> EnhancedAnalysisResult:
-        """Calculate comprehensive final score with evidence-based weighting and NLM reputation boost"""
+                                     name_result, url, duration, content, nlm_result=None, jif_result=None) -> EnhancedAnalysisResult:
+        """Calculate comprehensive final score with evidence-based weighting and reputation boosts"""
         
         # Extract scores
         peer_score = peer_review_result['score']
@@ -1426,15 +1654,37 @@ class EnhancedPredatoryDetector:
             nlm_boost = nlm_result.get('reputation_boost', 0.0)
             nlm_confidence_boost = nlm_result.get('confidence_boost', 0.0)
             
-            # Apply boost to reduce predatory scores (making them more positive/legitimate)
-            peer_score = max(0, peer_score - (nlm_boost * 0.4))  # 40% of boost to peer review
-            language_score = max(0, language_score - (nlm_boost * 0.3))  # 30% to language
-            editorial_score = max(0, editorial_score - (nlm_boost * 0.2))  # 20% to editorial
-            indexing_score = max(0, indexing_score - (nlm_boost * 0.1))  # 10% to indexing
-            
-            logger.info(f"🎯 NLM BOOST APPLIED: -{nlm_boost:.1f} predatory risk reduction "
+            logger.info(f"🎯 NLM BOOST: -{nlm_boost:.1f} predatory risk reduction "
                        f"(Match: {nlm_result.get('match_type', 'unknown')}, "
                        f"MEDLINE: {nlm_result.get('medline_indexed', False)})")
+        
+        # Apply JIF catalog reputation boost (reduces predatory risk)
+        jif_boost = 0.0
+        jif_confidence_boost = 0.0
+        if jif_result and jif_result.get('found_in_jif', False):
+            jif_boost = jif_result.get('reputation_boost', 0.0)
+            jif_confidence_boost = jif_result.get('confidence_boost', 0.0)
+            
+            logger.info(f"📈 JIF BOOST: -{jif_boost:.1f} predatory risk reduction "
+                       f"(IF: {jif_result.get('impact_factor', 0):.1f}, "
+                       f"Tier: {jif_result.get('impact_tier', 'unknown')})")
+        
+        # Combine both boosts (take the higher of the two, don't double-count)
+        combined_boost = max(nlm_boost, jif_boost)
+        combined_confidence_boost = max(nlm_confidence_boost, jif_confidence_boost)
+        
+        # If journal is found in both catalogs, apply a modest additional bonus
+        if nlm_boost > 0 and jif_boost > 0:
+            combined_boost = max(nlm_boost, jif_boost) + min(nlm_boost, jif_boost) * 0.3  # 30% bonus
+            combined_confidence_boost = max(nlm_confidence_boost, jif_confidence_boost) + 5.0  # Extra confidence
+            logger.info(f"⭐ DUAL VERIFICATION BONUS: Found in both NLM and JIF catalogs (+{min(nlm_boost, jif_boost) * 0.3:.1f})")
+        
+        # Apply combined boost to reduce predatory scores
+        if combined_boost > 0:
+            peer_score = max(0, peer_score - (combined_boost * 0.4))  # 40% of boost to peer review
+            language_score = max(0, language_score - (combined_boost * 0.3))  # 30% to language
+            editorial_score = max(0, editorial_score - (combined_boost * 0.2))  # 20% to editorial
+            indexing_score = max(0, indexing_score - (combined_boost * 0.1))  # 10% to indexing
         
         # Calculate weighted total
         total_score = peer_score + language_score + editorial_score + indexing_score + contact_score
@@ -1466,10 +1716,10 @@ class EnhancedPredatoryDetector:
         else:
             risk_level = "Very Low Risk"
         
-        # Calculate dynamic confidence with 95% CI (including NLM boost)
+        # Calculate dynamic confidence with 95% CI (including both boosts)
         confidence_result = self._calculate_dynamic_confidence(
             total_score, peer_score, language_score, editorial_score, 
-            indexing_score, contact_score, content, all_flags, nlm_confidence_boost
+            indexing_score, contact_score, content, all_flags, combined_confidence_boost
         )
         confidence = confidence_result['confidence']
         confidence_lower = confidence_result['confidence_95ci_lower']
@@ -1502,8 +1752,30 @@ class EnhancedPredatoryDetector:
                 positive_indicators.append("🏛️ Journal found in NLM catalog")
             positive_indicators.append(f"🎯 NLM match type: {nlm_result.get('match_type', 'unknown')}")
         
-        # Prepare external verification with NLM data
+        # Add JIF-specific positive indicators
+        if jif_result and jif_result.get('found_in_jif', False):
+            impact_factor = jif_result.get('impact_factor', 0)
+            impact_tier = jif_result.get('impact_tier', 'unknown')
+            
+            if impact_tier == 'elite':
+                positive_indicators.append(f"⭐ Elite journal with very high impact factor (IF: {impact_factor:.1f})")
+            elif impact_tier == 'high':
+                positive_indicators.append(f"📈 High-impact journal (IF: {impact_factor:.1f})")
+            elif impact_tier == 'medium_high':
+                positive_indicators.append(f"📊 Above-average impact journal (IF: {impact_factor:.1f})")
+            else:
+                positive_indicators.append(f"📉 Journal found in JIF catalog (IF: {impact_factor:.1f})")
+            
+            positive_indicators.append(f"🎯 JIF match type: {jif_result.get('match_type', 'unknown')}")
+        
+        # Add dual verification bonus indicator
+        if (nlm_result and nlm_result.get('found_in_nlm', False) and 
+            jif_result and jif_result.get('found_in_jif', False)):
+            positive_indicators.append("⭐ Journal verified in both NLM and JIF catalogs")
+        
+        # Prepare external verification with both NLM and JIF data
         external_verification = indexing_result.get('verification_results', {})
+        
         if nlm_result:
             external_verification['nlm_catalog'] = {
                 'found_in_nlm': nlm_result.get('found_in_nlm', False),
@@ -1511,6 +1783,16 @@ class EnhancedPredatoryDetector:
                 'match_type': nlm_result.get('match_type'),
                 'reputation_boost_applied': nlm_result.get('reputation_boost', 0.0),
                 'nlm_entry': nlm_result.get('nlm_entry')
+            }
+        
+        if jif_result:
+            external_verification['jif_catalog'] = {
+                'found_in_jif': jif_result.get('found_in_jif', False),
+                'impact_factor': jif_result.get('impact_factor', 0.0),
+                'impact_tier': jif_result.get('impact_tier', 'unknown'),
+                'match_type': jif_result.get('match_type'),
+                'reputation_boost_applied': jif_result.get('reputation_boost', 0.0),
+                'jif_entry': jif_result.get('jif_entry')
             }
         
         return EnhancedAnalysisResult(
