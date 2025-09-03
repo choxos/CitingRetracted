@@ -3099,8 +3099,8 @@ class DemocracyAnalysisView(View):
                 'description': '''Countries with higher democracy scores have significantly fewer 
                                  retractions per published paper, even after controlling for 
                                  multiple confounding factors.''',
-                'effect_size': 'Incidence Rate Ratio (IRR):\n0.912 (95% CrI: 0.875-0.951)',
-                'interpretation': 'Each 1-unit increase in democracy score reduces retraction rate by 8.8% (Bayesian hierarchical model)'
+                'effect_size': 'Rate Ratio (RR):\n0.725 (95% CrI: 0.623-0.849)',
+                'interpretation': 'Each 1-unit increase in democracy score reduces retraction rate by 27.5% (Bayesian hierarchical model)'
             },
             'secondary_findings': [
                 {
@@ -3270,12 +3270,12 @@ class DemocracyAnalysisView(View):
             all_effects = [
                 {
                     'variable': 'Democracy Index',
-                    'coefficient': -0.092,
-                    'rate_ratio': 0.912,
-                    'cri_lower': 0.875,
-                    'cri_upper': 0.951,
-                    'p_value': 'P(β < 0) = 0.97',
-                    'interpretation': '8.8% reduction in retraction rate per unit increase (Bayesian hierarchical)',
+                    'coefficient': -0.321,
+                    'rate_ratio': 0.7251,
+                    'cri_lower': 0.6232,
+                    'cri_upper': 0.8488,
+                    'p_value': '< 0.001',
+                    'interpretation': '27.5% reduction in retraction rate per unit increase (Bayesian hierarchical)',
                     'analysis_type': 'Negbin Multivariate'
                 },
                 {
