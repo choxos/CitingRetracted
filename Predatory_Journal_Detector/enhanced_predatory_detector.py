@@ -131,6 +131,9 @@ class EnhancedPredatoryDetector:
             'ror': 'https://api.ror.org/organizations'  # For institutional verification
         }
         
+        # Configure session for external API calls
+        self.session.timeout = 10  # 10 second timeout for API calls
+        
     def _load_legitimate_databases(self) -> Dict[str, List[str]]:
         """Load known legitimate academic databases"""
         return {
@@ -764,6 +767,234 @@ class EnhancedPredatoryDetector:
             
         except Exception:
             return False
+    
+    def search_journal_by_name(self, journal_name: str) -> Dict:
+        """
+        Search for journal by name: First check NLM catalog, then OpenAlex for URL
+        
+        Args:
+            journal_name: Name of the journal to search for
+            
+        Returns:
+            Dict with search results, URLs, and analysis options
+        """
+        logger.info(f"🔍 Searching for journal: '{journal_name}'")
+        
+        search_result = {
+            'journal_name': journal_name,
+            'found_in_nlm': False,
+            'found_in_openalex': False,
+            'nlm_data': None,
+            'openalex_data': None,
+            'suggested_url': None,
+            'can_analyze': False,
+            'search_summary': []
+        }
+        
+        # Step 1: Search NLM catalog first
+        logger.info("🏛️ Step 1: Searching NLM catalog...")
+        nlm_result = self._search_nlm_by_name(journal_name)
+        
+        if nlm_result['found']:
+            search_result['found_in_nlm'] = True
+            search_result['nlm_data'] = nlm_result
+            search_result['search_summary'].append(f"✅ Found in NLM catalog: {nlm_result['title']}")
+            
+            if nlm_result.get('medline_indexed'):
+                search_result['search_summary'].append("🏛️ Journal is MEDLINE-indexed (high credibility)")
+            
+            # If NLM has electronic links, use them
+            if nlm_result.get('electronic_links'):
+                search_result['suggested_url'] = nlm_result['electronic_links']
+                search_result['can_analyze'] = True
+                search_result['search_summary'].append(f"🔗 URL available from NLM: {nlm_result['electronic_links']}")
+        else:
+            search_result['search_summary'].append("📊 Not found in NLM catalog")
+        
+        # Step 2: If not found in NLM or no URL, search OpenAlex
+        if not search_result['can_analyze']:
+            logger.info("🌐 Step 2: Searching OpenAlex for URL and metadata...")
+            openalex_result = self._search_openalex_by_name(journal_name)
+            
+            if openalex_result['found']:
+                search_result['found_in_openalex'] = True
+                search_result['openalex_data'] = openalex_result
+                search_result['search_summary'].append(f"✅ Found in OpenAlex: {openalex_result['display_name']}")
+                
+                homepage_url = openalex_result.get('homepage_url')
+                if homepage_url and homepage_url.strip():
+                    search_result['suggested_url'] = homepage_url
+                    search_result['can_analyze'] = True
+                    search_result['search_summary'].append(f"🔗 Homepage URL: {homepage_url}")
+                else:
+                    search_result['search_summary'].append("⚠️ OpenAlex entry found but no homepage URL available")
+                
+                if openalex_result.get('works_count'):
+                    search_result['search_summary'].append(f"📄 Publications: {openalex_result['works_count']:,}")
+                    
+                if openalex_result.get('cited_by_count'):
+                    search_result['search_summary'].append(f"📈 Citations: {openalex_result['cited_by_count']:,}")
+                    
+            else:
+                search_result['search_summary'].append("❌ Not found in OpenAlex either")
+        
+        # Final summary
+        if search_result['can_analyze']:
+            search_result['search_summary'].append("🎯 Ready for predatory analysis")
+            logger.info(f"✅ Search successful: Found URL for analysis")
+        else:
+            search_result['search_summary'].append("⚠️ No URL found - manual URL entry required")
+            logger.info(f"❌ Search incomplete: No URL found for '{journal_name}'")
+            
+        return search_result
+    
+    def _search_nlm_by_name(self, journal_name: str) -> Dict:
+        """Search NLM catalog by journal name"""
+        result = {'found': False, 'title': '', 'electronic_links': '', 'medline_indexed': False}
+        
+        try:
+            if not self.nlm_catalog or not self.nlm_catalog['stats']['total_journals']:
+                return result
+            
+            clean_name = journal_name.strip().lower()
+            
+            # Try exact match first
+            if clean_name in self.nlm_catalog['by_title']:
+                entry = self.nlm_catalog['by_title'][clean_name]
+                result = {
+                    'found': True,
+                    'title': entry['title_full'],
+                    'title_abbreviation': entry['title_abbreviation'],
+                    'publisher': entry['publisher'],
+                    'issn_electronic': entry['issn_electronic'],
+                    'issn_print': entry['issn_print'],
+                    'electronic_links': entry['electronic_links'],
+                    'medline_indexed': entry['medline_indexed'],
+                    'match_type': 'exact'
+                }
+                return result
+            
+            # Try fuzzy matching
+            for nlm_title, entry in self.nlm_catalog['by_title'].items():
+                if self._fuzzy_title_match(clean_name, nlm_title, threshold=0.85):
+                    result = {
+                        'found': True,
+                        'title': entry['title_full'],
+                        'title_abbreviation': entry['title_abbreviation'],
+                        'publisher': entry['publisher'],
+                        'issn_electronic': entry['issn_electronic'],
+                        'issn_print': entry['issn_print'],
+                        'electronic_links': entry['electronic_links'],
+                        'medline_indexed': entry['medline_indexed'],
+                        'match_type': 'fuzzy',
+                        'matched_title': nlm_title
+                    }
+                    return result
+                    
+        except Exception as e:
+            logger.error(f"❌ NLM search error: {e}")
+            
+        return result
+    
+    def _search_openalex_by_name(self, journal_name: str) -> Dict:
+        """Search OpenAlex API for journal URL and metadata"""
+        result = {'found': False, 'display_name': '', 'homepage_url': '', 'works_count': 0, 'cited_by_count': 0}
+        
+        try:
+            # Query OpenAlex sources endpoint (correct format)
+            import urllib.parse
+            encoded_name = urllib.parse.quote_plus(journal_name)
+            search_url = f"https://api.openalex.org/sources?search={encoded_name}&filter=type:journal"
+            
+            logger.info(f"📡 Querying OpenAlex: {search_url}")
+            response = self.session.get(search_url, headers={'User-Agent': 'mailto:research@example.com'})
+            
+            if response.status_code == 200:
+                data = response.json()
+                results = data.get('results', [])
+                
+                if results:
+                    # Take the first result (most relevant)
+                    journal = results[0]
+                    
+                    result = {
+                        'found': True,
+                        'openalex_id': journal.get('id', ''),
+                        'display_name': journal.get('display_name', ''),
+                        'homepage_url': journal.get('homepage_url', ''),
+                        'works_count': journal.get('works_count', 0),
+                        'cited_by_count': journal.get('cited_by_count', 0),
+                        'is_oa': journal.get('is_oa', False),
+                        'issn': journal.get('issn', []),
+                        'publisher': journal.get('host_organization_name', ''),
+                        'country_code': journal.get('country_code', ''),
+                        'type': journal.get('type', ''),
+                        'updated_date': journal.get('updated_date', '')
+                    }
+                    
+                    logger.info(f"✅ Found in OpenAlex: {result['display_name']}")
+                    
+                    # Log additional matches for user info
+                    if len(results) > 1:
+                        logger.info(f"📊 Found {len(results)} matches in OpenAlex (showing first)")
+                        
+                else:
+                    logger.info("❌ No results found in OpenAlex")
+                    
+            else:
+                logger.error(f"❌ OpenAlex API error: {response.status_code}")
+                
+        except Exception as e:
+            logger.error(f"❌ OpenAlex search error: {e}")
+            
+        return result
+    
+    def analyze_journal_by_name(self, journal_name: str) -> Dict:
+        """
+        Complete workflow: Search journal by name and analyze if URL found
+        
+        Args:
+            journal_name: Name of journal to search and analyze
+            
+        Returns:
+            Dict with search results and analysis if possible
+        """
+        logger.info(f"🎯 Starting complete analysis workflow for: '{journal_name}'")
+        
+        # Step 1: Search for journal
+        search_result = self.search_journal_by_name(journal_name)
+        
+        workflow_result = {
+            'search_result': search_result,
+            'analysis_result': None,
+            'workflow_complete': False,
+            'workflow_summary': []
+        }
+        
+        # Step 2: If URL found, run analysis
+        if search_result['can_analyze'] and search_result['suggested_url']:
+            logger.info(f"🔬 Step 3: Running predatory analysis on: {search_result['suggested_url']}")
+            
+            try:
+                analysis = self.analyze_journal_comprehensive(search_result['suggested_url'])
+                workflow_result['analysis_result'] = analysis
+                workflow_result['workflow_complete'] = True
+                workflow_result['workflow_summary'].append("✅ Complete analysis workflow successful")
+                
+                # Add search context to analysis summary
+                workflow_result['workflow_summary'].extend(search_result['search_summary'])
+                workflow_result['workflow_summary'].append(f"📊 Predatory Risk Score: {analysis.overall_score:.1f}/100 ({analysis.risk_level})")
+                
+                logger.info(f"✅ Complete workflow successful: {analysis.overall_score:.1f}/100 ({analysis.risk_level})")
+                
+            except Exception as e:
+                workflow_result['workflow_summary'].append(f"❌ Analysis failed: {str(e)}")
+                logger.error(f"❌ Analysis failed for {search_result['suggested_url']}: {e}")
+        else:
+            workflow_result['workflow_summary'].extend(search_result['search_summary'])
+            workflow_result['workflow_summary'].append("⚠️ Cannot proceed with analysis - no URL available")
+            
+        return workflow_result
     
     def analyze_journal_comprehensive(self, url: str, content: str = None) -> EnhancedAnalysisResult:
         """
