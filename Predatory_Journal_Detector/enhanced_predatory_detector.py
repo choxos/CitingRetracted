@@ -1160,15 +1160,19 @@ class EnhancedPredatoryDetector:
         # Check JIF catalog
         jif_result = self._lookup_journal_in_jif_basic(preliminary_title, url)
         
-        # Now attempt web scraping
+        # ALWAYS attempt web scraping for comprehensive analysis
         if content is None:
             logger.info("📡 Fetching website content...")
             content = self._fetch_content(url)
         
         if not content:
             # Create error result with external verification context
+            logger.info("⚠️ Web scraping failed, using external verification only")
             return self._create_error_result_with_verification(url, "Could not access website", 
                                                              time.time() - start_time, nlm_result, jif_result)
+        
+        # ✅ WEB SCRAPING SUCCEEDED - Continue with full analysis
+        logger.info("✅ Web content obtained, proceeding with comprehensive analysis")
         
         # Parse content
         soup = BeautifulSoup(content, 'html.parser')
@@ -1183,11 +1187,19 @@ class EnhancedPredatoryDetector:
             text += "\n\n" + enhanced_content
             logger.info(f"✅ Enhanced analysis with {len(enhanced_content)} additional characters from about sections")
         
-        # EARLY REPUTATION VERIFICATION - Critical legitimacy check
-        logger.info("🏛️ Checking NLM catalog for journal legitimacy...")
+        # ENHANCED REPUTATION VERIFICATION - Combine early + scraped data
+        logger.info("🏛️ Enhancing external catalog verification with scraped content...")
         journal_title = self._extract_journal_title(soup, url)
         issns = self._extract_issns_from_content(text, soup)
-        nlm_result = self._lookup_journal_in_nlm(journal_title, issns, url)
+        
+        # Enhance NLM result with scraped data if early lookup failed
+        if not nlm_result['found_in_nlm']:
+            enhanced_nlm_result = self._lookup_journal_in_nlm(journal_title, issns, url)
+            if enhanced_nlm_result['found_in_nlm']:
+                logger.info(f"✅ NLM ENHANCED: Found with scraped data - {enhanced_nlm_result['title']}")
+                nlm_result = enhanced_nlm_result
+        else:
+            logger.info(f"✅ NLM EARLY: Using early verification result - {nlm_result['title']}")
         
         if nlm_result['found_in_nlm']:
             logger.info(f"🎯 NLM STATUS: Journal found in catalog (Match: {nlm_result['match_type']}, "
@@ -1195,9 +1207,23 @@ class EnhancedPredatoryDetector:
         else:
             logger.info("📊 NLM STATUS: Journal not found in NLM catalog")
         
-        # JIF CATALOG VERIFICATION - Impact factor assessment
-        logger.info("📊 Checking JIF catalog for impact factor data...")
-        jif_result = self._lookup_journal_in_jif(journal_title, issns, url)
+        # Enhance JIF result with scraped data if early lookup failed
+        if not jif_result['found_in_jif']:
+            enhanced_jif_result = self._lookup_journal_in_jif(journal_title, issns, url)
+            if enhanced_jif_result.get('found', False):
+                logger.info(f"✅ JIF ENHANCED: Found with scraped data - {enhanced_jif_result['title']}")
+                # Convert enhanced result to match expected structure
+                jif_result = {
+                    'found_in_jif': True,
+                    'title': enhanced_jif_result['title'],
+                    'impact_factor': enhanced_jif_result['impact_factor'],
+                    'reputation_boost': enhanced_jif_result['reputation_boost'],
+                    'impact_tier': enhanced_jif_result['tier'],
+                    'match_type': enhanced_jif_result.get('match_type', 'enhanced')
+                }
+        else:
+            if jif_result['found_in_jif']:
+                logger.info(f"✅ JIF EARLY: Using early verification result - {jif_result['title']}")
         
         if jif_result['found_in_jif']:
             logger.info(f"📈 JIF STATUS: Journal found (IF: {jif_result['impact_factor']:.1f}, "
