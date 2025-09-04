@@ -1140,28 +1140,45 @@
 
 {% block extra_js %}
 <!-- Chart.js for scatter and line charts -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
 <!-- Plotly.js for world map -->
-<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist@2.24.1/plotly.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist@2.27.0/plotly.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     
     // Create Democracy vs Retractions scatter plot
     const scatterCtx = document.getElementById('democracyScatterChart');
     if (scatterCtx) {
-        const scatterData = {{ visualizations.scatter.data|safe }};
-        console.log('Scatter plot data:', scatterData);
-        console.log('Scatter plot data type:', typeof scatterData);
-        
-        if (scatterData && typeof scatterData === 'object' && scatterData.countries) {
-            console.log('Countries count:', scatterData.countries.length);
-            console.log('Sample country:', scatterData.countries[0]);
-            console.log('Correlation:', scatterData.correlation);
-            console.log('P-value:', scatterData.p_value);
-            createScatterPlot('democracyScatterChart', scatterData);
-        } else {
-            console.log('Invalid scatter plot data structure:', scatterData);
+        try {
+            const scatterData = {{ visualizations.scatter.data|safe }};
+            console.log('🔍 Scatter plot data:', scatterData);
+            console.log('📊 Data type:', typeof scatterData);
+            
+            if (scatterData && typeof scatterData === 'object' && scatterData.countries) {
+                console.log('✅ Countries count:', scatterData.countries.length);
+                console.log('📈 Sample country:', scatterData.countries[0]);
+                console.log('🔗 Correlation:', scatterData.correlation);
+                console.log('📊 P-value:', scatterData.p_value);
+                
+                // Check if Chart.js is loaded
+                if (typeof Chart === 'undefined') {
+                    console.error('❌ Chart.js library not loaded!');
+                    return;
+                }
+                
+                console.log('🎯 Creating scatter plot...');
+                createScatterPlot('democracyScatterChart', scatterData);
+                console.log('✅ Scatter plot created successfully');
+            } else {
+                console.error('❌ Invalid scatter plot data structure:', scatterData);
+                console.error('Expected: {countries: [], correlation: number, p_value: string}');
+            }
+        } catch (error) {
+            console.error('❌ Error in scatter plot setup:', error);
+            console.error('Stack trace:', error.stack);
         }
+    } else {
+        console.error('❌ Scatter plot canvas not found: democracyScatterChart');
     }
     
     // Create Temporal Trends chart  
@@ -1212,8 +1229,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Scatter Plot Function
 function createScatterPlot(canvasId, data) {
+    console.log('🎨 Starting createScatterPlot function...');
     try {
-        const ctx = document.getElementById(canvasId).getContext('2d');
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) {
+            throw new Error(`Canvas element '${canvasId}' not found`);
+        }
+        
+        const ctx = canvas.getContext('2d');
         
         // Define colors using R Set1 palette - scientifically proven distinguishable colors
         const regionColors = {
@@ -1254,7 +1277,14 @@ function createScatterPlot(canvasId, data) {
             pointHoverRadius: regionGroups[region].map(country => Math.sqrt(country.publications / 50000) + 5)
         }));
         
-        new Chart(ctx, {
+        console.log('📊 Creating Chart.js scatter plot with', datasets.length, 'datasets');
+        console.log('🎯 Dataset sample:', datasets[0] ? {
+            label: datasets[0].label,
+            dataCount: datasets[0].data.length,
+            firstPoint: datasets[0].data[0]
+        } : 'No datasets');
+        
+        const chart = new Chart(ctx, {
             type: 'scatter',
             data: { datasets: datasets },
             options: {
@@ -1309,8 +1339,12 @@ function createScatterPlot(canvasId, data) {
             }
         });
         
+        console.log('✅ Chart.js scatter plot created successfully!');
+        
     } catch (error) {
-        console.error('Error creating scatter plot:', error);
+        console.error('❌ Error creating scatter plot:', error);
+        console.error('Error details:', error.message);
+        console.error('Stack trace:', error.stack);
     }
 }
 
