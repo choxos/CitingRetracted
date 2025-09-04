@@ -98,6 +98,9 @@ download_*.sh
 *_updater.py
 update_*.py
 
+# Exception: VPS migration fix script
+!fix_vps_migrations.sh
+
 # Server configuration files
 nginx_*.txt
 gunicorn_config_*.py
