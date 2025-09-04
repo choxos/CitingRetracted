@@ -2803,6 +2803,9 @@ class PredatoryJournalAnalysisView(View):
         """Handle journal analysis request"""
         try:
             # Import the detector here to avoid startup issues
+            import sys
+            import os
+            sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'Predatory_Journal_Detector'))
             from enhanced_predatory_detector import EnhancedPredatoryDetector
             
             # Get the journal URL or name from the form
@@ -2817,17 +2820,31 @@ class PredatoryJournalAnalysisView(View):
                 }
                 return render(request, 'papers/predatory_analysis.html', context)
             
-            # If only journal name is provided, we'll create a mock URL for analysis
-            if not journal_url and journal_name:
-                # Create a search URL or handle name-only analysis
-                journal_url = f"https://search.example.com/{journal_name.replace(' ', '-').lower()}"
-            
             # Initialize the detector
             detector = EnhancedPredatoryDetector()
             
-            # Perform the analysis
-            logger.info(f"Starting predatory journal analysis for: {journal_url}")
-            result = detector.analyze_journal_comprehensive(journal_url)
+            # Handle different input types
+            if journal_name and not journal_url:
+                # Use search by name functionality
+                logger.info(f"Starting predatory journal analysis by name for: {journal_name}")
+                workflow_result = detector.analyze_journal_by_name(journal_name)
+                
+                if workflow_result['workflow_complete'] and workflow_result.get('analysis_result'):
+                    result = workflow_result['analysis_result']
+                    journal_url = workflow_result['search_result'].get('suggested_url', 'Name-based search')
+                else:
+                    # Search failed, return error
+                    context = {
+                        'error': f'Could not find or analyze journal "{journal_name}". Please try providing a direct URL or check the journal name spelling.',
+                        'search_summary': workflow_result.get('workflow_summary', []),
+                        'page_title': 'Predatory Journal Detector',
+                        'page_description': 'Analyze journals for predatory behavior using evidence-based criteria',
+                    }
+                    return render(request, 'papers/predatory_analysis.html', context)
+            else:
+                # Use URL-based analysis
+                logger.info(f"Starting predatory journal analysis for URL: {journal_url}")
+                result = detector.analyze_journal_comprehensive(journal_url)
             
             # Convert result to dict for template rendering
             analysis_result = {
