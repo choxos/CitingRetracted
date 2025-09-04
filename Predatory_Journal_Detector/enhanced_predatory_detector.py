@@ -804,10 +804,14 @@ class EnhancedPredatoryDetector:
                 search_result['search_summary'].append("🏛️ Journal is MEDLINE-indexed (high credibility)")
             
             # If NLM has electronic links, use them
-            if nlm_result.get('electronic_links'):
-                search_result['suggested_url'] = nlm_result['electronic_links']
+            electronic_links = nlm_result.get('electronic_links')
+            valid_url = self._extract_best_url(electronic_links)
+            if valid_url:
+                search_result['suggested_url'] = valid_url
                 search_result['can_analyze'] = True
-                search_result['search_summary'].append(f"🔗 URL available from NLM: {nlm_result['electronic_links']}")
+                search_result['search_summary'].append(f"🔗 URL available from NLM: {valid_url}")
+            else:
+                search_result['search_summary'].append("⚠️ NLM entry found but no valid URL available")
         else:
             search_result['search_summary'].append("📊 Not found in NLM catalog")
         
@@ -822,12 +826,12 @@ class EnhancedPredatoryDetector:
                 search_result['search_summary'].append(f"✅ Found in OpenAlex: {openalex_result['display_name']}")
                 
                 homepage_url = openalex_result.get('homepage_url')
-                if homepage_url and homepage_url.strip():
+                if homepage_url and self._is_valid_url(homepage_url):
                     search_result['suggested_url'] = homepage_url
                     search_result['can_analyze'] = True
                     search_result['search_summary'].append(f"🔗 Homepage URL: {homepage_url}")
                 else:
-                    search_result['search_summary'].append("⚠️ OpenAlex entry found but no homepage URL available")
+                    search_result['search_summary'].append("⚠️ OpenAlex entry found but no valid homepage URL available")
                 
                 if openalex_result.get('works_count'):
                     search_result['search_summary'].append(f"📄 Publications: {openalex_result['works_count']:,}")
@@ -858,7 +862,34 @@ class EnhancedPredatoryDetector:
             
             clean_name = journal_name.strip().lower()
             
-            # Try exact match first
+            # Special handling for well-known journals with specific ISSNs
+            special_journals = {
+                'lancet': '0140-6736',  # The main Lancet journal
+                'the lancet': '0140-6736',
+                'nature': '0028-0836',  # Nature
+                'science': '0036-8075',  # Science
+                'cell': '0092-8674',    # Cell
+            }
+            
+            # Check special cases first
+            if clean_name in special_journals:
+                issn = special_journals[clean_name]
+                if issn in self.nlm_catalog['by_issn']:
+                    entry = self.nlm_catalog['by_issn'][issn]
+                    result = {
+                        'found': True,
+                        'title': entry['title_full'],
+                        'title_abbreviation': entry['title_abbreviation'],
+                        'publisher': entry['publisher'],
+                        'issn_electronic': entry['issn_electronic'],
+                        'issn_print': entry['issn_print'],
+                        'electronic_links': entry['electronic_links'],
+                        'medline_indexed': entry['medline_indexed'],
+                        'match_type': 'special_issn'
+                    }
+                    return result
+            
+            # Try exact match
             if clean_name in self.nlm_catalog['by_title']:
                 entry = self.nlm_catalog['by_title'][clean_name]
                 result = {
@@ -874,27 +905,132 @@ class EnhancedPredatoryDetector:
                 }
                 return result
             
-            # Try fuzzy matching
+            # Try fuzzy matching with prioritization
+            best_match = None
+            best_score = 0
+            
             for nlm_title, entry in self.nlm_catalog['by_title'].items():
+                # Calculate fuzzy match score
                 if self._fuzzy_title_match(clean_name, nlm_title, threshold=0.85):
-                    result = {
-                        'found': True,
-                        'title': entry['title_full'],
-                        'title_abbreviation': entry['title_abbreviation'],
-                        'publisher': entry['publisher'],
-                        'issn_electronic': entry['issn_electronic'],
-                        'issn_print': entry['issn_print'],
-                        'electronic_links': entry['electronic_links'],
-                        'medline_indexed': entry['medline_indexed'],
-                        'match_type': 'fuzzy',
-                        'matched_title': nlm_title
-                    }
-                    return result
+                    # Prioritize MEDLINE-indexed journals
+                    score = self._calculate_match_score(clean_name, nlm_title, entry['medline_indexed'])
+                    
+                    if score > best_score:
+                        best_score = score
+                        best_match = {
+                            'found': True,
+                            'title': entry['title_full'],
+                            'title_abbreviation': entry['title_abbreviation'],
+                            'publisher': entry['publisher'],
+                            'issn_electronic': entry['issn_electronic'],
+                            'issn_print': entry['issn_print'],
+                            'electronic_links': entry['electronic_links'],
+                            'medline_indexed': entry['medline_indexed'],
+                            'match_type': 'fuzzy',
+                            'matched_title': nlm_title,
+                            'match_score': score
+                        }
+            
+            if best_match:
+                return best_match
                     
         except Exception as e:
             logger.error(f"❌ NLM search error: {e}")
             
         return result
+    
+    def _calculate_match_score(self, query: str, title: str, is_medline: bool) -> float:
+        """Calculate match quality score for prioritizing results"""
+        from difflib import SequenceMatcher
+        
+        # Base similarity score
+        similarity = SequenceMatcher(None, query.lower(), title.lower()).ratio()
+        
+        # Boost for MEDLINE-indexed journals
+        medline_boost = 0.2 if is_medline else 0
+        
+        # Boost for shorter titles (less specific matches)
+        length_penalty = len(title) / 100  # Small penalty for very long titles
+        
+        # Boost for exact word matches
+        query_words = set(query.lower().split())
+        title_words = set(title.lower().split())
+        word_match_boost = len(query_words.intersection(title_words)) / max(len(query_words), 1) * 0.1
+        
+        return similarity + medline_boost - length_penalty + word_match_boost
+    
+    def _is_valid_url(self, url: str) -> bool:
+        """Validate if a URL is proper and not a placeholder value"""
+        if not url or not isinstance(url, str):
+            return False
+        
+        url = url.strip()
+        
+        # Check for invalid placeholder values
+        invalid_values = {'nan', 'null', 'none', '', 'n/a', 'not available'}
+        if url.lower() in invalid_values:
+            return False
+        
+        # Basic URL validation
+        if not (url.startswith('http://') or url.startswith('https://')):
+            return False
+        
+        # Check for minimum valid URL structure
+        if len(url) < 10:  # Minimum reasonable URL length
+            return False
+        
+        # Check for suspicious patterns
+        suspicious_patterns = ['search.example.com', 'example.com', 'localhost']
+        for pattern in suspicious_patterns:
+            if pattern in url.lower():
+                return False
+        
+        return True
+    
+    def _extract_best_url(self, url_string: str) -> str:
+        """Extract the best URL from a string that may contain multiple URLs"""
+        if not url_string or not isinstance(url_string, str):
+            return None
+        
+        # Handle multiple URLs separated by commas
+        potential_urls = [url.strip() for url in url_string.split(',')]
+        
+        # URL preferences (higher score = better)
+        url_preferences = {
+            'sciencedirect.com': 10,
+            'nature.com': 9,
+            'elsevier': 8,
+            'springer': 7,
+            'wiley': 6,
+            'tandfonline.com': 5,
+            'ncbi.nlm.nih.gov': 4,
+            'pmc.ncbi.nlm.nih.gov': 3
+        }
+        
+        best_url = None
+        best_score = -1
+        
+        for url in potential_urls:
+            if self._is_valid_url(url):
+                # Calculate preference score
+                score = 0
+                for domain, pref_score in url_preferences.items():
+                    if domain in url.lower():
+                        score = pref_score
+                        break
+                
+                # Prefer shorter URLs if same score (usually more direct)
+                if score == best_score:
+                    if len(url) < len(best_url):
+                        best_url = url
+                elif score > best_score:
+                    best_score = score
+                    best_url = url
+                elif best_url is None:  # First valid URL found
+                    best_url = url
+                    best_score = 0
+        
+        return best_url
     
     def _search_openalex_by_name(self, journal_name: str) -> Dict:
         """Search OpenAlex API for journal URL and metadata"""
@@ -1011,12 +1147,28 @@ class EnhancedPredatoryDetector:
         logger.info(f"🔍 Starting comprehensive analysis of {url}")
         
         # Fetch content if not provided
+        # EARLY REPUTATION VERIFICATION - Check external catalogs FIRST
+        # This ensures legitimate journals are identified even if web scraping fails
+        logger.info("🏛️ Checking external catalogs for journal legitimacy...")
+        
+        # Extract basic info for catalog lookup (even without full content)
+        preliminary_title = self._extract_title_from_url(url)
+        
+        # Check NLM catalog first
+        nlm_result = self._lookup_journal_in_nlm_basic(preliminary_title, url)
+        
+        # Check JIF catalog
+        jif_result = self._lookup_journal_in_jif_basic(preliminary_title, url)
+        
+        # Now attempt web scraping
         if content is None:
             logger.info("📡 Fetching website content...")
             content = self._fetch_content(url)
         
         if not content:
-            return self._create_error_result(url, "Could not access website", time.time() - start_time)
+            # Create error result with external verification context
+            return self._create_error_result_with_verification(url, "Could not access website", 
+                                                             time.time() - start_time, nlm_result, jif_result)
         
         # Parse content
         soup = BeautifulSoup(content, 'html.parser')
@@ -2354,10 +2506,263 @@ class EnhancedPredatoryDetector:
         similarity = overlap / len(new_words)
         return similarity > 0.7
     
-    def _create_error_result(self, url: str, error_msg: str, duration: float) -> EnhancedAnalysisResult:
-        """Create error result when analysis fails"""
+    def _extract_title_from_url(self, url: str) -> str:
+        """Extract a likely journal title from the URL for catalog lookup"""
+        from urllib.parse import urlparse
+        
+        try:
+            # Parse the URL
+            parsed = urlparse(url)
+            domain = parsed.netloc.lower()
+            path = parsed.path.lower()
+            
+            # Common patterns for journal titles in URLs
+            # Try to extract from path segments
+            path_segments = [seg for seg in path.split('/') if seg]
+            
+            # Look for journal identifiers in the path
+            for segment in path_segments:
+                if 'journal' in segment:
+                    # Extract journal identifier
+                    if segment.startswith('journal-'):
+                        return segment.replace('journal-', '').replace('-', ' ')
+                    elif '/' in segment:
+                        continue  # Skip complex segments
+                        
+            # Look for known publisher patterns
+            if 'sciencedirect.com' in domain:
+                # Format: /science/journal/01406736
+                if '/journal/' in path:
+                    journal_id = path.split('/journal/')[-1].split('/')[0]
+                    if journal_id.isdigit():
+                        # This is an ISSN, check our catalogs
+                        for issn_key in self.nlm_catalog.get('by_issn', {}):
+                            if journal_id in issn_key.replace('-', ''):
+                                return self.nlm_catalog['by_issn'][issn_key]['title_full']
+                        
+            # Fallback: extract from domain
+            if 'lancet' in domain or 'thelancet' in domain:
+                return 'Lancet'
+            elif 'nature.com' in domain:
+                return 'Nature'
+            elif 'science.org' in domain or 'sciencemag.org' in domain:
+                return 'Science'
+            
+            return ""  # No identifiable title
+            
+        except Exception:
+            return ""
+    
+    def _lookup_journal_in_nlm_basic(self, title_hint: str, url: str) -> Dict:
+        """Basic NLM lookup using URL patterns and title hints"""
+        result = {'found_in_nlm': False, 'reputation_boost': 0, 'medline_indexed': False}
+        
+        try:
+            # Check if we have any title hint to work with
+            if title_hint:
+                nlm_search = self._search_nlm_by_name(title_hint)
+                if nlm_search['found']:
+                    result = {
+                        'found_in_nlm': True,
+                        'title': nlm_search['title'],
+                        'reputation_boost': 30.0 if nlm_search['medline_indexed'] else 15.0,
+                        'medline_indexed': nlm_search['medline_indexed'],
+                        'match_type': nlm_search.get('match_type', 'basic'),
+                        'publisher': nlm_search.get('publisher', ''),
+                    }
+                    return result
+            
+            # URL-based pattern matching for known publishers
+            url_lower = url.lower()
+            
+            # Check for ScienceDirect journal URLs with ISSNs
+            if 'sciencedirect.com/science/journal/' in url_lower:
+                issn_match = url_lower.split('/journal/')[-1].split('/')[0]
+                
+                # Look for this ISSN in NLM catalog
+                for issn_key, entry in self.nlm_catalog.get('by_issn', {}).items():
+                    if issn_match in issn_key.replace('-', ''):
+                        result = {
+                            'found_in_nlm': True,
+                            'title': entry['title_full'],
+                            'reputation_boost': 30.0 if entry['medline_indexed'] else 15.0,
+                            'medline_indexed': entry['medline_indexed'],
+                            'match_type': 'url_issn',
+                            'publisher': entry.get('publisher', ''),
+                        }
+                        return result
+                        
+        except Exception as e:
+            logger.error(f"❌ Basic NLM lookup error: {e}")
+            
+        return result
+    
+    def _lookup_journal_in_jif_basic(self, title_hint: str, url: str) -> Dict:
+        """Basic JIF lookup using URL patterns and title hints"""
+        result = {'found_in_jif': False, 'impact_factor': 0, 'reputation_boost': 0}
+        
+        try:
+            if title_hint:
+                jif_search = self._lookup_journal_in_jif(title_hint)
+                if jif_search.get('found', False):  # Fix: use .get() with default
+                    tier = self._classify_impact_tier(jif_search['impact_factor'])
+                    reputation_boost, confidence_boost = self._calculate_jif_boosts(tier)
+                    result = {
+                        'found_in_jif': True,
+                        'title': jif_search['title'],
+                        'impact_factor': jif_search['impact_factor'],
+                        'reputation_boost': reputation_boost,
+                        'tier': tier,
+                        'match_type': jif_search.get('match_type', 'basic')
+                    }
+                    
+        except Exception as e:
+            logger.error(f"❌ Basic JIF lookup error: {e}")
+            
+        return result
+    
+    def _create_error_result_with_verification(self, url: str, error_msg: str, duration: float, 
+                                             nlm_result: Dict, jif_result: Dict) -> EnhancedAnalysisResult:
+        """Create error result with external verification context"""
+        
+        # Determine appropriate score based on external verification
+        if nlm_result['found_in_nlm'] or jif_result['found_in_jif']:
+            # This is a verified legitimate journal that we just can't scrape
+            if nlm_result.get('medline_indexed', False):
+                # MEDLINE-indexed = very legitimate
+                overall_score = 15.0  # Very low risk
+                risk_level = "Very Low Risk"
+                confidence = 75.0  # High confidence based on MEDLINE status
+                positive_indicators = [
+                    "✅ Journal found in NLM catalog",
+                    "🏛️ MEDLINE-indexed (high credibility)",
+                    f"📚 Publisher: {nlm_result.get('publisher', 'N/A')}"
+                ]
+            elif jif_result.get('impact_factor', 0) > 5.0:
+                # High impact factor journal
+                overall_score = 20.0  # Very low risk  
+                risk_level = "Very Low Risk"
+                confidence = 70.0  # High confidence based on impact factor
+                positive_indicators = [
+                    f"📈 High Impact Factor: {jif_result['impact_factor']:.2f}",
+                    f"🏆 Journal tier: {jif_result.get('tier', 'N/A')}"
+                ]
+            elif nlm_result['found_in_nlm']:
+                # In NLM catalog but not MEDLINE-indexed
+                overall_score = 30.0  # Low risk
+                risk_level = "Low Risk"
+                confidence = 60.0  # Moderate confidence
+                positive_indicators = [
+                    "✅ Journal found in NLM catalog",
+                    f"📚 Publisher: {nlm_result.get('publisher', 'N/A')}"
+                ]
+            else:
+                # Only in JIF, lower confidence
+                overall_score = 40.0  # Moderate risk due to access issues
+                risk_level = "Moderate Risk"
+                confidence = 50.0
+                positive_indicators = [
+                    f"📊 Impact Factor: {jif_result['impact_factor']:.2f}"
+                ]
+            
+            # Add verification details
+            external_verification = {}
+            if nlm_result['found_in_nlm']:
+                external_verification['nlm_catalog'] = nlm_result
+            if jif_result['found_in_jif']:
+                external_verification['jif_catalog'] = jif_result
+            
+        else:
+            # Unknown journal that we can't access - neutral score
+            overall_score = 50.0  # Neutral/unknown
+            risk_level = "Cannot Analyze"
+            confidence = 0.0
+            positive_indicators = []
+            external_verification = {}
+        
+        # Calculate confidence interval
+        ci_margin = confidence * 0.1  # 10% margin
+        confidence_95ci_lower = max(0.0, confidence - ci_margin)
+        confidence_95ci_upper = min(100.0, confidence + ci_margin)
+        
         return EnhancedAnalysisResult(
-            overall_score=100.0,
+            overall_score=overall_score,
+            risk_level=risk_level,
+            confidence_score=confidence,
+            confidence_95ci_lower=confidence_95ci_lower,
+            confidence_95ci_upper=confidence_95ci_upper,
+            
+            peer_review_score=0.0,
+            predatory_language_score=0.0,
+            editorial_board_score=0.0,
+            indexing_verification_score=0.0,
+            contact_transparency_score=0.0,
+            
+            critical_red_flags=[],
+            high_risk_warnings=[f"Analysis limited: {error_msg}"],
+            moderate_concerns=[] if overall_score < 40 else ["Website access restricted"],
+            positive_indicators=positive_indicators,
+            
+            external_verification=external_verification,
+            peer_review_analysis={},
+            language_analysis={},
+            editorial_analysis={},
+            indexing_analysis={},
+            
+            recommendations=[self._generate_access_restricted_recommendation(nlm_result, jif_result)],
+            next_steps=self._generate_access_restricted_next_steps(nlm_result, jif_result),
+            
+            analysis_timestamp=time.strftime('%Y-%m-%d %H:%M:%S'),
+            analysis_duration=duration,
+            journal_url=url
+        )
+    
+    def _generate_access_restricted_recommendation(self, nlm_result: Dict, jif_result: Dict) -> str:
+        """Generate recommendation for access-restricted but verified journals"""
+        if nlm_result.get('medline_indexed', False):
+            return ("🏛️ This journal is MEDLINE-indexed and found in the NLM catalog, indicating high credibility. "
+                   "The website access restriction is likely due to publisher security measures, not predatory behavior.")
+        elif nlm_result['found_in_nlm']:
+            return ("✅ This journal is found in the NLM catalog, indicating legitimacy. "
+                   "Website access issues do not suggest predatory behavior.")
+        elif jif_result.get('impact_factor', 0) > 5.0:
+            return (f"📈 This journal has a high impact factor ({jif_result['impact_factor']:.2f}) "
+                   "suggesting established reputation. Access restrictions are common for major publishers.")
+        else:
+            return ("⚠️ Unable to analyze due to website access restrictions. "
+                   "Consider alternative verification methods or contact the journal directly.")
+    
+    def _generate_access_restricted_next_steps(self, nlm_result: Dict, jif_result: Dict) -> List[str]:
+        """Generate next steps for access-restricted journals"""
+        steps = []
+        
+        if nlm_result.get('medline_indexed', False):
+            steps.extend([
+                "✅ No further verification needed - MEDLINE indexing confirms legitimacy",
+                "📚 You may proceed with confidence for submissions",
+                "🔍 Check PubMed for recent publications from this journal"
+            ])
+        elif nlm_result['found_in_nlm'] or jif_result['found_in_jif']:
+            steps.extend([
+                "✅ Journal appears legitimate based on catalog verification",
+                "🔍 Search recent publications in PubMed or Google Scholar",
+                "📧 Contact journal directly if you have specific concerns",
+                "💡 Use Think-Check-Submit.org for additional verification"
+            ])
+        else:
+            steps.extend([
+                "⚠️ Manual verification required due to access limitations",
+                "🔍 Search for journal reputation in academic databases",
+                "📧 Contact institution library for journal assessment",
+                "💡 Use Think-Check-Submit.org verification checklist"
+            ])
+            
+        return steps
+    
+    def _create_error_result(self, url: str, error_msg: str, duration: float) -> EnhancedAnalysisResult:
+        """Create error result when analysis fails (legacy method)"""
+        return EnhancedAnalysisResult(
+            overall_score=50.0,  # Changed from 100.0 to neutral
             risk_level="Cannot Analyze",
             confidence_score=0.0,
             
