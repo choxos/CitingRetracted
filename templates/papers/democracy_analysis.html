@@ -1150,7 +1150,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const scatterCtx = document.getElementById('democracyScatterChart');
     if (scatterCtx) {
         try {
-            const scatterData = {{ visualizations.scatter.data|safe }};
+            const scatterData = {{ visualizations.scatter.data|safe_json }};
             console.log('🔍 Scatter plot data:', scatterData);
             console.log('📊 Data type:', typeof scatterData);
             
@@ -1184,7 +1184,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Create Temporal Trends chart  
     const temporalCtx = document.getElementById('temporalTrendsChart');
     if (temporalCtx) {
-        const temporalData = {{ visualizations.temporal_trends.data|safe }};
+        const temporalData = {{ visualizations.temporal_trends.data|safe_json }};
         console.log('Temporal trends data:', temporalData);
         console.log('Temporal data keys:', Object.keys(temporalData || {}));
         if (temporalData && temporalData.years) {
@@ -1202,7 +1202,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Create Regional Summary chart
     const regionalCtx = document.getElementById('regionalSummaryChart');
     if (regionalCtx) {
-        const regionalData = {{ visualizations.regional_summary.data|safe }};
+        const regionalData = {{ visualizations.regional_summary.data|safe_json }};
         console.log('Regional data:', regionalData);
         console.log('Regional data keys:', Object.keys(regionalData || {}));
         if (regionalData && regionalData.regions) {
@@ -1498,7 +1498,7 @@ function createRegionalSummaryChart(canvasId, data) {
 
 // World Map Visualization (with Democracy/Retraction Toggle)
 function createWorldMap(mapType = 'democracy') {
-    const data = {{ visualizations.world_map.data|safe }};
+    const data = {{ visualizations.world_map.data|safe_json }};
     
     // Safety check
     if (!data || !data.countries || !Array.isArray(data.countries)) {
