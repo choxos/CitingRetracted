@@ -1140,53 +1140,34 @@
 
 {% block extra_js %}
 <!-- Chart.js for scatter and line charts -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js" async></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <!-- Plotly.js for world map -->
-<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist@2.27.0/plotly.min.js" async></script>
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist@2.24.1/plotly.min.js"></script>
 <script>
-// Wait for both Chart.js and DOM to be ready
-function initializeCharts() {
-    console.log('🚀 Initializing democracy analysis charts...');
+document.addEventListener('DOMContentLoaded', function() {
     
     // Create Democracy vs Retractions scatter plot
     const scatterCtx = document.getElementById('democracyScatterChart');
     if (scatterCtx) {
-        try {
-            const scatterData = {{ visualizations.scatter.data|safe_json }};
-            console.log('🔍 Scatter plot data:', scatterData);
-            console.log('📊 Data type:', typeof scatterData);
-            
-            if (scatterData && typeof scatterData === 'object' && scatterData.countries) {
-                console.log('✅ Countries count:', scatterData.countries.length);
-                console.log('📈 Sample country:', scatterData.countries[0]);
-                console.log('🔗 Correlation:', scatterData.correlation);
-                console.log('📊 P-value:', scatterData.p_value);
-                
-                // Check if Chart.js is loaded
-                if (typeof Chart === 'undefined') {
-                    console.error('❌ Chart.js library not loaded!');
-                    return;
-                }
-                
-                console.log('🎯 Creating scatter plot...');
-                createScatterPlot('democracyScatterChart', scatterData);
-                console.log('✅ Scatter plot created successfully');
-            } else {
-                console.error('❌ Invalid scatter plot data structure:', scatterData);
-                console.error('Expected: {countries: [], correlation: number, p_value: string}');
-            }
-        } catch (error) {
-            console.error('❌ Error in scatter plot setup:', error);
-            console.error('Stack trace:', error.stack);
+        const scatterData = {{ visualizations.scatter.data|safe }};
+        console.log('Scatter plot data:', scatterData);
+        console.log('Scatter plot data type:', typeof scatterData);
+        
+        if (scatterData && typeof scatterData === 'object' && scatterData.countries) {
+            console.log('Countries count:', scatterData.countries.length);
+            console.log('Sample country:', scatterData.countries[0]);
+            console.log('Correlation:', scatterData.correlation);
+            console.log('P-value:', scatterData.p_value);
+            createScatterPlot('democracyScatterChart', scatterData);
+        } else {
+            console.log('Invalid scatter plot data structure:', scatterData);
         }
-    } else {
-        console.error('❌ Scatter plot canvas not found: democracyScatterChart');
     }
     
     // Create Temporal Trends chart  
     const temporalCtx = document.getElementById('temporalTrendsChart');
     if (temporalCtx) {
-        const temporalData = {{ visualizations.temporal_trends.data|safe_json }};
+        const temporalData = {{ visualizations.temporal_trends.data|safe }};
         console.log('Temporal trends data:', temporalData);
         console.log('Temporal data keys:', Object.keys(temporalData || {}));
         if (temporalData && temporalData.years) {
@@ -1204,7 +1185,7 @@ function initializeCharts() {
     // Create Regional Summary chart
     const regionalCtx = document.getElementById('regionalSummaryChart');
     if (regionalCtx) {
-        const regionalData = {{ visualizations.regional_summary.data|safe_json }};
+        const regionalData = {{ visualizations.regional_summary.data|safe }};
         console.log('Regional data:', regionalData);
         console.log('Regional data keys:', Object.keys(regionalData || {}));
         if (regionalData && regionalData.regions) {
@@ -1500,7 +1481,7 @@ function createRegionalSummaryChart(canvasId, data) {
 
 // World Map Visualization (with Democracy/Retraction Toggle)
 function createWorldMap(mapType = 'democracy') {
-    const data = {{ visualizations.world_map.data|safe_json }};
+    const data = {{ visualizations.world_map.data|safe }};
     
     // Safety check
     if (!data || !data.countries || !Array.isArray(data.countries)) {
@@ -1619,64 +1600,6 @@ function hideLoading() {
 
 // Hide loading spinner after initial load (if it exists)
 setTimeout(hideLoading, 1000);
-}
-
-// Proper library loading with fallbacks
-let chartJsLoaded = false;
-let plotlyLoaded = false;
-
-function checkLibrariesAndInit() {
-    if (typeof Chart !== 'undefined') {
-        chartJsLoaded = true;
-        console.log('✅ Chart.js loaded successfully');
-    }
-    
-    if (typeof Plotly !== 'undefined') {
-        plotlyLoaded = true;
-        console.log('✅ Plotly.js loaded successfully');
-    }
-    
-    if (chartJsLoaded && plotlyLoaded) {
-        console.log('🎯 All libraries loaded, initializing charts...');
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initializeCharts);
-        } else {
-            initializeCharts();
-        }
-    } else {
-        console.log('⏳ Waiting for libraries... Chart.js:', chartJsLoaded, 'Plotly:', plotlyLoaded);
-        setTimeout(checkLibrariesAndInit, 100);
-    }
-}
-
-// Start checking for libraries after a brief delay
-setTimeout(checkLibrariesAndInit, 500);
-
-// Fallback: Load libraries synchronously if async fails
-setTimeout(() => {
-    if (!chartJsLoaded || !plotlyLoaded) {
-        console.log('⚠️ Async loading failed, loading synchronously...');
-        
-        if (!chartJsLoaded) {
-            const chartScript = document.createElement('script');
-            chartScript.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js';
-            chartScript.onload = () => {
-                console.log('✅ Chart.js loaded synchronously');
-                checkLibrariesAndInit();
-            };
-            document.head.appendChild(chartScript);
-        }
-        
-        if (!plotlyLoaded) {
-            const plotlyScript = document.createElement('script');
-            plotlyScript.src = 'https://cdn.jsdelivr.net/npm/plotly.js-dist@2.27.0/plotly.min.js';
-            plotlyScript.onload = () => {
-                console.log('✅ Plotly.js loaded synchronously');
-                checkLibrariesAndInit();
-            };
-            document.head.appendChild(plotlyScript);
-        }
-    }
-}, 3000);
+});
 </script>
 {% endblock %}
