@@ -3044,6 +3044,294 @@ class AboutView(TemplateView):
         return context
 
 
+class APIDocumentationView(TemplateView):
+    """
+    API Documentation Page - Comprehensive API Reference
+    
+    Displays the complete API documentation including endpoints,
+    examples, authentication, rate limits, and code samples.
+    """
+    template_name = 'papers/api_documentation.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        context.update({
+            'page_title': 'API Documentation - PRCT REST API',
+            'page_description': 'Complete API reference for the Post-Retraction Citation Tracker (PRCT) REST API including endpoints, examples, and code samples.',
+            'api_version': '1.0',
+            'base_url': 'https://prct.xeradb.com',
+            'last_updated': 'January 2025',
+            
+            # API Overview
+            'api_features': [
+                'Access to 65,000+ retracted papers from Retraction Watch',
+                'Post-retraction citation tracking and timeline analysis', 
+                'Comprehensive Bayesian democracy analysis',
+                'Real-time analytics and trending data',
+                'Advanced filtering by journal, subject, date, and more',
+                'JSON and CSV data export capabilities'
+            ],
+            
+            # Rate Limits
+            'rate_limits': {
+                'general': '100 requests per minute per IP',
+                'export': '10 requests per minute per IP', 
+                'analytics': '50 requests per minute per IP'
+            },
+            
+            # API Endpoints organized by category
+            'endpoint_categories': [
+                {
+                    'name': 'Search & Discovery',
+                    'description': 'Search for papers and get autocomplete suggestions',
+                    'endpoints': [
+                        {
+                            'name': 'Search Autocomplete',
+                            'method': 'GET',
+                            'path': '/api/search-autocomplete/',
+                            'description': 'Get search suggestions for papers and authors',
+                            'params': [
+                                {'name': 'q', 'type': 'string', 'required': True, 'description': 'Search query (minimum 3 characters)'}
+                            ]
+                        }
+                    ]
+                },
+                {
+                    'name': 'Paper Data',
+                    'description': 'Access detailed paper and citation information',
+                    'endpoints': [
+                        {
+                            'name': 'Paper Citations',
+                            'method': 'GET', 
+                            'path': '/api/paper/<record_id>/citations/',
+                            'description': 'Get detailed citation data for a specific retracted paper',
+                            'params': [
+                                {'name': 'record_id', 'type': 'string', 'required': True, 'description': 'Retraction Watch record ID'}
+                            ]
+                        }
+                    ]
+                },
+                {
+                    'name': 'Analytics',
+                    'description': 'Comprehensive analytics and statistical data',
+                    'endpoints': [
+                        {
+                            'name': 'Post-Retraction Analytics', 
+                            'method': 'GET',
+                            'path': '/api/post-retraction-analytics/',
+                            'description': 'Get comprehensive post-retraction citation analytics with filtering',
+                            'params': [
+                                {'name': 'time_filter', 'type': 'string', 'required': False, 'description': 'Filter by time period (all, 1y, 3y, 5y)'},
+                                {'name': 'journal', 'type': 'string', 'required': False, 'description': 'Filter by journal name (partial match)'},
+                                {'name': 'subject', 'type': 'string', 'required': False, 'description': 'Filter by subject area (partial match)'}
+                            ]
+                        },
+                        {
+                            'name': 'Analytics Data',
+                            'method': 'GET',
+                            'path': '/api/analytics-data/', 
+                            'description': 'Get comprehensive analytics data with advanced filtering',
+                            'params': [
+                                {'name': 'type', 'type': 'string', 'required': False, 'description': 'Type of analytics (overview, trends, citations, subjects, geographic)'},
+                                {'name': 'format', 'type': 'string', 'required': False, 'description': 'Response format (json, csv)'}
+                            ]
+                        },
+                        {
+                            'name': 'Real-time Analytics',
+                            'method': 'GET',
+                            'path': '/api/analytics-realtime/',
+                            'description': 'Get real-time analytics data for dashboards',
+                            'params': []
+                        }
+                    ]
+                },
+                {
+                    'name': 'Democracy Analysis',
+                    'description': 'Bayesian analysis of democracy and scientific retractions',
+                    'endpoints': [
+                        {
+                            'name': 'Democracy Overview',
+                            'method': 'GET',
+                            'path': '/api/democracy/overview/',
+                            'description': 'Get comprehensive democracy analysis overview',
+                            'params': []
+                        },
+                        {
+                            'name': 'Democracy Raw Data',
+                            'method': 'GET', 
+                            'path': '/api/democracy/raw-data/',
+                            'description': 'Get raw democracy and retraction data with filters',
+                            'params': [
+                                {'name': 'country', 'type': 'string', 'required': False, 'description': 'Filter by country name'},
+                                {'name': 'year', 'type': 'integer', 'required': False, 'description': 'Filter by year'},
+                                {'name': 'limit', 'type': 'integer', 'required': False, 'description': 'Number of records to return (default: 100)'}
+                            ]
+                        },
+                        {
+                            'name': 'Democracy Visualizations',
+                            'method': 'GET',
+                            'path': '/api/democracy/visualizations/',
+                            'description': 'Get visualization data for democracy analysis',
+                            'params': []
+                        },
+                        {
+                            'name': 'Democracy Model Diagnostics', 
+                            'method': 'GET',
+                            'path': '/api/democracy/model-diagnostics/',
+                            'description': 'Get Bayesian model diagnostics and validation',
+                            'params': []
+                        },
+                        {
+                            'name': 'Democracy Statistical Results',
+                            'method': 'GET',
+                            'path': '/api/democracy/statistical-results/',
+                            'description': 'Get detailed statistical results from the analysis',
+                            'params': []
+                        },
+                        {
+                            'name': 'Democracy Methodology',
+                            'method': 'GET',
+                            'path': '/api/democracy/methodology/',
+                            'description': 'Get detailed methodology and technical information',
+                            'params': []
+                        }
+                    ]
+                },
+                {
+                    'name': 'Data Export',
+                    'description': 'Export data in various formats',
+                    'endpoints': [
+                        {
+                            'name': 'Export Data',
+                            'method': 'GET',
+                            'path': '/api/export/',
+                            'description': 'Export retracted papers data with analytics',
+                            'params': [
+                                {'name': 'format', 'type': 'string', 'required': False, 'description': 'Export format (json, csv, excel)'},
+                                {'name': 'limit', 'type': 'integer', 'required': False, 'description': 'Number of records (default: 1000, max: 10000)'}
+                            ]
+                        }
+                    ]
+                }
+            ],
+            
+            # Code Examples
+            'code_examples': {
+                'javascript': '''// Get paper citations
+async function getPaperCitations(recordId) {
+  const response = await fetch(`https://prct.xeradb.com/api/paper/${recordId}/citations/`);
+  const data = await response.json();
+  
+  console.log(`Total citations: ${data.total_citations}`);
+  console.log(`Post-retraction citations: ${data.post_retraction_count}`);
+  
+  return data;
+}
+
+// Search autocomplete
+async function searchPapers(query) {
+  const response = await fetch(`https://prct.xeradb.com/api/search-autocomplete/?q=${encodeURIComponent(query)}`);
+  const data = await response.json();
+  
+  return data.suggestions;
+}
+
+// Get analytics overview
+async function getAnalyticsOverview() {
+  const response = await fetch('https://prct.xeradb.com/api/analytics-data/?type=overview');
+  const data = await response.json();
+  
+  return data;
+}''',
+                'python': '''import requests
+import json
+
+class PRCTClient:
+    def __init__(self, base_url="https://prct.xeradb.com"):
+        self.base_url = base_url
+        
+    def get_paper_citations(self, record_id):
+        """Get citation data for a specific paper"""
+        url = f"{self.base_url}/api/paper/{record_id}/citations/"
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.json()
+    
+    def search_autocomplete(self, query):
+        """Get search suggestions"""
+        url = f"{self.base_url}/api/search-autocomplete/"
+        params = {"q": query}
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        return response.json()["suggestions"]
+    
+    def get_analytics(self, data_type="overview"):
+        """Get analytics data"""
+        url = f"{self.base_url}/api/analytics-data/"
+        params = {"type": data_type}
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        return response.json()
+
+# Usage example
+client = PRCTClient()
+
+# Get citations for a specific paper
+citations = client.get_paper_citations("RW12345")
+print(f"Post-retraction citations: {citations['post_retraction_count']}")
+
+# Search for papers
+suggestions = client.search_autocomplete("covid")
+for paper in suggestions:
+    print(f"{paper['title']} - {paper['journal']}")''',
+                'curl': '''# Get paper citations
+curl -X GET "https://prct.xeradb.com/api/paper/RW12345/citations/" \\
+  -H "Accept: application/json"
+
+# Search autocomplete
+curl -X GET "https://prct.xeradb.com/api/search-autocomplete/?q=covid" \\
+  -H "Accept: application/json"
+
+# Get post-retraction analytics with filters
+curl -X GET "https://prct.xeradb.com/api/post-retraction-analytics/?time_filter=1y&journal=nature" \\
+  -H "Accept: application/json"
+
+# Export data
+curl -X GET "https://prct.xeradb.com/api/export/?format=json&limit=100" \\
+  -H "Accept: application/json"''',
+                'r': '''library(httr)
+library(jsonlite)
+
+# PRCT API client for R
+get_paper_citations <- function(record_id, base_url = "https://prct.xeradb.com") {
+  url <- paste0(base_url, "/api/paper/", record_id, "/citations/")
+  response <- GET(url)
+  stop_for_status(response)
+  return(content(response, "parsed"))
+}
+
+search_autocomplete <- function(query, base_url = "https://prct.xeradb.com") {
+  url <- paste0(base_url, "/api/search-autocomplete/")
+  response <- GET(url, query = list(q = query))
+  stop_for_status(response)
+  return(content(response, "parsed")$suggestions)
+}
+
+# Usage
+citations <- get_paper_citations("RW12345")
+cat("Post-retraction citations:", citations$post_retraction_count, "\\n")
+
+suggestions <- search_autocomplete("covid")
+for (paper in suggestions) {
+  cat(paper$title, "-", paper$journal, "\\n")
+}'''
+            }
+        })
+        
+        return context
+
+
 class DemocracyAnalysisView(View):
     """
     Democracy and Retractions Analysis Page

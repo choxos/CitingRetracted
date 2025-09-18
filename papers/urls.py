@@ -11,6 +11,7 @@ urlpatterns = [
     path('analytics-legacy/', views.AnalyticsView.as_view(), name='analytics_legacy'),  # Keep old for backup
     path('predatory-analysis/', views.PredatoryJournalAnalysisView.as_view(), name='predatory_analysis'),
     path('democracy-analysis/', views.DemocracyAnalysisView.as_view(), name='democracy_analysis'),
+    path('api/', views.APIDocumentationView.as_view(), name='api_documentation'),
     path('about/', views.AboutView.as_view(), name='about'),
     path('paper/<str:record_id>/', views.PaperDetailView.as_view(), name='detail'),
     path('export-search/', views.ExportSearchView.as_view(), name='export_search'),
