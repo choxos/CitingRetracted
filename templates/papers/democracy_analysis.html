@@ -1140,11 +1140,13 @@
 
 {% block extra_js %}
 <!-- Chart.js for scatter and line charts -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js" async></script>
 <!-- Plotly.js for world map -->
-<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist@2.27.0/plotly.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist@2.27.0/plotly.min.js" async></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+// Wait for both Chart.js and DOM to be ready
+function initializeCharts() {
+    console.log('🚀 Initializing democracy analysis charts...');
     
     // Create Democracy vs Retractions scatter plot
     const scatterCtx = document.getElementById('democracyScatterChart');
@@ -1617,5 +1619,64 @@ function hideLoading() {
 
 // Hide loading spinner after initial load (if it exists)
 setTimeout(hideLoading, 1000);
+}
+
+// Proper library loading with fallbacks
+let chartJsLoaded = false;
+let plotlyLoaded = false;
+
+function checkLibrariesAndInit() {
+    if (typeof Chart !== 'undefined') {
+        chartJsLoaded = true;
+        console.log('✅ Chart.js loaded successfully');
+    }
+    
+    if (typeof Plotly !== 'undefined') {
+        plotlyLoaded = true;
+        console.log('✅ Plotly.js loaded successfully');
+    }
+    
+    if (chartJsLoaded && plotlyLoaded) {
+        console.log('🎯 All libraries loaded, initializing charts...');
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeCharts);
+        } else {
+            initializeCharts();
+        }
+    } else {
+        console.log('⏳ Waiting for libraries... Chart.js:', chartJsLoaded, 'Plotly:', plotlyLoaded);
+        setTimeout(checkLibrariesAndInit, 100);
+    }
+}
+
+// Start checking for libraries after a brief delay
+setTimeout(checkLibrariesAndInit, 500);
+
+// Fallback: Load libraries synchronously if async fails
+setTimeout(() => {
+    if (!chartJsLoaded || !plotlyLoaded) {
+        console.log('⚠️ Async loading failed, loading synchronously...');
+        
+        if (!chartJsLoaded) {
+            const chartScript = document.createElement('script');
+            chartScript.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js';
+            chartScript.onload = () => {
+                console.log('✅ Chart.js loaded synchronously');
+                checkLibrariesAndInit();
+            };
+            document.head.appendChild(chartScript);
+        }
+        
+        if (!plotlyLoaded) {
+            const plotlyScript = document.createElement('script');
+            plotlyScript.src = 'https://cdn.jsdelivr.net/npm/plotly.js-dist@2.27.0/plotly.min.js';
+            plotlyScript.onload = () => {
+                console.log('✅ Plotly.js loaded synchronously');
+                checkLibrariesAndInit();
+            };
+            document.head.appendChild(plotlyScript);
+        }
+    }
+}, 3000);
 </script>
 {% endblock %}
