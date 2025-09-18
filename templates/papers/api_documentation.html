@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'prct_base.html' %}
 {% load static %}
 
 {% block title %}{{ page_title }}{% endblock %}
@@ -6,71 +6,104 @@
 {% block meta_description %}{{ page_description }}{% endblock %}
 
 {% block extra_css %}
+{{ block.super }}
 <style>
 /* ===============================================
-   API DOCUMENTATION PAGE STYLES
+   API DOCUMENTATION PAGE STYLES (PRCT THEME)
    =============================================== */
 
-.hero-api {
-    background: linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%);
+.prct-api-hero {
+    background: var(--prct-gradient-primary);
     color: white;
     padding: 4rem 0;
-    position: relative;
-    overflow: hidden;
+    margin-bottom: 3rem;
+    border-radius: 0 0 2rem 2rem;
 }
 
-.hero-api::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="api-pattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23api-pattern)"/></svg>');
-    opacity: 0.3;
+.prct-api-hero-content {
+    text-align: center;
 }
 
-.hero-api .container {
-    position: relative;
-    z-index: 1;
+.prct-api-hero-title {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.api-overview-section {
-    background: white;
-    border-radius: 20px;
-    padding: 2rem;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+.prct-api-hero-subtitle {
+    font-size: 1.25rem;
     margin-bottom: 2rem;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    opacity: 0.9;
 }
 
-.api-overview-section:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+.prct-api-stats {
+    display: flex;
+    justify-content: space-around;
+    margin: 2rem 0;
+    flex-wrap: wrap;
+    gap: 1rem;
 }
 
-.endpoint-section {
+.prct-api-stat-item {
+    text-align: center;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+    flex: 1;
+    min-width: 150px;
+}
+
+.prct-api-stat-number {
+    font-size: 2rem;
+    font-weight: bold;
+    color: white;
+}
+
+.prct-api-stat-label {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin-top: 0.5rem;
+}
+
+.prct-api-section {
     background: white;
-    border-radius: 15px;
+    border-radius: 1rem;
     padding: 2rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
     margin-bottom: 2rem;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border-left: 4px solid var(--xera-primary);
     transition: all 0.3s ease;
-    border-left: 5px solid #059669;
 }
 
-.endpoint-section:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+.prct-api-section:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
 }
 
-.endpoint-section h3 {
-    color: #047857;
+.prct-endpoint-section {
+    background: white;
+    border-radius: 1rem;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-left: 4px solid var(--xera-primary);
+    transition: all 0.3s ease;
+}
+
+.prct-endpoint-section:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.prct-endpoint-section h3 {
+    color: var(--xera-primary);
     margin-bottom: 1rem;
     font-weight: 600;
 }
 
-.endpoint-card {
+.prct-endpoint-card {
     background: #f8fafc;
     border-radius: 10px;
     padding: 1.5rem;
@@ -79,18 +112,18 @@
     transition: all 0.3s ease;
 }
 
-.endpoint-card:hover {
+.prct-endpoint-card:hover {
     background: #f1f5f9;
     border-color: #cbd5e1;
 }
 
-.endpoint-header {
+.prct-endpoint-header {
     display: flex;
     align-items: center;
     margin-bottom: 1rem;
 }
 
-.method-badge {
+.prct-method-badge {
     padding: 0.25rem 0.75rem;
     border-radius: 15px;
     font-size: 0.875rem;
@@ -98,17 +131,17 @@
     margin-right: 1rem;
 }
 
-.method-get {
+.prct-method-get {
     background: #10b981;
     color: white;
 }
 
-.method-post {
+.prct-method-post {
     background: #3b82f6;
     color: white;
 }
 
-.endpoint-path {
+.prct-endpoint-path {
     font-family: 'Courier New', monospace;
     background: #1f2937;
     color: #10b981;
@@ -119,7 +152,7 @@
     overflow-x: auto;
 }
 
-.params-table {
+.prct-params-table {
     width: 100%;
     border-collapse: collapse;
     margin: 1rem 0;
@@ -129,7 +162,7 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-.params-table th {
+.prct-params-table th {
     background: #f3f4f6;
     padding: 0.75rem;
     text-align: left;
@@ -138,35 +171,36 @@
     border-bottom: 1px solid #e5e7eb;
 }
 
-.params-table td {
+.prct-params-table td {
     padding: 0.75rem;
     border-bottom: 1px solid #f3f4f6;
 }
 
-.param-required {
+.prct-param-required {
     color: #dc2626;
     font-weight: 600;
 }
 
-.param-optional {
+.prct-param-optional {
     color: #6b7280;
 }
 
-.code-section {
-    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-    border-radius: 15px;
+.prct-code-section {
+    background: white;
+    border-radius: 1rem;
     padding: 2rem;
-    border: 1px solid #bae6fd;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     margin-bottom: 2rem;
+    border-left: 4px solid var(--xera-primary);
 }
 
-.code-tabs {
+.prct-code-tabs {
     display: flex;
     margin-bottom: 1rem;
     border-bottom: 2px solid #e2e8f0;
 }
 
-.code-tab {
+.prct-code-tab {
     padding: 0.75rem 1.5rem;
     background: none;
     border: none;
@@ -177,24 +211,24 @@
     border-bottom: 2px solid transparent;
 }
 
-.code-tab.active {
-    color: #0284c7;
-    border-bottom-color: #0284c7;
+.prct-code-tab.active {
+    color: var(--xera-primary);
+    border-bottom-color: var(--xera-primary);
 }
 
-.code-tab:hover {
-    color: #0284c7;
+.prct-code-tab:hover {
+    color: var(--xera-primary);
 }
 
-.code-content {
+.prct-code-content {
     display: none;
 }
 
-.code-content.active {
+.prct-code-content.active {
     display: block;
 }
 
-.code-block {
+.prct-code-block {
     background: #1f2937;
     color: #e5e7eb;
     padding: 1.5rem;
@@ -206,7 +240,7 @@
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.rate-limit-card {
+.prct-rate-limit-card {
     background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
     border: 1px solid #f59e0b;
     border-radius: 10px;
@@ -214,45 +248,27 @@
     margin: 1.5rem 0;
 }
 
-.feature-list {
+.prct-feature-list {
     list-style: none;
     padding-left: 0;
     margin: 1rem 0;
 }
 
-.feature-list li {
+.prct-feature-list li {
     padding: 0.5rem 0;
     padding-left: 1.5rem;
     position: relative;
 }
 
-.feature-list li::before {
+.prct-feature-list li::before {
     content: '✓';
-    color: #10b981;
+    color: var(--xera-primary);
     font-weight: bold;
     position: absolute;
     left: 0;
 }
 
-.section-header {
-    border-bottom: 3px solid #059669;
-    padding-bottom: 0.5rem;
-    margin-bottom: 2rem;
-    position: relative;
-}
-
-.section-header::after {
-    content: '';
-    position: absolute;
-    bottom: -3px;
-    left: 0;
-    width: 60px;
-    height: 3px;
-    background: linear-gradient(135deg, #059669 0%, #047857 100%);
-    border-radius: 2px;
-}
-
-.copy-button {
+.prct-copy-button {
     position: absolute;
     top: 10px;
     right: 10px;
@@ -266,68 +282,38 @@
     transition: all 0.3s ease;
 }
 
-.copy-button:hover {
+.prct-copy-button:hover {
     background: #4b5563;
 }
 
-.copy-button.copied {
-    background: #10b981;
+.prct-copy-button.copied {
+    background: var(--xera-primary);
     color: white;
 }
 
-.api-stats {
-    display: flex;
-    justify-content: space-around;
-    margin: 2rem 0;
-    flex-wrap: wrap;
-    gap: 1rem;
-}
-
-.stat-item {
-    text-align: center;
-    padding: 1rem;
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    flex: 1;
-    min-width: 150px;
-}
-
-.stat-number {
-    font-size: 2rem;
-    font-weight: bold;
-    color: #059669;
-}
-
-.stat-label {
-    font-size: 0.9rem;
-    color: #6b7280;
-    margin-top: 0.5rem;
-}
-
 @media (max-width: 768px) {
-    .hero-api {
-        padding: 2rem 0;
+    .prct-api-hero-title {
+        font-size: 2rem;
     }
     
-    .api-overview-section, .endpoint-section, .code-section {
+    .prct-api-section, .prct-endpoint-section, .prct-code-section {
         padding: 1.5rem;
     }
     
-    .endpoint-header {
+    .prct-endpoint-header {
         flex-direction: column;
         align-items: flex-start;
     }
     
-    .method-badge {
+    .prct-method-badge {
         margin-bottom: 0.5rem;
     }
     
-    .code-tabs {
+    .prct-code-tabs {
         flex-wrap: wrap;
     }
     
-    .api-stats {
+    .prct-api-stats {
         flex-direction: column;
     }
 }
@@ -335,32 +321,30 @@
 {% endblock %}
 
 {% block content %}
-<!-- Hero Section -->
-<section class="hero-api">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="display-4 fw-bold mb-4">
-                    <i class="fas fa-code me-3"></i>
-                    API Documentation
-                </h1>
-                <p class="lead mb-4">
-                    Complete REST API reference for the Post-Retraction Citation Tracker (PRCT).
-                    Access retracted papers, citation data, analytics, and democracy analysis programmatically.
-                </p>
-                <div class="api-stats">
-                    <div class="stat-item">
-                        <div class="stat-number">{{ api_version }}</div>
-                        <div class="stat-label">API Version</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">{{ endpoint_categories|length }}</div>
-                        <div class="stat-label">Categories</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">15+</div>
-                        <div class="stat-label">Endpoints</div>
-                    </div>
+<!-- PRCT API Hero Section -->
+<section class="prct-api-hero">
+    <div class="xera-container">
+        <div class="prct-api-hero-content">
+            <h1 class="prct-api-hero-title">
+                <i class="fas fa-code me-3"></i>
+                API Documentation
+            </h1>
+            <p class="prct-api-hero-subtitle">
+                Complete REST API reference for the Post-Retraction Citation Tracker (PRCT).
+                Access retracted papers, citation data, analytics, and democracy analysis programmatically.
+            </p>
+            <div class="prct-api-stats">
+                <div class="prct-api-stat-item">
+                    <div class="prct-api-stat-number">{{ api_version }}</div>
+                    <div class="prct-api-stat-label">API Version</div>
+                </div>
+                <div class="prct-api-stat-item">
+                    <div class="prct-api-stat-number">{{ endpoint_categories|length }}</div>
+                    <div class="prct-api-stat-label">Categories</div>
+                </div>
+                <div class="prct-api-stat-item">
+                    <div class="prct-api-stat-number">15+</div>
+                    <div class="prct-api-stat-label">Endpoints</div>
                 </div>
             </div>
         </div>
@@ -369,11 +353,11 @@
 
 <!-- API Overview Section -->
 <section class="py-5">
-    <div class="container">
+    <div class="xera-container">
         <div class="row">
             <div class="col-lg-8 mx-auto">
-                <div class="api-overview-section">
-                    <h2 class="text-success fw-bold mb-3">
+                <div class="prct-api-section">
+                    <h2 class="fw-bold mb-3" style="color: var(--xera-primary);">
                         <i class="fas fa-info-circle me-2"></i>
                         API Overview
                     </h2>
@@ -383,15 +367,15 @@
                         query parameters for filtering and customization.
                     </p>
                     
-                    <h4 class="text-success mb-3">Key Features</h4>
-                    <ul class="feature-list">
+                    <h4 class="mb-3" style="color: var(--xera-primary);">Key Features</h4>
+                    <ul class="prct-feature-list">
                         {% for feature in api_features %}
                         <li>{{ feature }}</li>
                         {% endfor %}
                     </ul>
                     
-                    <div class="rate-limit-card">
-                        <h5 class="text-amber-600 mb-3">
+                    <div class="prct-rate-limit-card">
+                        <h5 class="mb-3" style="color: #d97706;">
                             <i class="fas fa-tachometer-alt me-2"></i>
                             Rate Limits
                         </h5>
@@ -414,14 +398,14 @@
 </section>
 
 <!-- API Endpoints Section -->
-<section class="py-5 bg-light">
-    <div class="container">
-        <h2 class="section-header">
-            <i class="fas fa-plug text-success me-2"></i>API Endpoints
+<section class="py-5">
+    <div class="xera-container">
+        <h2 class="prct-chart-title mb-4">
+            <i class="fas fa-plug me-2"></i>API Endpoints
         </h2>
         
         {% for category in endpoint_categories %}
-        <div class="endpoint-section">
+        <div class="prct-endpoint-section">
             <h3>
                 <i class="fas fa-folder me-2"></i>
                 {{ category.name }}
@@ -429,19 +413,19 @@
             <p class="text-muted mb-3">{{ category.description }}</p>
             
             {% for endpoint in category.endpoints %}
-            <div class="endpoint-card">
-                <div class="endpoint-header">
-                    <span class="method-badge method-{{ endpoint.method|lower }}">{{ endpoint.method }}</span>
+            <div class="prct-endpoint-card">
+                <div class="prct-endpoint-header">
+                    <span class="prct-method-badge prct-method-{{ endpoint.method|lower }}">{{ endpoint.method }}</span>
                     <h5 class="mb-0">{{ endpoint.name }}</h5>
                 </div>
                 
                 <p class="text-muted mb-2">{{ endpoint.description }}</p>
                 
-                <div class="endpoint-path">{{ endpoint.path }}</div>
+                <div class="prct-endpoint-path">{{ endpoint.path }}</div>
                 
                 {% if endpoint.params %}
                 <h6 class="mt-3 mb-2">Parameters</h6>
-                <table class="params-table">
+                <table class="prct-params-table">
                     <thead>
                         <tr>
                             <th>Parameter</th>
@@ -455,7 +439,7 @@
                         <tr>
                             <td><code>{{ param.name }}</code></td>
                             <td><code>{{ param.type }}</code></td>
-                            <td class="{% if param.required %}param-required{% else %}param-optional{% endif %}">
+                            <td class="{% if param.required %}prct-param-required{% else %}prct-param-optional{% endif %}">
                                 {% if param.required %}Required{% else %}Optional{% endif %}
                             </td>
                             <td>{{ param.description }}</td>
@@ -467,7 +451,7 @@
                 
                 <div class="mt-3">
                     <strong>Example Request:</strong>
-                    <div class="endpoint-path">
+                    <div class="prct-endpoint-path">
                         GET {{ base_url }}{{ endpoint.path }}{% if endpoint.params and not endpoint.params.0.required %}?{% for param in endpoint.params %}{% if not param.required %}{{ param.name }}=example{% if not forloop.last %}&{% endif %}{% endif %}{% endfor %}{% endif %}
                     </div>
                 </div>
@@ -480,44 +464,44 @@
 
 <!-- Code Examples Section -->
 <section class="py-5">
-    <div class="container">
-        <h2 class="section-header">
-            <i class="fas fa-code text-success me-2"></i>Code Examples
+    <div class="xera-container">
+        <h2 class="prct-chart-title mb-4">
+            <i class="fas fa-code me-2"></i>Code Examples
         </h2>
         
-        <div class="code-section">
-            <div class="code-tabs">
-                <button class="code-tab active" onclick="showCodeTab('javascript')">JavaScript</button>
-                <button class="code-tab" onclick="showCodeTab('python')">Python</button>
-                <button class="code-tab" onclick="showCodeTab('curl')">cURL</button>
-                <button class="code-tab" onclick="showCodeTab('r')">R</button>
+        <div class="prct-code-section">
+            <div class="prct-code-tabs">
+                <button class="prct-code-tab active" onclick="showCodeTab('javascript')">JavaScript</button>
+                <button class="prct-code-tab" onclick="showCodeTab('python')">Python</button>
+                <button class="prct-code-tab" onclick="showCodeTab('curl')">cURL</button>
+                <button class="prct-code-tab" onclick="showCodeTab('r')">R</button>
             </div>
             
-            <div id="javascript-code" class="code-content active">
+            <div id="javascript-code" class="prct-code-content active">
                 <div style="position: relative;">
-                    <pre class="code-block">{{ code_examples.javascript }}</pre>
-                    <button class="copy-button" onclick="copyCode('javascript-code')">Copy</button>
+                    <pre class="prct-code-block">{{ code_examples.javascript }}</pre>
+                    <button class="prct-copy-button" onclick="copyCode('javascript-code')">Copy</button>
                 </div>
             </div>
             
-            <div id="python-code" class="code-content">
+            <div id="python-code" class="prct-code-content">
                 <div style="position: relative;">
-                    <pre class="code-block">{{ code_examples.python }}</pre>
-                    <button class="copy-button" onclick="copyCode('python-code')">Copy</button>
+                    <pre class="prct-code-block">{{ code_examples.python }}</pre>
+                    <button class="prct-copy-button" onclick="copyCode('python-code')">Copy</button>
                 </div>
             </div>
             
-            <div id="curl-code" class="code-content">
+            <div id="curl-code" class="prct-code-content">
                 <div style="position: relative;">
-                    <pre class="code-block">{{ code_examples.curl }}</pre>
-                    <button class="copy-button" onclick="copyCode('curl-code')">Copy</button>
+                    <pre class="prct-code-block">{{ code_examples.curl }}</pre>
+                    <button class="prct-copy-button" onclick="copyCode('curl-code')">Copy</button>
                 </div>
             </div>
             
-            <div id="r-code" class="code-content">
+            <div id="r-code" class="prct-code-content">
                 <div style="position: relative;">
-                    <pre class="code-block">{{ code_examples.r }}</pre>
-                    <button class="copy-button" onclick="copyCode('r-code')">Copy</button>
+                    <pre class="prct-code-block">{{ code_examples.r }}</pre>
+                    <button class="prct-copy-button" onclick="copyCode('r-code')">Copy</button>
                 </div>
             </div>
         </div>
@@ -525,12 +509,12 @@
 </section>
 
 <!-- Support Section -->
-<section class="py-5 bg-light">
-    <div class="container">
+<section class="py-5">
+    <div class="xera-container">
         <div class="row">
             <div class="col-lg-8 mx-auto text-center">
-                <div class="api-overview-section">
-                    <h3 class="text-success mb-3">
+                <div class="prct-api-section">
+                    <h3 class="mb-3" style="color: var(--xera-primary);">
                         <i class="fas fa-life-ring me-2"></i>Support & Contact
                     </h3>
                     <p class="mb-3">
@@ -538,15 +522,19 @@
                     </p>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <div class="h-100 p-3 bg-white rounded border">
-                                <h6><i class="fas fa-book text-primary me-2"></i>Documentation</h6>
-                                <p class="small mb-0">Complete API reference and guides available on this page</p>
+                            <div class="xera-card h-100">
+                                <div class="xera-card-body">
+                                    <h6><i class="fas fa-book me-2" style="color: var(--xera-primary);"></i>Documentation</h6>
+                                    <p class="small mb-0">Complete API reference and guides available on this page</p>
+                                </div>
                             </div>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <div class="h-100 p-3 bg-white rounded border">
-                                <h6><i class="fas fa-envelope text-info me-2"></i>Email Support</h6>
-                                <p class="small mb-0">Contact: ahmad.pub@gmail.com</p>
+                            <div class="xera-card h-100">
+                                <div class="xera-card-body">
+                                    <h6><i class="fas fa-envelope me-2" style="color: var(--xera-primary);"></i>Email Support</h6>
+                                    <p class="small mb-0">Contact: ahmad.pub@gmail.com</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -564,6 +552,7 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ block.super }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Add smooth scrolling for internal links
@@ -579,7 +568,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Add animation to cards on scroll
+    // Add animation to cards on scroll (consistent with PRCT theme)
     const observerOptions = {
         threshold: 0.1,
         rootMargin: '0px 0px -50px 0px'
@@ -588,17 +577,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const observer = new IntersectionObserver(function(entries) {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
-                entry.target.style.opacity = '1';
-                entry.target.style.transform = 'translateY(0)';
+                entry.target.classList.add('prct-fade-in');
             }
         });
     }, observerOptions);
     
-    // Observe all cards
-    document.querySelectorAll('.endpoint-section, .endpoint-card, .api-overview-section').forEach(card => {
-        card.style.opacity = '0';
-        card.style.transform = 'translateY(20px)';
-        card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+    // Observe all cards for animations (using PRCT theme classes)
+    document.querySelectorAll('.prct-endpoint-section, .prct-endpoint-card, .prct-api-section, .prct-code-section').forEach(card => {
         observer.observe(card);
     });
 });
@@ -606,12 +591,12 @@ document.addEventListener('DOMContentLoaded', function() {
 // Code tab functionality
 function showCodeTab(language) {
     // Hide all code contents
-    document.querySelectorAll('.code-content').forEach(content => {
+    document.querySelectorAll('.prct-code-content').forEach(content => {
         content.classList.remove('active');
     });
     
     // Remove active class from all tabs
-    document.querySelectorAll('.code-tab').forEach(tab => {
+    document.querySelectorAll('.prct-code-tab').forEach(tab => {
         tab.classList.remove('active');
     });
     
@@ -624,11 +609,11 @@ function showCodeTab(language) {
 
 // Copy code functionality
 function copyCode(elementId) {
-    const codeElement = document.querySelector('#' + elementId + ' .code-block');
+    const codeElement = document.querySelector('#' + elementId + ' .prct-code-block');
     const text = codeElement.textContent;
     
     navigator.clipboard.writeText(text).then(function() {
-        const button = document.querySelector('#' + elementId + ' .copy-button');
+        const button = document.querySelector('#' + elementId + ' .prct-copy-button');
         const originalText = button.textContent;
         
         button.textContent = 'Copied!';
@@ -647,7 +632,7 @@ function copyCode(elementId) {
         document.execCommand('copy');
         document.body.removeChild(textArea);
         
-        const button = document.querySelector('#' + elementId + ' .copy-button');
+        const button = document.querySelector('#' + elementId + ' .prct-copy-button');
         button.textContent = 'Copied!';
         button.classList.add('copied');
         
@@ -660,7 +645,7 @@ function copyCode(elementId) {
 
 // Syntax highlighting for code blocks (simple approach)
 document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.code-block').forEach(block => {
+    document.querySelectorAll('.prct-code-block').forEach(block => {
         let html = block.innerHTML;
         
         // Simple syntax highlighting
